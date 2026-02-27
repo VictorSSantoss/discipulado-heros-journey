@@ -55,7 +55,7 @@ export default function ValentesList() {
             className="flex-1 md:w-64 bg-[#232622] border border-gray-800 p-3 rounded-sm text-white font-barlow text-xs tracking-widest uppercase focus:border-[#ea580c] outline-none transition-all"
           />
           <Link 
-            href="/admin/valentes/new"
+            href="/admin/valentes/novo"
             className="bg-[#ea580c] hover:bg-[#c2410c] text-white font-barlow font-bold px-6 py-3 rounded-sm tracking-widest uppercase text-xs shadow-lg transition-all"
           >
             + Recrutar
