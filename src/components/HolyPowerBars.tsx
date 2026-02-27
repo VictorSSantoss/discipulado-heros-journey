@@ -49,7 +49,7 @@ export default function HolyPowerBars({ powers }: HolyPowerBarsProps) {
                 </span>
               </div>
 
-              {/* Right Side: The Streak (🔥) */}
+              {/* Right Side: The Streak */}
               <div className={`flex items-center gap-1 font-staatliches text-lg tracking-wider ${habit.streak > 0 ? 'text-orange-500' : 'text-gray-600'}`}>
                 <span className={habit.streak > 0 ? 'animate-pulse' : 'opacity-50'}>🔥</span>
                 {habit.streak} <span className="text-[10px] font-barlow text-gray-500 uppercase mt-1">Streak</span>

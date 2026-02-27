@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { mockValentes } from "@/lib/mockData";
 
-// 🌟 THE ENGINE (Must match your Patentes/Profile logic)
+// THE ENGINE (Must match Patentes/Profile logic)
 const LEVEL_SYSTEM = [
   { name: 'Nível 0', minXP: 0, icon: '/images/level-0.svg' },
   { name: 'Nível 1', minXP: 1000, icon: '/images/level-1.svg' },

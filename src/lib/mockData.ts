@@ -46,7 +46,7 @@ export const mockValentes: Valente[] = [
       Comunicação: 8
     },
     holyPower: {
-    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' }, // Huge streak!
+    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' },
     Leitura: { current: 5, goal: 5, streak: 10, unit: 'capítulos' },
     Jejum: { current: 1, goal: 1, streak: 2, unit: 'dia' },
     },
@@ -73,7 +73,7 @@ export const mockValentes: Valente[] = [
       Comunicação: 7
     },
     holyPower: {
-    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' }, // Huge streak!
+    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' },
     Leitura: { current: 5, goal: 5, streak: 10, unit: 'capítulos' },
     Jejum: { current: 1, goal: 1, streak: 2, unit: 'dia' },
   },
@@ -100,7 +100,7 @@ export const mockValentes: Valente[] = [
       Comunicação: 4
     },
     holyPower: {
-    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' }, // Huge streak!
+    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' },
     Leitura: { current: 5, goal: 5, streak: 10, unit: 'capítulos' },
     Jejum: { current: 1, goal: 1, streak: 2, unit: 'dia' },
     },
@@ -127,7 +127,7 @@ export const mockValentes: Valente[] = [
       Comunicação: 9
     },
     holyPower: {
-    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' }, // Huge streak!
+    Oração: { current: 7, goal: 7, streak: 42, unit: 'dias' },
     Leitura: { current: 5, goal: 5, streak: 10, unit: 'capítulos' },
     Jejum: { current: 1, goal: 1, streak: 2, unit: 'dia' },
     },

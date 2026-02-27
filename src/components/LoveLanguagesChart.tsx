@@ -16,7 +16,7 @@ export default function LoveLanguagesChart({ data }: { data?: LoveLanguages }) {
   }
 
   // 1. DYNAMIC GRADIENT PALETTE
-  // Each language now gets a 2-color gradient to make it look rich and deep
+  // Each language gets a 2-color gradient to make it look rich and deep
   const LANG_CONFIG = [
     { name: 'Presentes', key: 'presentes', colors: ['#fbbf24', '#d97706'] },        // Gold
     { name: 'Toque Físico', key: 'toqueFisico', colors: ['#fb7185', '#e11d48'] },    // Rose

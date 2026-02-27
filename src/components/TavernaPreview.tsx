@@ -43,7 +43,7 @@ export default function TavernaPreview() {
                 </p>
               </div>
 
-              {/* Progress bar preview for that hero */}
+              {/* Progress bar preview for the hero */}
               <div className="w-16 h-1 bg-gray-800 rounded-full overflow-hidden shrink-0">
                 <div 
                   className="h-full bg-[#ea580c]" 

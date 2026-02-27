@@ -12,7 +12,7 @@ import BestFriendsList from "@/components/BestFriendsList";
 import GrantXpModal from "@/components/GrantXpModal";
 import TavernaPreview from "@/components/TavernaPreview";
 
-// 🌟 DYNAMIC LEVELING ENGINE (With SVG paths)
+// DYNAMIC LEVELING ENGINE (With SVG paths)
 const LEVEL_SYSTEM = [
   { name: 'Valente de Nível 0', minXP: 0, icon: '/images/level-0.svg' },
   { name: 'Valente de Nível 1', minXP: 1000, icon: '/images/level-1.svg' },
@@ -31,7 +31,7 @@ export default function ValenteProfile({ params }: { params: Promise<{ id: strin
   const foundValente = mockValentes.find((v) => v.id === id);
   const [valente, setValente] = useState(foundValente);
 
-  // 🌟 ENGINE LOGIC: Calculate current and next level automatically based on totalXP
+  // ENGINE LOGIC: Calculate current and next level automatically based on totalXP
   const currentLevelInfo = valente 
     ? [...LEVEL_SYSTEM].reverse().find(lvl => valente.totalXP >= lvl.minXP) || LEVEL_SYSTEM[0] 
     : LEVEL_SYSTEM[0];
@@ -116,8 +116,7 @@ export default function ValenteProfile({ params }: { params: Promise<{ id: strin
 
                 <div className="absolute inset-0 flex flex-col items-center justify-start pt-2">
                   
-                  {/* 🌟 SVG ICON REPLACEMENT */}
-                  {/* w-16 h-16 replaces the text-6xl so the icon takes up the exact same physical space */}
+                  {/* SVG ICON REPLACEMENT */}
                   <img 
                     src={currentLevelInfo.icon} 
                     alt={currentLevelInfo.name} 

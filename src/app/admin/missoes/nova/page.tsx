@@ -23,7 +23,7 @@ export default function NovaMissaoPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to save the mission to your list will go here later!
+    // Logic to save the mission to the list goes here later
     alert(`Nova Missão: "${title}" forjada com sucesso!`);
     router.push('/admin/missoes');
   };

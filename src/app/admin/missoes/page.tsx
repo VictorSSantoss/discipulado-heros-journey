@@ -5,8 +5,8 @@ import { mockMissions } from "@/lib/mockData";
 import Link from "next/link";
 
 export default function MissoesPage() {
-  // 1. Create a "Live State" for the missions so we can delete them
-  // We use .reverse() so the newest missions appear at the top
+  // 1. Create a "Live State" for the missions so they can be deleted
+  // Uses .reverse() so the newest missions appear at the top
   const [missions, setMissions] = useState([...mockMissions].reverse());
   const [activeFilter, setActiveFilter] = useState("TODAS");
 

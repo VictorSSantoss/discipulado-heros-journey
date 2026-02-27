@@ -1,6 +1,5 @@
 import { Mission } from '@/types';
 
-// We update the blueprint here to accept an optional 'onDelete' function
 interface MissionCardProps {
   mission: Mission;
   onDelete?: (id: string) => void; 
@@ -10,7 +9,6 @@ export default function MissionCard({ mission, onDelete }: MissionCardProps) {
   const isLvlUp = mission.xpReward === 'LVL UP DIRETO';
 
   return (
-    // Added 'relative' and 'group' so we can position the delete button and show it on hover
     <div className="relative flex items-center justify-between bg-[#2a2c29] text-white p-4 rounded-sm shadow-md min-h-[80px] group">
       
       <div className="flex-1 pr-4 font-barlow font-bold uppercase text-sm md:text-base tracking-wide leading-tight text-gray-200">

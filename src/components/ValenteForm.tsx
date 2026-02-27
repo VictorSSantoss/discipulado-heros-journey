@@ -23,7 +23,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     Liderança: 5, TrabalhoEmEquipe: 5, Criatividade: 5, ResoluçãoDeProblemas: 5, Comunicação: 5
   });
 
-  // 🌟 THE NEW HOLY POWER STATE (Habit Tracker Format)
+  // THE NEW HOLY POWER STATE (Habit Tracker Format)
   const [holyPower, setHolyPower] = useState(initialData?.holyPower || { 
     Oração: { current: 0, goal: 7, streak: 0, unit: 'dias' },
     Leitura: { current: 0, goal: 5, streak: 0, unit: 'capítulos' },
@@ -163,7 +163,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         </div>
       </section>
 
-      {/* 🌟 NEW HABIT TRACKER SECTION (Poder Santo) */}
+      {/* NEW HABIT TRACKER SECTION (Poder Santo) */}
       <section className="bg-[#1a1c19] border border-gray-800 p-8 rounded-sm shadow-xl">
         <div className="flex justify-between items-end mb-8 border-b border-gray-700 pb-2">
           <h2 className="font-bebas text-3xl text-white tracking-widest m-0">Habit Tracker: Poder Santo</h2>

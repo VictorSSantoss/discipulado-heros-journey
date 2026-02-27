@@ -3,8 +3,8 @@
 export default function BestFriendsList({ friendIds = [] }: { friendIds?: string[] }) {
   const alliesCount = friendIds.length;
 
-  // Since our mock data might not have friends linked yet, 
-  // Using placeholder data to show you exactly how the UI will look!
+  // Since the mock data might not have friends linked yet, 
+  // Using placeholder data to show exactly how the UI will look.
   const previewFriends = [
     { id: '1', name: 'NATHAN', level: 'Nível 1', role: 'GAD' },
     { id: '2', name: 'VITOR', level: 'Nível 2', role: 'Mídia' },

@@ -3,7 +3,6 @@
 export type LevelName = 'Valente de Nível 3' | 'Valente de Nível 2' | 'Valente de Nível 1' | 'Valente de Nível Especial';
 
 export interface DiscipleSkills {
-  // We use the exact names used in the UI sliders
   Liderança: number;
   TrabalhoEmEquipe: number;
   Criatividade: number;
@@ -40,7 +39,6 @@ export interface Mission {
   description?: string;
 }
 
-// Renamed to Valente to match the project theme
 export interface Valente {
   id: string;
   name: string;
@@ -51,5 +49,5 @@ export interface Valente {
   friendIds?: string[];
   skills: DiscipleSkills;
   holyPower: HolyPower;
-  loveLanguages?: LoveLanguages; // Optional for now
+  loveLanguages?: LoveLanguages;
 }

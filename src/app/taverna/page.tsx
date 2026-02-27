@@ -29,7 +29,7 @@ function TavernaContent() {
 
   return (
     <>
-      {/* THE SMART VOLTAR BUTTON */}
+      {/* BACK BUTTON */}
       <div className="absolute top-8 left-6 md:left-12 z-50">
         <Link 
           href={returnUrl} 

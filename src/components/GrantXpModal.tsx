@@ -7,7 +7,7 @@ import { mockMissions } from "@/lib/mockData";
 interface GrantXpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onGrant: (amount: number) => void; // Changed from onGrantXp
+  onGrant: (amount: number) => void;
   valenteName: string;
 }
 
@@ -31,7 +31,7 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
     const mission = mockMissions.find(m => m.id === selectedMissionId);
     
     if (mission) {
-      // 2. THE LOGIC FIX: If it's a direct level up, we grant enough XP to fill the bar (2000)
+      // If it's a direct level up, we grant enough XP to fill the bar (2000)
       const xpValue = mission.xpReward === 'LVL UP DIRETO' ? 2000 : mission.xpReward as number;
       
       onGrant(xpValue); // Sends the exact number back to the profile page
