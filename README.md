@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+🛡️ Discipulado: Hero's Journey
+Transformando o discipulado em uma jornada épica de crescimento espiritual e liderança.
 
-## Getting Started
 
-First, run the development server:
+📖 Visão Geral
+O Discipulado: Hero's Journey é uma plataforma gamificada desenvolvida para engajar jovens em sua caminhada cristã. Através de mecânicas de RPG (Role-Playing Game), o projeto transforma disciplinas espirituais, serviço e conhecimento em conquistas tangíveis, permitindo que líderes (Mestres da Guilda) acompanhem o progresso de seus liderados (Valentes) de forma visual e interativa.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+🚀 Funcionalidades Principais
+👤 Gestão de Valentes (Ficha de Personagem)
+Atributos Dinâmicos: Gráficos de Radar que visualizam competências como Liderança, Criatividade e Comunicação.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Linguagens de Amor: Gráficos de rosca (Donut Charts) com gradientes modernos para identificar o perfil afetivo do aluno.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Lore & Identidade: Espaço para história de origem e vinculação às estruturas da igreja (GAD, Mídia, Louvor, Intercessão).
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+🔥 Poder Santo (Habit Tracker)
+Disciplinas Semanais: Monitoramento de Oração, Leitura e Jejum com metas customizáveis.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Sistema de Streaks: Indicadores visuais de "Dias de Ofensiva" (🔥) para incentivar a constância.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Progresso em Tempo Real: Barras de progresso com animações suaves e feedback de conclusão.
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+🎯 Arsenal de Missões
+Categorização de Decretos: Missões divididas por áreas (Hábitos Espirituais, Conhecimento, Eventos).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Recompensas de XP: Ganho de experiência por missão cumprida ou "Level Up" direto para feitos heroicos.
+
+
+🏆 Hierarquia do Reino (Patentes)
+Forge de Níveis: Painel administrativo para criar e editar patentes, definir requisitos de XP e ícones (SVG).
+
+Progressão Automática: Sistema que calcula e exibe a patente atual do Valente com base no XP acumulado.
+
+
+🛠️ Tecnologias Utilizadas
+Framework: Next.js 14 (App Router)
+
+Linguagem: TypeScript
+
+Estilização: Tailwind CSS
+
+Gráficos: Recharts
+
+Iconografia: Lucide React
+
+Animações: Framer Motion / Tailwind Animate
+
+
+📂 Estrutura do Projeto
+
+src/
+├── app/              # Rotas e Páginas (Admin, Taverna, Sistema)
+├── components/       # Componentes Reutilizáveis (Cards, Modais, Gráficos)
+├── constants/        # Configurações Globais (Cores, Categorias, Estruturas)
+├── lib/              # Mock Data e Utilitários de Lógica
+├── types/            # Definições de Interfaces TypeScript
+└── styles/           # CSS Global e Temas
+
+
+🗺️ Roadmap de Desenvolvimento
+[x] Arquitetura de UI Dark/RPG.
+
+[x] Sistema de Níveis e XP.
+
+[x] Habit Tracker (Poder Santo) com Streaks.
+
+[ ] Integração com Backend (Firebase/Supabase).
+
+[ ] Sistema de Conquistas (Badges/Medalhas).
+
+[ ] Mural da Taverna (Feed social para os alunos).
+
+✒️ Autor
+Victor - Desenvolvedor
+
+GitHub: VictorSSantoss  
