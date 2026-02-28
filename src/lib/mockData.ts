@@ -37,7 +37,7 @@ export const mockValentes: Valente[] = [
     name: 'NATHAN',
     image: '/images/nathan.png',
     totalXP: 5200,
-    structure: 'Mídia',
+    structure: 'IMS',
     skills: {
       Liderança: 8,
       TrabalhoEmEquipe: 7,

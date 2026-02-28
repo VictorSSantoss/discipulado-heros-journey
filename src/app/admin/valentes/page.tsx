@@ -3,28 +3,27 @@
 import { useState } from "react";
 import Link from "next/link";
 import { mockValentes } from "@/lib/mockData";
-
-// THE ENGINE (Must match Patentes/Profile logic)
-const LEVEL_SYSTEM = [
-  { name: 'Nível 0', minXP: 0, icon: '/images/level-0.svg' },
-  { name: 'Nível 1', minXP: 1000, icon: '/images/level-1.svg' },
-  { name: 'Nível 2', minXP: 2000, icon: '/images/level-2.svg' },
-  { name: 'Nível 3', minXP: 3500, icon: '/images/level-3.svg' },
-  { name: 'Especial', minXP: 5000, icon: '/images/level-special.svg' },
-  { name: 'Herói', minXP: 8000, icon: '/images/level-hero.svg' }
-];
+// 1. IMPORT FROM CONFIG
+import { ESTRUTURAS, LEVEL_SYSTEM } from "@/constants/gameConfig";
 
 export default function ValentesList() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const getTheme = (structure: string) => {
-    const themes: any = {
-      GAD: { text: 'text-[#ea580c]', border: 'border-[#ea580c]', bg: 'bg-[#ea580c]' },
-      Mídia: { text: 'text-[#0ea5e9]', border: 'border-[#0ea5e9]', bg: 'bg-[#0ea5e9]' },
-      Louvor: { text: 'text-[#8b5cf6]', border: 'border-[#8b5cf6]', bg: 'bg-[#8b5cf6]' },
-      Intercessão: { text: 'text-[#10b981]', border: 'border-[#10b981]', bg: 'bg-[#10b981]' },
+  // 2. REPAIRED THEME ENGINE
+  const getTheme = (valenteStructure: string) => {
+    // We search the config values to see if the valente's structure matches the Label
+    // NOTE: Make sure your gameConfig labels (like "IMS") match your mockData strings!
+    const structureEntry = Object.values(ESTRUTURAS).find(
+      (s) => s.label.toLowerCase() === valenteStructure.toLowerCase()
+    );
+
+    // Fallback to GAD if the name doesn't match
+    const activeStructure = structureEntry || ESTRUTURAS.GAD;
+    
+    return {
+      color: activeStructure.color,
+      label: activeStructure.label
     };
-    return themes[structure] || themes.GAD;
   };
 
   const filteredValentes = mockValentes.filter(v => 
@@ -55,7 +54,7 @@ export default function ValentesList() {
             className="flex-1 md:w-64 bg-[#232622] border border-gray-800 p-3 rounded-sm text-white font-barlow text-xs tracking-widest uppercase focus:border-[#ea580c] outline-none transition-all"
           />
           <Link 
-            href="/admin/valentes/novo"
+            href="/admin/valentes/new"
             className="bg-[#ea580c] hover:bg-[#c2410c] text-white font-barlow font-bold px-6 py-3 rounded-sm tracking-widest uppercase text-xs shadow-lg transition-all"
           >
             + Recrutar
@@ -66,12 +65,12 @@ export default function ValentesList() {
       {/* HERO GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredValentes.map((valente) => {
-          // ENGINE CALCULATION
           const lvlInfo = [...LEVEL_SYSTEM].reverse().find(l => valente.totalXP >= l.minXP) || LEVEL_SYSTEM[0];
           const nextLvl = LEVEL_SYSTEM[LEVEL_SYSTEM.indexOf(lvlInfo) + 1];
+          
+          // 3. GET DYNAMIC THEME
           const theme = getTheme(valente.structure);
           
-          // XP Bar Progress
           const targetXP = nextLvl ? nextLvl.minXP : valente.totalXP;
           const xpPercent = nextLvl ? Math.min((valente.totalXP / targetXP) * 100, 100) : 100;
 
@@ -81,7 +80,6 @@ export default function ValentesList() {
               href={`/admin/valentes/${valente.id}`}
               className="group bg-[#232622] border border-gray-800 hover:border-gray-600 rounded-sm overflow-hidden flex flex-col shadow-xl transition-all hover:-translate-y-1"
             >
-              {/* TOP PORTRAIT AREA */}
               <div className="relative aspect-square overflow-hidden bg-[#1a1c19]">
                 {valente.image ? (
                   <img src={valente.image} alt={valente.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -91,7 +89,6 @@ export default function ValentesList() {
                   </div>
                 )}
                 
-                {/* Level Badge Overlap */}
                 <div className="absolute bottom-3 right-3 z-20">
                   <div className="bg-[#1a1c19]/90 border border-gray-700 p-2 rounded-sm backdrop-blur-md shadow-2xl flex items-center gap-2">
                     <img src={lvlInfo.icon} alt={lvlInfo.name} className="w-6 h-6 object-contain" />
@@ -101,15 +98,17 @@ export default function ValentesList() {
                   </div>
                 </div>
 
-                {/* Structure Overlay */}
-                <div className={`absolute top-3 left-3 px-3 py-1 ${theme.bg} rounded-sm shadow-lg`}>
+                {/* 4. DYNAMIC BACKGROUND COLOR (Style Prop is the key!) */}
+                <div 
+                  className="absolute top-3 left-3 px-3 py-1 rounded-sm shadow-lg"
+                  style={{ backgroundColor: theme.color }}
+                >
                    <span className="font-barlow text-white text-[9px] font-black tracking-widest uppercase">
-                     {valente.structure}
+                     {theme.label}
                    </span>
                 </div>
               </div>
 
-              {/* INFO AREA */}
               <div className="p-5 flex flex-col flex-1">
                 <h3 className="font-bebas text-3xl text-white tracking-widest leading-none mb-1">
                   {valente.name}
@@ -122,11 +121,11 @@ export default function ValentesList() {
                   </span>
                 </div>
 
-                {/* Miniature XP Bar */}
+                {/* 5. DYNAMIC XP BAR COLOR */}
                 <div className="w-full h-1.5 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
                   <div 
-                    className={`h-full ${theme.bg} transition-all duration-1000`}
-                    style={{ width: `${xpPercent}%` }}
+                    className="h-full transition-all duration-1000"
+                    style={{ width: `${xpPercent}%`, backgroundColor: theme.color }}
                   />
                 </div>
 

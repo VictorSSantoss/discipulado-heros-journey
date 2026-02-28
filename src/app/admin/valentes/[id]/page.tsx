@@ -191,6 +191,101 @@ export default function ValenteProfile({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         </div>
+      
+        {/* =========================================
+        SEPARATE SECTION: MISSION BOARD 
+        ========================================= */}
+        <section className="mt-20 pt-16 border-t-2 border-dashed border-gray-800 relative">
+          
+          {/* Decorative Anchor Point */}
+          <div className="absolute top-[-10px] left-1/2 transform -translate-x-1/2 bg-[#1a1c19] px-4">
+            <span className="text-gray-700 text-xl">⚔️</span>
+          </div>
+
+          <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+              <h2 className="font-bebas text-4xl tracking-widest text-white uppercase drop-shadow-[0_0_10px_rgba(234,179,8,0.2)] flex items-center gap-3 m-0">
+                <span className="text-yellow-500">📜</span> Mural de Decretos
+              </h2>
+              <p className="font-barlow text-gray-500 font-bold uppercase tracking-widest text-[10px] mt-1">
+                Missões ativas disponíveis para {valente.name}
+              </p>
+            </div>
+            <button className="text-[10px] font-barlow font-bold uppercase tracking-widest text-gray-400 hover:text-white border border-gray-700 hover:border-white px-4 py-2 rounded-sm transition-all bg-[#232622]">
+              Ver Histórico Completo →
+            </button>
+          </header>
+
+          {/* Mission Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Mock Mission Card 1 */}
+            <div className="bg-[#232622] border border-gray-800 p-5 rounded-sm flex flex-col hover:border-yellow-500/50 transition-all group relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+              
+              <div className="flex justify-between items-start mb-4">
+                <span className="bg-[#1a1c19] text-gray-400 border border-gray-700 font-barlow text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-sm">
+                  Hábitos Espirituais
+                </span>
+                <span className="font-staatliches text-2xl text-cyan-400">+150 XP</span>
+              </div>
+              
+              <h3 className="font-bebas text-2xl text-white tracking-widest mb-2">Jejum Matinal</h3>
+              <p className="font-barlow text-gray-500 text-sm mb-6 flex-1">
+                Realizar um jejum até o meio-dia, dedicando o tempo da refeição à leitura da Palavra.
+              </p>
+              
+              <button className="w-full bg-[#1a1c19] border border-gray-700 hover:border-cyan-500 hover:bg-cyan-500/10 text-gray-400 hover:text-cyan-400 font-barlow font-bold uppercase tracking-widest text-[10px] py-3 rounded-sm transition-all">
+                Marcar como Concluída
+              </button>
+            </div>
+
+            {/* Mock Mission Card 2 */}
+            <div className="bg-[#232622] border border-gray-800 p-5 rounded-sm flex flex-col hover:border-yellow-500/50 transition-all group relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+              
+              <div className="flex justify-between items-start mb-4">
+                <span className="bg-[#1a1c19] text-gray-400 border border-gray-700 font-barlow text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-sm">
+                  Conhecimento
+                </span>
+                <span className="font-staatliches text-2xl text-cyan-400">+300 XP</span>
+              </div>
+              
+              <h3 className="font-bebas text-2xl text-white tracking-widest mb-2">Resumo de Neemias</h3>
+              <p className="font-barlow text-gray-500 text-sm mb-6 flex-1">
+                Entregar um resumo de 1 página sobre os princípios de liderança encontrados no livro de Neemias.
+              </p>
+              
+              <button className="w-full bg-[#1a1c19] border border-gray-700 hover:border-cyan-500 hover:bg-cyan-500/10 text-gray-400 hover:text-cyan-400 font-barlow font-bold uppercase tracking-widest text-[10px] py-3 rounded-sm transition-all">
+                Marcar como Concluída
+              </button>
+            </div>
+
+            {/* Mock Mission Card 3 (Structure Specific) */}
+            <div className="bg-[#232622] border border-gray-800 p-5 rounded-sm flex flex-col hover:border-yellow-500/50 transition-all group relative overflow-hidden">
+              {/* Uses the Valente's structure color dynamically */}
+              <div className={`absolute top-0 left-0 w-1 h-full ${theme.bg} opacity-50 group-hover:opacity-100 transition-opacity`}></div>
+              
+              <div className="flex justify-between items-start mb-4">
+                <span className={`bg-[#1a1c19] ${theme.tailwind} border border-gray-700 font-barlow text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-sm`}>
+                  Estrutura: {valente.structure}
+                </span>
+                <span className="font-staatliches text-2xl text-cyan-400">+500 XP</span>
+              </div>
+              
+              <h3 className="font-bebas text-2xl text-white tracking-widest mb-2">Apoio no Culto Jovem</h3>
+              <p className="font-barlow text-gray-500 text-sm mb-6 flex-1">
+                Chegar 1 hora antes do culto para auxiliar na montagem e organização da sua estrutura.
+              </p>
+              
+              <button className="w-full bg-[#1a1c19] border border-gray-700 hover:border-cyan-500 hover:bg-cyan-500/10 text-gray-400 hover:text-cyan-400 font-barlow font-bold uppercase tracking-widest text-[10px] py-3 rounded-sm transition-all">
+                Marcar como Concluída
+              </button>
+            </div>
+
+          </div>
+        </section>
+
       </main>
 
       <GrantXpModal isOpen={isGrantModalOpen} onClose={() => setIsGrantModalOpen(false)} onGrant={handleGrantXp} valenteName={valente.name} />

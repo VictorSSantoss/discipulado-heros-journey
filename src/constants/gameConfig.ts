@@ -1,5 +1,31 @@
 // src/constants/gameConfig.ts
 
+export const ICONS = {
+  home: '/images/nav-home.svg',
+  valentes: '/images/nav-shield.svg',
+  missoes: '/images/missions.svg',
+  patentes: '/images/patente.svg',
+  taverna: '/images/taverna-icon.svg',
+  overview: '/images/chart.svg',
+  xp: '/images/xp-icon.svg',
+} as const;
+
+export const SIDEBAR_MENU = [
+  { name: 'Início', path: '/admin', iconPath: ICONS.home },
+  { name: 'Valentes', path: '/admin/valentes', iconPath: ICONS.valentes },
+  { name: 'Missões', path: '/admin/missoes', iconPath: ICONS.missoes },
+  { name: 'Patentes', path: '/admin/patentes', iconPath: ICONS.patentes },
+] as const;
+
+export const LEVEL_SYSTEM = [
+  { name: 'Nível 0', minXP: 0, icon: '/images/level-0.svg' },
+  { name: 'Nível 1', minXP: 1000, icon: '/images/level-1.svg' },
+  { name: 'Nível 2', minXP: 2000, icon: '/images/level-2.svg' },
+  { name: 'Nível 3', minXP: 3500, icon: '/images/level-3.svg' },
+  { name: 'Especial', minXP: 5000, icon: '/images/level-special.svg' },
+  { name: 'Herói', minXP: 8000, icon: '/images/level-hero.svg' }
+] as const;
+
 export const ESTRUTURAS = {
   GAD: { 
     label: "GAD", 
