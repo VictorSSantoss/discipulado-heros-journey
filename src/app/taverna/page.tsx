@@ -4,21 +4,24 @@ import { mockValentes } from "@/lib/mockData";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { LEVEL_SYSTEM } from "@/constants/gameConfig";
 
-// 1. THE OUTER SHELL (The Page)
-// This must stay incredibly simple to provide the Suspense "Shield".
 export default function TavernaPage() {
   return (
-    <main className="min-h-screen bg-[#1a1c19] p-6 md:p-12 max-w-6xl mx-auto relative">
-      <Suspense fallback={<div className="text-white font-bebas text-center pt-20">Entrando na Taverna...</div>}>
-        <TavernaContent />
-      </Suspense>
+    <main className="min-h-screen bg-[#08090a] text-white font-barlow relative overflow-hidden">
+      {/* Luzes ambiente sutis */}
+      <div className="absolute top-0 left-1/4 w-[30%] h-[400px] bg-brand/5 blur-[100px] rounded-full pointer-events-none"></div>
+      <div className="absolute top-0 right-1/4 w-[30%] h-[400px] bg-mission/5 blur-[100px] rounded-full pointer-events-none"></div>
+      
+      <div className="p-6 md:p-12 max-w-7xl mx-auto relative z-10">
+        <Suspense fallback={<div className="hud-title-md text-center pt-20 text-gray-500">Sincronizando...</div>}>
+          <TavernaContent />
+        </Suspense>
+      </div>
     </main>
   );
 }
 
-// 2. THE INNER CONTENT (The Logic)
-// All the hooks and data are safely tucked inside here!
 function TavernaContent() {
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('from') || '/admin/valentes';
@@ -29,109 +32,174 @@ function TavernaContent() {
 
   return (
     <>
-      {/* BACK BUTTON */}
       <div className="absolute top-8 left-6 md:left-12 z-50">
         <Link 
           href={returnUrl} 
-          className="flex items-center gap-2 text-gray-500 hover:text-[#ea580c] font-barlow font-bold uppercase tracking-widest text-sm transition-all group"
+          className="hud-label-tactical flex items-center gap-3 text-gray-500 hover:text-white transition-all group italic-none bg-white/5 px-5 py-2 rounded-full border border-white/10"
         >
-          <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
-          <span>Voltar</span>
+          <span className="text-lg group-hover:-translate-x-1 transition-transform leading-none">←</span>
+          <span>VOLTAR AO QUARTEL</span>
         </Link>
       </div>
 
-      <header className="text-center mb-16">
-        <h1 className="font-bebas text-7xl tracking-[0.2em] text-white uppercase drop-shadow-[0_0_15px_rgba(234,88,12,0.5)]">
+      <header className="text-center mb-24 pt-12">
+        <h1 className="hud-title-lg text-7xl text-white m-0 tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
           A TAVERNA
         </h1>
-        <p className="font-staatliches text-2xl text-[#ea580c] tracking-widest mt-2 uppercase">
-          Mural de Glória dos Valentes
-        </p>
+        <div className="flex items-center justify-center gap-4 mt-6 opacity-60">
+          <div className="h-px w-12 bg-xp"></div>
+          <p className="hud-label-tactical text-xp italic-none tracking-[0.5em] text-[12px]">
+            MURAL DE GLÓRIA E HONRA
+          </p>
+          <div className="h-px w-12 bg-xp"></div>
+        </div>
       </header>
 
-      {/* SECTION: THE PODIUM (Top 3) */}
-      <section className="flex flex-wrap justify-center items-end gap-4 md:gap-8 mb-20">
+      {/* PODIUM_ARENA */}
+      <section className="flex flex-col md:flex-row justify-center items-center md:items-end gap-6 md:gap-10 mb-32 relative z-20">
         {topThree[1] && (
-          <PodiumCard valente={topThree[1]} rank={2} color="border-gray-400" text="text-gray-400" />
+          <div className="w-full md:w-72 order-2 md:order-1">
+            <MonolithCard 
+              valente={topThree[1]} 
+              rank={2} 
+              themeColor="border-t-mission" 
+              glow="shadow-[0_0_30px_rgba(16,185,129,0.15)]" 
+              textColor="text-mission"
+            />
+          </div>
         )}
+        
         {topThree[0] && (
-          <PodiumCard valente={topThree[0]} rank={1} color="border-yellow-500" text="text-yellow-500" size="scale-110" />
+          <div className="w-full md:w-80 order-1 md:order-2 z-30 transform md:-translate-y-12">
+            <MonolithCard 
+              valente={topThree[0]} 
+              rank={1} 
+              themeColor="border-t-brand" 
+              glow="shadow-[0_0_50px_rgba(17,194,199,0.2)]" 
+              textColor="text-brand"
+              isFirst={true}
+            />
+          </div>
         )}
+        
         {topThree[2] && (
-          <PodiumCard valente={topThree[2]} rank={3} color="border-amber-700" text="text-amber-700" />
+          <div className="w-full md:w-72 order-3 md:order-3">
+            <MonolithCard 
+              valente={topThree[2]} 
+              rank={3} 
+              themeColor="border-t-xp" 
+              glow="shadow-[0_0_30px_rgba(234,88,12,0.15)]" 
+              textColor="text-xp"
+            />
+          </div>
         )}
       </section>
 
-      {/* SECTION: ALL HEROES GRID */}
       <section>
-        <h2 className="font-bebas text-3xl text-white mb-8 border-b border-gray-800 pb-2 tracking-widest">
-          TODOS OS VALENTES
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {others.length > 0 ? (
-            others.map((v) => <TavernaHeroCard key={v.id} valente={v} />)
-          ) : (
-            rankedValentes.map((v) => <TavernaHeroCard key={v.id} valente={v} />)
-          )}
+        <div className="flex items-center gap-6 mb-12">
+          <h2 className="hud-title-md text-3xl text-white m-0 tracking-widest text-gray-600">
+            ELITE DE COMBATE
+          </h2>
+          <div className="h-px bg-white/5 flex-1"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {others.map((v, index) => <TavernaHeroCard key={v.id} valente={v} rank={index + 4} />)}
         </div>
       </section>
     </>
   );
 }
 
-// 3. COMPONENT: Podium Card for Top 3
-function PodiumCard({ valente, rank, color, text, size = "" }: any) {
+function MonolithCard({ valente, rank, themeColor, glow, textColor, isFirst = false }: any) {
+  const heightClass = isFirst ? "h-[450px]" : "h-[380px]";
+  
   return (
-    <div className={`flex flex-col items-center transition-all hover:-translate-y-2 ${size}`}>
-      <div className={`w-24 h-24 md:w-32 md:h-32 bg-[#232622] border-4 ${color} rounded-sm shadow-2xl flex items-center justify-center relative`}>
-        <span className="font-bebas text-5xl text-gray-700">{valente.name.substring(0, 2)}</span>
-        <div className={`absolute -top-4 -right-4 w-10 h-10 ${color.replace('border', 'bg')} flex items-center justify-center rounded-full border-2 border-[#1a1c19]`}>
-          <span className="font-staatliches text-xl text-[#1a1c19]">{rank}º</span>
+    <div className={`relative flex flex-col w-full ${heightClass} bg-dark-bg backdrop-blur-md border border-white/10 ${themeColor} border-t-2 rounded-2xl overflow-hidden group transition-all duration-500 hover:-translate-y-2 ${glow}`}>
+      
+      {/* Portrait Section - SEM TEXTO ALT PARA EVITAR O NOME NO CANTO */}
+      <div className="relative w-full h-[55%] flex items-center justify-center bg-black/10">
+        <img 
+          src={valente.image || '/images/man-silhouette.svg'} 
+          alt="" 
+          onError={(e) => { 
+            e.currentTarget.onerror = null; 
+            e.currentTarget.src = '/images/man-silhouette.svg'; 
+          }}
+          className="w-full h-full object-contain p-6 group-hover:scale-105 transition-transform duration-1000" 
+        />
+      </div>
+
+      {/* Data Section - Unidade de Identidade Integrada */}
+      <div className="relative flex flex-col items-center justify-start flex-1 px-8 pb-8 z-10">
+        
+        {/* Bloco de Identidade: Rank + Nome como uma única peça tática */}
+        <div className="flex flex-col items-center -mt-8">
+          <div 
+            className="w-20 h-20 rounded-full flex items-center justify-center relative z-20 transition-all duration-300 group-hover:scale-110"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)' }}
+          >
+             <span className={`hud-title-md text-5xl ${textColor} leading-none mt-1 drop-shadow-[0_0_10px_currentColor]`}>
+               {rank}º
+             </span>
+          </div>
+          
+          <h3 className="hud-title-md text-3xl text-white m-0 tracking-widest text-center uppercase drop-shadow-md">
+            {valente.name}
+          </h3>
+        </div>
+        
+        <div className="mt-auto w-full pt-4 border-t border-white/5 flex justify-between items-end">
+          <span className="hud-label-tactical text-[10px] text-gray-600 italic-none tracking-[0.2em] uppercase">Honra Total</span>
+          <span className={`hud-value text-3xl leading-none ${textColor} drop-shadow-[0_0_8px_currentColor]`}>
+            {valente.totalXP} <span className="text-xs hud-label-tactical text-gray-600 ml-1">XP</span>
+          </span>
         </div>
       </div>
-      <h3 className="font-bebas text-2xl text-white mt-4 tracking-wider">{valente.name}</h3>
-      <span className={`font-barlow font-bold text-sm uppercase ${text}`}>{valente.totalXP} XP</span>
     </div>
   );
 }
 
-// 4. COMPONENT: Standard Hero Card
-function TavernaHeroCard({ valente }: any) {
+function TavernaHeroCard({ valente, rank }: any) {
+  const lvlInfo = [...LEVEL_SYSTEM].reverse().find(l => valente.totalXP >= l.minXP) || LEVEL_SYSTEM[0];
+
   return (
     <Link href={`/admin/valentes/${valente.id}`} className="block">
-      <div className="bg-[#232622] border border-gray-800 rounded-sm p-4 flex items-center gap-4 hover:border-[#ea580c] transition-all group shadow-lg">
-        <div className="w-16 h-16 bg-[#1a1c19] border-2 border-gray-700 group-hover:border-[#ea580c] rounded-sm flex items-center justify-center transition-colors">
-          <span className="font-bebas text-2xl text-gray-600 group-hover:text-[#ea580c]">
-            {valente.name.substring(0, 2)}
-          </span>
+      <div className="relative bg-white/[0.03] backdrop-blur-md border border-white/5 hover:border-brand/40 rounded-2xl p-6 flex items-center gap-6 transition-all group overflow-hidden shadow-lg">
+        
+        <div className="absolute -left-4 -bottom-6 hud-title-lg text-8xl text-white opacity-[0.02] pointer-events-none group-hover:opacity-[0.05] transition-opacity">
+          {rank.toString().padStart(2, '0')}
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-bebas text-2xl text-white m-0 tracking-wide uppercase truncate">
+
+        <div className="w-16 h-16 bg-black/20 border border-white/10 rounded-xl overflow-hidden shrink-0 relative z-10 flex items-center justify-center">
+          <img 
+             src={valente.image || '/images/man-silhouette.svg'} 
+             alt="" 
+             onError={(e) => { 
+               e.currentTarget.onerror = null; 
+               e.currentTarget.src = '/images/man-silhouette.svg'; 
+             }}
+             className="w-full h-full object-contain p-2" 
+          />
+        </div>
+        
+        <div className="flex-1 min-w-0 relative z-10">
+          <h4 className="hud-title-md text-3xl text-white m-0 truncate leading-none mb-1 group-hover:text-brand transition-colors">
             {valente.name}
           </h4>
-          <div className="flex items-center gap-2">
-            <span className="font-barlow text-[10px] font-bold text-[#ea580c] uppercase tracking-widest leading-none">
-              {valente.currentLevel}
-            </span>
-          </div>
-          <div className="flex items-center gap-3 mt-2">
-             <div className="flex items-center gap-1">
-                <span className="text-[10px]">👥</span>
-                <span className="font-barlow text-[10px] text-gray-400 font-bold uppercase">
-                   {valente.friendIds?.length || 0} ALIADOS
-                </span>
-             </div>
-             <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
-             <span className="font-barlow text-[10px] text-gray-400 font-bold uppercase truncate">
-                {valente.structure}
+          <div className="flex items-center gap-2 mt-2">
+             <img src={lvlInfo.icon} alt="" className="w-8 h-8 object-contain opacity-40" />
+             <span className="hud-label-tactical text-[20px] text-gray-600 italic-none uppercase tracking-widest">
+                {lvlInfo.name.split(' ').pop()}
              </span>
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="font-staatliches text-2xl text-blue-400 m-0 leading-none">
+        
+        <div className="text-right shrink-0 relative z-10">
+          <p className="hud-value text-white group-hover:text-brand transition-colors text-3xl leading-none">
             {valente.totalXP}
           </p>
-          <p className="font-barlow text-[8px] text-gray-500 uppercase font-bold tracking-widest">XP TOTAL</p>
+          <p className="hud-label-tactical text-[9px] text-gray-700 mt-1 italic-none">PONTOS</p>
         </div>
       </div>
     </Link>

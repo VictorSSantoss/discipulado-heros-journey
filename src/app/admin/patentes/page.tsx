@@ -4,6 +4,10 @@ import { useState } from "react";
 import EditLevelModal from "@/components/EditLevelModal";
 import AddLevelModal from "@/components/AddLevelModal";
 
+/* GLOBAL CONFIGURATION IMPORTS */
+/* Synchronizes level progression rules and UI icons from the central configuration. */
+import { LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
+
 interface Level {
   id: number;
   name: string;
@@ -11,21 +15,27 @@ interface Level {
   icon: string;
 }
 
-const initialLevels: Level[] = [
-  { id: 1, name: 'Valente de Nível 0', minXP: 0, icon: '/images/level-0.svg' },
-  { id: 2, name: 'Valente de Nível 1', minXP: 1000, icon: '/images/level-1.svg' },
-  { id: 3, name: 'Valente de Nível 2', minXP: 2000, icon: '/images/level-2.svg' },
-  { id: 4, name: 'Valente de Nível 3', minXP: 3500, icon: '/images/level-3.svg' },
-  { id: 5, name: 'Valente Especial', minXP: 5000, icon: '/images/level-special.svg' },
-  { id: 6, name: 'Herói do Reino', minXP: 8000, icon: '/images/level-hero.svg' }
-];
-
+/**
+ * PatentesPage Component
+ * Administrative interface for managing the kingdom's leveling and progression system.
+ * Integrated with the centralized HUD Typography System for global style control.
+ */
 export default function PatentesPage() {
-  const [levels, setLevels] = useState<Level[]>(initialLevels);
+  /* STATE MANAGEMENT */
+  const [levels, setLevels] = useState<Level[]>(
+    LEVEL_SYSTEM.map((lvl, index) => ({
+      id: index + 1,
+      name: lvl.name,
+      minXP: lvl.minXP,
+      icon: lvl.icon
+    }))
+  );
+  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
 
+  /* MODAL HANDLERS */
   const handleEditClick = (level: Level) => {
     setSelectedLevel(level);
     setIsEditModalOpen(true);
@@ -41,95 +51,110 @@ export default function PatentesPage() {
     setIsAddModalOpen(false);
   };
 
-  // Stats for the summary bar
+  /* METRICS CALCULATION */
   const maxXP = Math.max(...levels.map(l => l.minXP));
   const totalRanks = levels.length;
 
   return (
     <>
-      <main className="min-h-screen p-6 max-w-6xl mx-auto flex flex-col pb-20">
+      <main className="min-h-screen p-6 max-w-6xl mx-auto flex flex-col pb-20 text-white font-barlow">
+        {/* PAGE_MASTER_WRAPPER */}
         
-        {/* ENHANCED HEADER */}
-        <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          {/* HIERARCHY_HEADER_BLOCK */}
           <div>
-            <h1 className="font-bebas text-5xl tracking-widest text-white uppercase drop-shadow-[0_0_10px_rgba(234,88,12,0.2)] m-0 flex items-center gap-4">
-              <span className="text-[#ea580c] text-4xl">🏆</span> Hierarquia do Reino
+            <h1 className="hud-title-lg text-white m-0 flex items-center gap-4">
+              <img src={ICONS.patentes} className="w-12 h-12 object-contain" alt="Patentes" /> 
+              HIERARQUIA DO REINO
             </h1>
-            <p className="font-barlow text-gray-400 mt-1 uppercase tracking-widest font-bold">Gestão de Níveis e Progressão de XP</p>
+            <p className="hud-label-tactical mt-2 italic tracking-[0.3em]">
+              Gestão de Níveis e Progressão de XP
+            </p>
           </div>
           <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="w-full md:w-auto bg-[#ea580c] hover:bg-[#c2410c] text-white font-barlow font-bold px-8 py-3 rounded-sm tracking-widest uppercase text-xs shadow-xl transition-all hover:scale-105 active:scale-95"
+            className="w-full md:w-auto bg-brand hover:brightness-110 text-dark-bg hud-title-md px-8 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(17,194,199,0.3)]"
           >
-            + Forjar Novo Nível
+            + FORJAR NOVO NÍVEL
           </button>
         </header>
 
-        {/* NEW SUMMARY CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-[#232622] border-l-4 border-[#ea580c] p-4 shadow-lg">
-            <p className="font-barlow text-gray-500 text-[10px] uppercase font-black tracking-widest">Total de Patentes</p>
-            <p className="font-staatliches text-3xl text-white">{totalRanks} Níveis</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          {/* SUMMARY_METRICS_GRID */}
+          
+          <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 border-l-4 border-l-brand p-6 rounded-2xl shadow-xl relative overflow-hidden">
+            <p className="hud-label-tactical">TOTAL DE PATENTES</p>
+            <p className="hud-value text-white mt-1 text-4xl">{totalRanks} <span className="text-sm hud-label-tactical text-gray-400 italic-none">NÍVEIS</span></p>
           </div>
-          <div className="bg-[#232622] border-l-4 border-cyan-500 p-4 shadow-lg">
-            <p className="font-barlow text-gray-500 text-[10px] uppercase font-black tracking-widest">Meta de Ascensão</p>
-            <p className="font-staatliches text-3xl text-white">{maxXP} XP</p>
+          
+          <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 border-l-4 border-l-xp p-6 rounded-2xl shadow-xl relative overflow-hidden">
+            <p className="hud-label-tactical">META DE ASCENSÃO</p>
+            <p className="hud-value text-xp mt-1 text-4xl">{maxXP} <span className="text-sm hud-label-tactical text-gray-600 italic-none">XP</span></p>
           </div>
-          <div className="bg-[#232622] border-l-4 border-purple-500 p-4 shadow-lg">
-            <p className="font-barlow text-gray-500 text-[10px] uppercase font-black tracking-widest">Estado do Sistema</p>
-            <p className="font-staatliches text-3xl text-green-400 uppercase tracking-widest">Ativo</p>
+          
+          <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 border-l-4 border-l-mission p-6 rounded-2xl shadow-xl relative overflow-hidden">
+            <p className="hud-label-tactical">ESTADO DO SISTEMA</p>
+            <p className="hud-value text-mission mt-1 text-4xl uppercase">ATIVO</p>
           </div>
         </div>
 
-        {/* LIST SECTION */}
-        <div className="bg-[#1a1c19] border border-gray-800 rounded-sm shadow-2xl overflow-hidden animate-fade-in">
+        <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+          {/* HIERARCHY_LIST_WRAPPER */}
           
-          <div className="grid grid-cols-12 gap-4 p-4 bg-[#232622] border-b border-gray-800">
-            <div className="col-span-2 font-barlow text-gray-500 text-[10px] uppercase font-black tracking-widest text-center">Ícone</div>
-            <div className="col-span-6 font-barlow text-gray-500 text-[10px] uppercase font-black tracking-widest">Designação da Patente</div>
-            <div className="col-span-2 font-barlow text-gray-500 text-[10px] uppercase font-black tracking-widest text-center">Requisito (XP)</div>
-            <div className="col-span-2 font-barlow text-gray-500 text-[10px] uppercase font-black tracking-widest text-right">Controle</div>
+          <div className="grid grid-cols-12 gap-4 p-5 bg-dark-bg/80 border-b border-white/10">
+            {/* TABLE_COLUMN_LABELS */}
+            <div className="col-span-2 hud-label-tactical text-center">ÍCONE</div>
+            <div className="col-span-6 hud-label-tactical">DESIGNAÇÃO DA PATENTE</div>
+            <div className="col-span-2 hud-label-tactical text-center">REQUISITO (XP)</div>
+            <div className="col-span-2 hud-label-tactical text-right">CONTROLE</div>
           </div>
 
-          <div className="flex flex-col divide-y divide-gray-800">
+          <div className="flex flex-col divide-y divide-white/5">
+            {/* RANKS_ITERATION_AREA */}
             {levels.map((level, index) => (
-              <div key={level.id} className="grid grid-cols-12 gap-4 p-5 items-center hover:bg-[#232622]/80 transition-all group relative">
+              <div key={level.id} className="grid grid-cols-12 gap-4 p-6 items-center hover:bg-white/[0.02] transition-all group relative">
                 
-                {/* Visual Step Indicator (Timeline) */}
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#ea580c] opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                 <div className="col-span-2 flex justify-center">
+                  {/* RANK_ICON_VIEWPORT */}
                   <div 
                     onClick={() => handleEditClick(level)}
-                    className="w-16 h-16 bg-[#1a1c19] border border-gray-700 hover:border-[#ea580c] rounded-sm flex items-center justify-center cursor-pointer transition-all relative overflow-hidden shadow-[inset_0_0_15px_rgba(0,0,0,0.4)]"
+                    className="w-16 h-16 bg-dark-bg/80 border border-white/10 hover:border-brand rounded-xl flex items-center justify-center cursor-pointer transition-all relative overflow-hidden shadow-inner"
                   >
-                    <span className="text-4xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                      {index === 0 ? '🛡️' : index === 1 ? '⚔️' : index === 2 ? '🏹' : index === 3 ? '🦅' : index === 4 ? '🦁' : '👑'}
-                    </span>
-                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <span className="text-[9px] font-barlow text-white uppercase font-black tracking-widest">EDIT</span>
+                    <img 
+                      src={level.icon} 
+                      alt={level.name} 
+                      className="w-12 h-12 object-contain drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)] transition-transform group-hover:scale-110" 
+                    />
+                    
+                    <div className="absolute inset-0 bg-dark-bg/80 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity backdrop-blur-sm">
+                      <span className="hud-label-tactical text-white">EDITAR</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="col-span-6 flex flex-col">
-                  <span className="font-barlow text-[#ea580c] text-[10px] font-black tracking-[0.2em] mb-1">RANK 0{index + 1}</span>
-                  <span className="font-bebas text-3xl text-white tracking-widest leading-none">{level.name}</span>
+                  {/* RANK_IDENTITY_META */}
+                  <span className="hud-label-tactical text-brand mb-1 tracking-[0.3em]">RANK 0{index + 1}</span>
+                  <span className="hud-title-md text-white">{level.name}</span>
                 </div>
 
                 <div className="col-span-2 flex justify-center">
-                  <div className="bg-[#232622] border border-gray-800 px-4 py-2 rounded-sm w-full text-center shadow-lg">
-                    <span className="font-staatliches text-2xl text-cyan-400 tracking-wider leading-none">{level.minXP}</span>
-                    <span className="block text-[8px] font-barlow text-gray-600 uppercase font-black tracking-tighter mt-1">XP ACUMULADO</span>
+                  {/* XP_REQUIREMENT_INDICATOR */}
+                  <div className="bg-dark-bg/80 border border-white/10 px-4 py-3 rounded-xl w-full text-center shadow-inner">
+                    <span className="hud-value text-xp text-3xl drop-shadow-[0_0_10px_rgba(234,88,12,0.3)]">{level.minXP}</span>
+                    <span className="block hud-label-tactical text-gray-500 mt-1">XP ACUMULADO</span>
                   </div>
                 </div>
 
                 <div className="col-span-2 flex justify-end gap-2">
+                  {/* ACTION_CONTROLS_BLOCK */}
                   <button 
                     onClick={() => handleEditClick(level)}
-                    className="group-hover:bg-[#ea580c] group-hover:text-white text-gray-400 font-barlow font-bold text-[10px] uppercase tracking-widest bg-[#232622] px-4 py-2 border border-gray-700 group-hover:border-[#ea580c] rounded-sm transition-all"
+                    className="group-hover:bg-brand group-hover:text-dark-bg text-gray-400 hud-label-tactical bg-dark-bg/60 px-5 py-2.5 border border-white/10 group-hover:border-brand rounded-xl transition-all shadow-lg italic-none"
                   >
-                    Editar
+                    EDITAR
                   </button>
                 </div>
               </div>

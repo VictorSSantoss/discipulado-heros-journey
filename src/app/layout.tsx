@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { bebas, barlow, staatliches, fugaz } from "@/lib/fonts";
 import "./globals.css";
+import { bebas, barlow, staatliches, fugaz } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: "Discipulado: Hero's Journey",
@@ -13,8 +13,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${bebas.variable} ${barlow.variable} ${staatliches.variable} ${fugaz.variable} font-barlow antialiased bg-[#1a1c19] text-white`}>
+    <html 
+      lang="pt-BR" 
+      className={`${bebas.variable} ${barlow.variable} ${staatliches.variable} ${fugaz.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-fugaz antialiased bg-dark-surface text-white">
         {children}
       </body>
     </html>

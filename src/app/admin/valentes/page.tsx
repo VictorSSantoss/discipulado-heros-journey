@@ -3,23 +3,22 @@
 import { useState } from "react";
 import Link from "next/link";
 import { mockValentes } from "@/lib/mockData";
-// 1. IMPORT FROM CONFIG
-import { ESTRUTURAS, LEVEL_SYSTEM } from "@/constants/gameConfig";
 
+/* GLOBAL CONFIGURATION IMPORTS */
+import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
+
+/**
+ * ValentesList Component
+ * Optimized with a side-by-side tactical header for Faction and Rank.
+ */
 export default function ValentesList() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 2. REPAIRED THEME ENGINE
   const getTheme = (valenteStructure: string) => {
-    // We search the config values to see if the valente's structure matches the Label
-    // NOTE: Make sure your gameConfig labels (like "IMS") match your mockData strings!
     const structureEntry = Object.values(ESTRUTURAS).find(
       (s) => s.label.toLowerCase() === valenteStructure.toLowerCase()
     );
-
-    // Fallback to GAD if the name doesn't match
     const activeStructure = structureEntry || ESTRUTURAS.GAD;
-    
     return {
       color: activeStructure.color,
       label: activeStructure.label
@@ -32,45 +31,48 @@ export default function ValentesList() {
   );
 
   return (
-    <main className="min-h-screen p-6 max-w-7xl mx-auto flex flex-col">
+    <main className="min-h-screen px-4 py-6 max-w-7xl mx-auto flex flex-col text-white pb-20 font-barlow bg-[#050505]">
       
-      {/* HEADER AREA */}
-      <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <header className="mb-14 flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-white/10 pb-8">
         <div>
-          <h1 className="font-bebas text-5xl tracking-widest text-white uppercase m-0">
-            Quartel dos Valentes
+          <h1 className="hud-title-lg text-6xl text-white m-0 flex items-center gap-5 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+            <img 
+              src={ICONS.valentes} 
+              alt="" 
+              className="w-16 h-16 object-contain" 
+            />
+            QUARTEL
           </h1>
-          <p className="font-barlow text-gray-500 mt-1 uppercase tracking-widest font-bold">
-            Monitoramento de Heróis e Patentes
+          <p className="hud-label-tactical text-brand mt-2 italic-none text-[11px] tracking-[0.3em]">
+            MONITORAMENTO DE HERÓIS E PATENTES
           </p>
         </div>
         
-        <div className="flex w-full md:w-auto gap-3">
-          <input 
-            type="text" 
-            placeholder="BUSCAR HERÓI..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 md:w-64 bg-[#232622] border border-gray-800 p-3 rounded-sm text-white font-barlow text-xs tracking-widest uppercase focus:border-[#ea580c] outline-none transition-all"
-          />
+        <div className="flex w-full md:w-auto gap-5 items-center">
+          <div className="relative flex-1 md:w-80">
+            <input 
+              type="text" 
+              placeholder="LOCALIZAR VALENTE..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white/5 backdrop-blur-xl border border-white/10 p-5 rounded-xl text-white hud-label-tactical text-sm transition-all placeholder:text-gray-500 shadow-inner outline-none focus:border-brand italic-none"
+            />
+          </div>
+
           <Link 
-            href="/admin/valentes/new"
-            className="bg-[#ea580c] hover:bg-[#c2410c] text-white font-barlow font-bold px-6 py-3 rounded-sm tracking-widest uppercase text-xs shadow-lg transition-all"
+            href="/admin/valentes/novo"
+            className="bg-brand text-white hover:brightness-125 hud-title-md text-2xl px-10 py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.4)] flex items-center leading-none"
           >
-            + Recrutar
+            + RECRUTAR
           </Link>
         </div>
       </header>
 
-      {/* HERO GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredValentes.map((valente) => {
           const lvlInfo = [...LEVEL_SYSTEM].reverse().find(l => valente.totalXP >= l.minXP) || LEVEL_SYSTEM[0];
           const nextLvl = LEVEL_SYSTEM[LEVEL_SYSTEM.indexOf(lvlInfo) + 1];
-          
-          // 3. GET DYNAMIC THEME
           const theme = getTheme(valente.structure);
-          
           const targetXP = nextLvl ? nextLvl.minXP : valente.totalXP;
           const xpPercent = nextLvl ? Math.min((valente.totalXP / targetXP) * 100, 100) : 100;
 
@@ -78,60 +80,82 @@ export default function ValentesList() {
             <Link 
               key={valente.id} 
               href={`/admin/valentes/${valente.id}`}
-              className="group bg-[#232622] border border-gray-800 hover:border-gray-600 rounded-sm overflow-hidden flex flex-col shadow-xl transition-all hover:-translate-y-1"
+              className="group relative bg-dark-surface-80 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-2 shadow-2xl"
             >
-              <div className="relative aspect-square overflow-hidden bg-[#1a1c19]">
-                {valente.image ? (
-                  <img src={valente.image} alt={valente.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center opacity-10">
-                    <span className="font-bebas text-9xl text-white">{valente.name[0]}</span>
-                  </div>
-                )}
+              <div className="relative aspect-[4/5] overflow-hidden bg-dark-bg border-b border-white/5 flex items-center justify-center">
                 
-                <div className="absolute bottom-3 right-3 z-20">
-                  <div className="bg-[#1a1c19]/90 border border-gray-700 p-2 rounded-sm backdrop-blur-md shadow-2xl flex items-center gap-2">
-                    <img src={lvlInfo.icon} alt={lvlInfo.name} className="w-6 h-6 object-contain" />
-                    <span className="font-staatliches text-lg text-white leading-none tracking-wider">
+                <img 
+                  src={valente.image || '/images/man-silhouette.svg'} 
+                  alt="" 
+                  onError={(e) => { 
+                    e.currentTarget.onerror = null; 
+                    e.currentTarget.src = '/images/man-silhouette.svg'; 
+                  }}
+                  className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-700 opacity-100" 
+                />
+                
+                {/* TACTICAL_HEADER_WRAPPER: Positions Estrutura and Level side-by-side at the top */}
+                <div className="absolute top-3 left-3 right-3 flex justify-between items-center gap-2">
+                  
+                  {/* ESTRUTURA_BADGE: Vivid, borderless pill */}
+                  <div 
+                    className="px-3 h-8 flex items-center justify-center rounded-full backdrop-blur-2xl shadow-lg transition-all w-fit min-w-[60px]"
+                    style={{ 
+                      backgroundColor: `${theme.color}CC`,
+                      boxShadow: `0 0 15px ${theme.color}66` 
+                    }}
+                  >
+                     <span className="hud-label-tactical text-white text-[9px] font-bold italic-none tracking-widest leading-none whitespace-nowrap">
+                       {theme.label}
+                     </span>
+                  </div>
+
+                  {/* LEVEL_CONTAINER: Horizontal, ultra-transparent Mission glass */}
+                  <div 
+                    className="px-3 h-8 flex items-center justify-center gap-2 rounded-full backdrop-blur-md transition-all group-hover:bg-mission/10"
+                    style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)' }} 
+                  >
+                    <img 
+                      src={lvlInfo.icon} 
+                      alt="" 
+                      className="w-4 h-4 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" 
+                    />
+                    <span className="hud-label-tactical text-white text-[10px] font-bold italic-none leading-none opacity-90">
                       {lvlInfo.name.split(' ').pop()}
                     </span>
                   </div>
-                </div>
 
-                {/* 4. DYNAMIC BACKGROUND COLOR (Style Prop is the key!) */}
-                <div 
-                  className="absolute top-3 left-3 px-3 py-1 rounded-sm shadow-lg"
-                  style={{ backgroundColor: theme.color }}
-                >
-                   <span className="font-barlow text-white text-[9px] font-black tracking-widest uppercase">
-                     {theme.label}
-                   </span>
                 </div>
               </div>
 
-              <div className="p-5 flex flex-col flex-1">
-                <h3 className="font-bebas text-3xl text-white tracking-widest leading-none mb-1">
+              <div className="p-5 flex flex-col flex-1 bg-gradient-to-b from-transparent to-black/40">
+                <h3 className="hud-title-md text-3xl text-white mb-1 truncate group-hover:text-brand transition-colors leading-tight">
                   {valente.name}
                 </h3>
                 
-                <div className="flex justify-between items-end mt-4 mb-2">
-                  <span className="font-barlow text-gray-500 text-[10px] font-black tracking-widest uppercase">Experiência</span>
-                  <span className="font-staatliches text-xl text-white leading-none">
-                    {valente.totalXP} <span className="text-xs text-gray-600">/ {nextLvl ? nextLvl.minXP : 'MAX'}</span>
+                <div className="flex justify-between items-end mt-4 mb-3">
+                  <span className="hud-label-tactical text-[9px] text-gray-500">HONRA & XP</span>
+                  <span className="hud-value text-2xl text-white leading-none">
+                    {valente.totalXP} <span className="text-[10px] text-gray-600 hud-label-tactical italic-none">/ {nextLvl ? nextLvl.minXP : 'MAX'}</span>
                   </span>
                 </div>
 
-                {/* 5. DYNAMIC XP BAR COLOR */}
-                <div className="w-full h-1.5 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                <div className="w-full h-2 bg-black/60 rounded-full overflow-hidden border border-white/5 relative">
                   <div 
-                    className="h-full transition-all duration-1000"
-                    style={{ width: `${xpPercent}%`, backgroundColor: theme.color }}
-                  />
+                    className="h-full rounded-full transition-all duration-1000 relative"
+                    style={{ 
+                        width: `${xpPercent}%`, 
+                        backgroundColor: theme.color,
+                        boxShadow: `0 0 20px ${theme.color}CC, 0 0 5px ${theme.color}` 
+                    }}
+                  >
+                     <div className="absolute inset-0 opacity-50 mix-blend-screen" style={{ backgroundColor: theme.color }}></div>
+                  </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-800/50 flex justify-center">
-                   <span className="font-barlow text-gray-400 group-hover:text-[#ea580c] text-[10px] font-black tracking-[0.2em] uppercase transition-colors">
-                     Ver Ficha Completa →
+                <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                   <span className="hud-label-tactical text-brand opacity-80 group-hover:opacity-100 transition-opacity text-[10px] font-bold">
+                     ABRIR FICHA DE COMBATE →
                    </span>
                 </div>
               </div>

@@ -4,114 +4,135 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+/* GLOBAL CONFIGURATION IMPORTS */
+/* Imports core assets for data synchronization across the administration panel. */
+import { MISSION_CATEGORIES } from "@/constants/gameConfig";
+
+/**
+ * NovaMissaoPage Component
+ * Administrative interface for defining new kingdom challenges.
+ * Integrated with the centralized HUD Typography System for design consistency.
+ */
 export default function NovaMissaoPage() {
   const router = useRouter();
 
-  // Form State
+  /* FORM STATE MANAGEMENT */
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Hábitos Espirituais");
   const [xpReward, setXpReward] = useState<number | string>(100);
   const [description, setDescription] = useState("");
 
-  const categories = [
-    "Hábitos Espirituais", 
-    "Evangelismo e Liderança", 
-    "Conhecimento", 
-    "Estrutura e Participação", 
-    "Eventos e Especiais"
-  ];
-
+  /**
+   * FORM SUBMISSION HANDLER
+   * Finalizes the creation process and redirects the administrator to the Mission Board.
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to save the mission to the list goes here later
     alert(`Nova Missão: "${title}" forjada com sucesso!`);
     router.push('/admin/missoes');
   };
 
   return (
-    <main className="min-h-screen p-6 max-w-4xl mx-auto">
+    /* CONTAINER 1: PAGE MASTER WRAPPER */
+    /* Establishes viewport boundaries and primary background theme. */
+    <main className="min-h-screen p-6 max-w-4xl mx-auto text-white font-barlow">
       
-      {/* Header Bar */}
-      <header className="w-full bg-[#232622] border border-gray-700 p-4 mb-8 rounded-sm flex justify-between items-center shadow-lg">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/missoes" className="text-gray-400 hover:text-white font-barlow font-bold uppercase tracking-widest text-sm">
-            ← Cancelar
+      {/* CONTAINER 2: MISSION_HEADER_CONTROL */}
+      {/* Houses navigation shortcuts and the primary publication trigger. */}
+      <header className="w-full bg-dark-bg/60 backdrop-blur-xl border border-white/10 p-5 mb-10 rounded-2xl flex justify-between items-center shadow-2xl relative overflow-hidden">
+        {/* Visual highlight line for HUD depth */}
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/40 to-transparent"></div>
+        
+        <div className="flex items-center gap-6">
+          <Link href="/admin/missoes" className="hud-label-tactical text-[9px] hover:text-white transition-all">
+            ← CANCELAR
           </Link>
-          <div className="h-6 w-px bg-gray-700"></div>
-          <span className="font-bebas text-2xl text-[#ea580c] tracking-widest uppercase">
-            Forjar Nova Missão
+          <div className="h-8 w-px bg-white/5"></div>
+          <span className="hud-title-md text-mission">
+            FORJAR NOVA MISSÃO
           </span>
         </div>
         <button 
           onClick={handleSubmit}
-          className="bg-[#ea580c] hover:bg-[#c2410c] text-white font-barlow font-bold px-8 py-2 rounded-sm tracking-widest uppercase transition-all text-sm shadow-lg"
+          className="bg-brand hover:brightness-110 text-dark-bg hud-title-md px-8 py-2 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.3)]"
         >
-          Publicar Missão
+          PUBLICAR MISSÃO
         </button>
       </header>
 
-      <form onSubmit={handleSubmit} className="bg-[#1a1c19] border border-gray-800 p-8 rounded-sm shadow-2xl space-y-8">
+      {/* CONTAINER 3: MISSION_FORGE_FORM */}
+      {/* Primary input area for decree configuration. */}
+      <form onSubmit={handleSubmit} className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-10 rounded-2xl shadow-2xl space-y-10 relative overflow-hidden">
         
-        {/* Title & Category */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* CONTAINER 4: CORE_IDENTITY_GRID */}
+        {/* Groups title and category selection for high-density entry. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="flex flex-col">
-            <label className="font-barlow text-gray-500 font-bold uppercase text-xs mb-2">Título da Quest</label>
+            <label className="hud-label-tactical mb-3">TÍTULO DA QUEST</label>
             <input 
               required
               type="text" 
-              placeholder="Ex: Ler o Livro de Neemias"
+              placeholder="EX: LER O LIVRO DE NEEMIAS"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-[#2a2c29] border border-gray-700 p-4 rounded-sm text-white font-barlow outline-none focus:border-[#ea580c] text-lg"
+              className="bg-dark-bg/80 border border-white/10 p-4 rounded-xl text-white hud-title-md outline-none focus:border-mission/50 transition-all shadow-inner placeholder:opacity-20"
             />
           </div>
 
           <div className="flex flex-col">
-            <label className="font-barlow text-gray-500 font-bold uppercase text-xs mb-2">Categoria</label>
+            <label className="hud-label-tactical mb-3">CATEGORIA</label>
             <select 
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="bg-[#2a2c29] border border-gray-700 p-4 rounded-sm text-white font-barlow outline-none focus:border-[#ea580c] h-[60px]"
+              className="bg-dark-bg/80 border border-white/10 p-4 rounded-xl text-white font-barlow font-bold uppercase tracking-widest text-sm outline-none focus:border-mission/50 h-[68px] appearance-none cursor-pointer shadow-inner"
             >
-              {categories.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
+              {MISSION_CATEGORIES.map(cat => (
+                <option key={cat} value={cat} className="bg-dark-bg text-white">
+                  {cat.toUpperCase()}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* XP Reward */}
-        <div className="flex flex-col max-w-xs">
-          <label className="font-barlow text-gray-500 font-bold uppercase text-xs mb-2">Recompensa de Experiência</label>
-          <div className="flex gap-4 items-center">
+        {/* CONTAINER 5: REWARD_CONFIGURATION_WRAPPER */}
+        {/* Defines the XP payout or level-up status for the mission. */}
+        <div className="flex flex-col max-w-sm">
+          <label className="hud-label-tactical mb-3">RECOMPENSA DE EXPERIÊNCIA</label>
+          <div className="flex gap-4 items-center bg-dark-bg/60 p-3 rounded-2xl border border-white/5 shadow-inner">
             <input 
               type="number" 
               value={xpReward === 'LVL UP DIRETO' ? '' : xpReward}
               onChange={(e) => setXpReward(parseInt(e.target.value))}
               disabled={xpReward === 'LVL UP DIRETO'}
-              className="bg-[#2a2c29] border border-gray-700 p-4 rounded-sm text-white font-barlow outline-none focus:border-[#ea580c] w-32 disabled:opacity-30"
+              className="bg-dark-bg/80 border border-white/10 p-3 rounded-lg text-xp hud-value outline-none focus:border-xp/50 w-28 disabled:opacity-20 transition-all"
             />
-            <span className="font-bebas text-2xl text-blue-400">XP</span>
-            <div className="h-8 w-px bg-gray-700 mx-2"></div>
+            <span className="hud-title-md text-xp/50">XP</span>
+            <div className="h-10 w-px bg-white/5 mx-2"></div>
             <button 
               type="button"
               onClick={() => setXpReward(xpReward === 'LVL UP DIRETO' ? 100 : 'LVL UP DIRETO')}
-              className={`px-4 py-2 border rounded-sm font-barlow font-bold text-[10px] uppercase tracking-widest transition-all ${
-                xpReward === 'LVL UP DIRETO' ? 'bg-red-500 border-red-500 text-white' : 'border-gray-600 text-gray-500 hover:border-red-500'
+              className={`flex-1 py-3 border rounded-xl hud-label-tactical transition-all shadow-lg ${
+                xpReward === 'LVL UP DIRETO' 
+                  ? "bg-brand border-brand text-dark-bg shadow-[0_0_15px_rgba(17,194,199,0.3)]" 
+                  : "bg-dark-bg/80 border-white/10 text-gray-500 hover:border-brand/50 hover:text-brand"
               }`}
             >
-              Lvl Up Direto
+              LVL UP DIRETO
             </button>
           </div>
         </div>
 
-        {/* Description */}
+        {/* CONTAINER 6: INSTRUCTION_ENTRY_WRAPPER */}
+        {/* Large text area for detailed character instructions. */}
         <div className="flex flex-col">
-          <label className="font-barlow text-gray-500 font-bold uppercase text-xs mb-2">Instruções para o Valente</label>
+          <label className="hud-label-tactical mb-3">INSTRUÇÕES PARA O VALENTE</label>
           <textarea 
-            rows={4}
-            placeholder="Descreva o que o herói precisa fazer para completar esta missão..."
+            rows={5}
+            placeholder="DESCREVA O QUE O HERÓI PRECISA FAZER PARA COMPLETAR ESTA MISSÃO..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="bg-[#2a2c29] border border-gray-700 p-4 rounded-sm text-white font-barlow outline-none focus:border-[#ea580c] resize-none"
+            className="bg-dark-bg/80 border border-white/10 p-5 rounded-xl text-gray-300 font-barlow text-sm outline-none focus:border-mission/50 resize-none shadow-inner leading-relaxed"
           />
         </div>
 

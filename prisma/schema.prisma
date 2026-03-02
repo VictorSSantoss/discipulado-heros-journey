@@ -1,0 +1,178 @@
+// -----------------------------------------------------------------------------
+// PRISMA CONFIGURATION
+// -----------------------------------------------------------------------------
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// AUTH & HIERARCHY (RBAC)
+// -----------------------------------------------------------------------------
+
+enum Role {
+  MASTER
+  GERENTE
+  DISCIPULADOR
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String   // Will store the hashed password
+  role      Role     @default(DISCIPULADOR)
+
+  // HIERARCHY: Self-referencing relationship
+  // A Gerente has many Discipuladores (subordinates). A Discipulador has one Gerente (reportsTo).
+  reportsToId  String?
+  reportsTo    User?   @relation("ManagementChain", fields: [reportsToId], references: [id])
+  subordinates User[]  @relation("ManagementChain")
+
+  // OWNERSHIP: The heroes managed by this specific user
+  managedValentes Valente[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// CORE ENTITY: VALENTE
+// -----------------------------------------------------------------------------
+
+model Valente {
+  id          String   @id @default(uuid())
+  name        String
+  image       String?  // Nullable, frontend handles the silhouette fallback
+  totalXP     Int      @default(0)
+  structure   String   // e.g., "GAD", "Mídia", "Louvor"
+  description String?  @db.Text // Lore / Crônicas do Valente
+
+  // Link to the Discipulador who manages this Valente
+  userId      String
+  managedBy   User     @relation(fields: [userId], references: [id])
+
+  // 1-to-1 Relations (The Radar and Bar Charts)
+  attributes    Attributes?
+  loveLanguages LoveLanguages?
+  holyPower     HolyPower?
+
+  // Self-Relation: A Valente can have many friends, and be a friend to many
+  friends       Valente[] @relation("Friendship")
+  friendOf      Valente[] @relation("Friendship")
+
+  // Many-to-Many Relations
+  medals        ValenteMedal[]
+  missions      ValenteMission[]
+  
+  // History Audit Trail
+  xpLogs        XpLog[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// ANALYTICS & STATS (1-to-1 with Valente)
+// -----------------------------------------------------------------------------
+
+model Attributes {
+  id           String  @id @default(uuid())
+  forca        Int     @default(0)
+  destreza     Int     @default(0)
+  constituicao Int     @default(0)
+  inteligencia Int     @default(0)
+  sabedoria    Int     @default(0)
+  carisma      Int     @default(0)
+
+  valenteId    String  @unique
+  valente      Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+}
+
+model LoveLanguages {
+  id        String  @id @default(uuid())
+  palavras  Int     @default(0)
+  servico   Int     @default(0)
+  presentes Int     @default(0)
+  tempo     Int     @default(0)
+  toque     Int     @default(0)
+
+  valenteId String  @unique
+  valente   Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+}
+
+model HolyPower {
+  id        String  @id @default(uuid())
+  oracao    Int     @default(0)
+  leitura   Int     @default(0)
+  jejum     Int     @default(0)
+
+  valenteId String  @unique
+  valente   Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// GAMEPLAY MECHANICS (Many-to-Many)
+// -----------------------------------------------------------------------------
+
+model Medal {
+  id          String         @id @default(uuid())
+  name        String
+  description String
+  icon        String         // Path to the SVG
+  rarity      String         // e.g., "COMMON", "RARE", "LEGENDARY"
+  
+  valentes    ValenteMedal[]
+}
+
+model ValenteMedal {
+  valenteId String
+  medalId   String
+  awardedAt DateTime @default(now())
+
+  valente   Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+  medal     Medal    @relation(fields: [medalId], references: [id], onDelete: Cascade)
+
+  @@id([valenteId, medalId])
+}
+
+model Mission {
+  id          String           @id @default(uuid())
+  title       String
+  description String           @db.Text
+  xpReward    Int
+  type        String           // e.g., "HABIT", "EVENT", "TASK"
+
+  valentes    ValenteMission[]
+}
+
+model ValenteMission {
+  id          String    @id @default(uuid())
+  valenteId   String
+  missionId   String
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, FAILED
+  completedAt DateTime?
+
+  valente     Valente   @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+  mission     Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([valenteId, missionId]) 
+}
+
+// -----------------------------------------------------------------------------
+// AUDIT SYSTEM
+// -----------------------------------------------------------------------------
+
+model XpLog {
+  id        String   @id @default(uuid())
+  valenteId String
+  amount    Int      // Can be positive or negative
+  reason    String   
+  createdAt DateTime @default(now())
+
+  valente   Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+}

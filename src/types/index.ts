@@ -39,6 +39,12 @@ export interface Mission {
   description?: string;
 }
 
+export interface Medal {
+  name: string;
+  icon: string;
+  tier: 'gold' | 'silver' | 'bronze';
+}
+
 export interface Valente {
   id: string;
   name: string;
@@ -50,4 +56,5 @@ export interface Valente {
   skills: DiscipleSkills;
   holyPower: HolyPower;
   loveLanguages?: LoveLanguages;
+  medals?: Medal[];
 }

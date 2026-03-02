@@ -15,6 +15,11 @@ interface AddLevelModalProps {
   onAdd: (newLevel: Level) => void;
 }
 
+/**
+ * AddLevelModal Component
+ * Facilitates the creation of new progression ranks within the kingdom hierarchy.
+ * Integrated with the centralized HUD Typography System for consistent UI scaling.
+ */
 export default function AddLevelModal({ isOpen, onClose, onAdd }: AddLevelModalProps) {
   const [name, setName] = useState("");
   const [minXP, setMinXP] = useState("");
@@ -37,48 +42,71 @@ export default function AddLevelModal({ isOpen, onClose, onAdd }: AddLevelModalP
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-[#1a1c19] border border-gray-700 rounded-sm w-full max-w-md shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+      {/* CONTAINER 1: MODAL_OVERLAY_WRAPPER */}
+      
+      <div className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden relative">
+        {/* CONTAINER 2: MODAL_CARD_TERMINAL */}
         
-        <div className="p-6 border-b border-gray-800 bg-[#232622] flex justify-between items-center">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent"></div>
+        
+        <div className="p-6 border-b border-white/5 bg-dark-bg/80 flex justify-between items-center">
+          {/* CONTAINER 3: HEADER_SECTION */}
           <div>
-            <h2 className="font-bebas text-3xl text-white tracking-widest leading-none text-cyan-400 uppercase">Forjar Patente</h2>
-            <p className="font-barlow text-gray-500 font-bold text-xs uppercase tracking-widest mt-1">Nova Etapa da Jornada</p>
+            <h2 className="hud-title-md text-brand m-0">Forjar Patente</h2>
+            <p className="hud-label-tactical mt-2 italic-none">Nova Etapa da Jornada</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-xl">✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          {/* CONTAINER 4: FORM_INPUT_WRAPPER */}
+
           <div className="flex flex-col gap-2">
-            <label className="font-barlow text-gray-400 font-bold uppercase tracking-widest text-xs">Nome da Patente</label>
+            {/* CONTAINER 5: IDENTITY_INPUT_FIELD */}
+            <label className="hud-label-tactical">Nome da Patente</label>
             <input 
               type="text" value={name} onChange={(e) => setName(e.target.value)}
-              className="w-full bg-[#232622] border border-gray-700 p-3 rounded-sm text-white font-bebas text-xl outline-none focus:border-cyan-400 transition-colors"
+              className="w-full bg-dark-bg/60 border border-white/10 p-3.5 rounded-xl text-white hud-title-md outline-none focus:border-brand/50 transition-all shadow-inner"
               placeholder="EX: LENDÁRIO" required
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="font-barlow text-gray-400 font-bold uppercase tracking-widest text-xs">Meta de XP</label>
+            {/* CONTAINER 6: XP_REQUIREMENT_INPUT_FIELD */}
+            <label className="hud-label-tactical">Meta de Experiência (XP)</label>
             <input 
               type="number" value={minXP} onChange={(e) => setMinXP(e.target.value)}
-              className="w-full bg-[#232622] border border-gray-700 p-3 rounded-sm text-[#ea580c] font-staatliches text-2xl outline-none focus:border-[#ea580c] transition-colors"
+              className="w-full bg-dark-bg/60 border border-white/10 p-3.5 rounded-xl text-xp hud-value text-3xl outline-none focus:border-xp/50 transition-all shadow-inner"
               placeholder="10000" required
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="font-barlow text-gray-400 font-bold uppercase tracking-widest text-xs">Caminho do Ícone (SVG)</label>
+            {/* CONTAINER 7: ICON_PATH_INPUT_FIELD */}
+            <label className="hud-label-tactical">Diretório do Ícone (SVG)</label>
             <input 
               type="text" value={icon} onChange={(e) => setIcon(e.target.value)}
-              className="w-full bg-[#232622] border border-gray-700 p-3 rounded-sm text-gray-400 font-barlow text-sm outline-none focus:border-cyan-400 transition-colors"
+              className="w-full bg-dark-bg/60 border border-white/10 p-3.5 rounded-xl text-gray-400 font-barlow text-[11px] font-bold outline-none focus:border-brand/50 transition-all shadow-inner"
               required
             />
           </div>
 
-          <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-white font-barlow font-bold uppercase text-xs tracking-widest px-4">Cancelar</button>
-            <button type="submit" className="px-8 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-barlow font-bold rounded-sm uppercase text-xs tracking-widest transition-colors shadow-lg">Adicionar ao Reino</button>
+          <div className="pt-6 border-t border-white/5 flex justify-end gap-4">
+            {/* CONTAINER 8: ACTION_BUTTONS_WRAPPER */}
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="hud-label-tactical text-gray-500 hover:text-white px-4 transition-colors italic-none"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              className="px-8 py-2.5 bg-brand hover:brightness-110 text-dark-bg hud-title-md text-xl rounded-xl transition-all shadow-[0_0_15px_rgba(17,194,199,0.3)]"
+            >
+              Forjar Nível
+            </button>
           </div>
         </form>
       </div>

@@ -1,13 +1,54 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  --font-bebas: var(--font-bebas);
-  --font-barlow: var(--font-barlow);
-  --font-staatliches: var(--font-staatliches);
-  --font-fugaz: var(--font-fugaz);
+/* -------------------------------------------------------------------------- */
+/* 1. FONT REGISTRY                                                           */
+/* -------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'FutureEarth';
+  src: url('/fonts/future-earth.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
 }
 
-body {
-  background-color: #1a1c19;
-  color: white;
+@layer base {
+  :root {
+    --family-future: 'FutureEarth', sans-serif;
+  }
+
+  body {
+    @apply bg-dark-bg text-white antialiased;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2. HUD TYPOGRAPHY SYSTEM (EXACT REFERENCE MATCH)                           */
+/* -------------------------------------------------------------------------- */
+@layer components {
+
+  /* ROLE: MAIN PAGE HEADERS
+     Matches original: font-bebas text-5xl md:text-6xl tracking-normal drop-shadow 0.1 */
+  .hud-title-lg {
+    @apply font-bebas text-5xl md:text-6xl uppercase tracking-normal leading-none drop-shadow-[0_0_15px_rgba(255,255,255,0.1)];
+  }
+
+  /* ROLE: SUB-HEADERS & CARD NAMES
+     Matches original: font-bebas text-2xl to 3xl tracking-normal */
+  .hud-title-md {
+    @apply font-bebas text-2xl md:text-3xl uppercase tracking-normal leading-none;
+  }
+
+  /* ROLE: METADATA & TECHNICAL LABELS
+     Matches original: font-barlow text-gray-500 font-black tracking-[0.2em] text-[9px] (No italic) */
+  .hud-label-tactical {
+    @apply font-barlow text-gray-500 font-black uppercase tracking-[0.2em] text-[9px];
+  }
+
+  /* ROLE: QUANTITATIVE DATA (NUMBERS)
+     Matches original: font-staatliches text-5xl tracking-widest */
+  .hud-value {
+    @apply font-staatliches text-5xl tracking-widest leading-none;
+  }
 }

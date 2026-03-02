@@ -8,6 +8,10 @@ export const ICONS = {
   taverna: '/images/taverna-icon.svg',
   overview: '/images/chart.svg',
   xp: '/images/xp-icon.svg',
+  trash: '/images/trash-icon.svg',
+  oracao: '/images/oracao-icon.svg',
+  leitura: '/images/leitura-icon.svg',
+  jejum: '/images/jejum-icon.svg',
 } as const;
 
 export const SIDEBAR_MENU = [
@@ -82,9 +86,9 @@ export const BASE_ATTRIBUTES = [
 ] as const;
 
 export const LOVE_LANGUAGES = [
-  { id: 'presentes', label: 'Presentes', colors: ['#fbbf24', '#d97706'] },
-  { id: 'toqueFisico', label: 'Toque Físico', colors: ['#fb7185', '#e11d48'] },
-  { id: 'tempoQualidade', label: 'Tempo de Qualidade', colors: ['#c084fc', '#6d28d9'] },
-  { id: 'palavrasAfirmacao', label: 'Palavras de Afirmação', colors: ['#22d3ee', '#0284c7'] },
-  { id: 'atosServico', label: 'Atos de Serviço', colors: ['#34d399', '#059669'] },
-];
+  { name: 'Presentes', key: 'presentes', colors: ['#fbbf24', '#d97706'] },        // Gold
+  { name: 'Toque Físico', key: 'toqueFisico', colors: ['#fb7185', '#e11d48'] },    // Rose
+  { name: 'Tempo de Qual.', key: 'tempoQualidade', colors: ['#c084fc', '#6d28d9'] },// Purple
+  { name: 'Afirmação', key: 'palavrasAfirmacao', colors: ['#22d3ee', '#0284c7'] }, // Cyan
+  { name: 'Serviço', key: 'atosServico', colors: ['#34d399', '#059669'] },         // Emerald
+] as const;

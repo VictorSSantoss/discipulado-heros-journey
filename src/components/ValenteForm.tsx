@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+/* CONFIGURATION IMPORTS */
+import { ESTRUTURAS, BASE_ATTRIBUTES, LOVE_LANGUAGES, ICONS } from "@/constants/gameConfig";
 
 interface ValenteFormProps {
   initialData?: any;
@@ -13,17 +16,24 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // FORM STATE
+  /* STATE_MANAGEMENT */
   const [name, setName] = useState(initialData?.name || "");
-  const [structure, setStructure] = useState(initialData?.structure || "GAD");
+  const [structure, setStructure] = useState(initialData?.structure || ESTRUTURAS.GAD.label);
   const [description, setDescription] = useState(initialData?.description || "");
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image || null);
 
-  const [skills, setSkills] = useState(initialData?.skills || {
-    Liderança: 5, TrabalhoEmEquipe: 5, Criatividade: 5, ResoluçãoDeProblemas: 5, Comunicação: 5
-  });
+  const defaultSkills = BASE_ATTRIBUTES.reduce((acc, attr) => {
+    acc[attr] = 5;
+    return acc;
+  }, {} as Record<string, number>);
+  const [skills, setSkills] = useState(initialData?.skills || defaultSkills);
 
-  // THE NEW HOLY POWER STATE (Habit Tracker Format)
+  const defaultLoveLanguages = LOVE_LANGUAGES.reduce((acc, lang) => {
+    acc[lang.key] = 0;
+    return acc;
+  }, {} as Record<string, number>);
+  const [loveLanguages, setLoveLanguages] = useState(initialData?.loveLanguages || defaultLoveLanguages);
+
   const [holyPower, setHolyPower] = useState(initialData?.holyPower || { 
     Oração: { current: 0, goal: 7, streak: 0, unit: 'dias' },
     Leitura: { current: 0, goal: 5, streak: 0, unit: 'capítulos' },
@@ -32,19 +42,13 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImagePreview(URL.createObjectURL(file));
-    }
+    if (file) setImagePreview(URL.createObjectURL(file));
   };
 
-  // Helper to cleanly update the complex habit objects
   const handleHolyPowerChange = (powerKey: string, field: string, value: string | number) => {
     setHolyPower((prev: any) => ({
       ...prev,
-      [powerKey]: {
-        ...prev[powerKey],
-        [field]: field === 'unit' ? value : Number(value)
-      }
+      [powerKey]: { ...prev[powerKey], [field]: field === 'unit' ? value : Number(value) }
     }));
   };
 
@@ -55,184 +59,220 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   };
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-12 pb-32">
       
-      {/* HEADER SECTION */}
-      <header className="w-full bg-[#232622] border border-gray-700 p-4 rounded-sm flex justify-between items-center shadow-lg">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/valentes" className="text-gray-400 hover:text-[#ea580c] font-barlow font-bold uppercase tracking-widest text-sm transition-colors">
-            ← Cancelar
+      {/* 1. CINEMATIC_HEADER */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <Link href="/admin/valentes" className="hud-label-tactical text-brand text-xs hover:brightness-125 transition-all flex items-center gap-2 mb-4 italic-none">
+            ← CANCELAR OPERAÇÃO
           </Link>
-          <div className="h-6 w-px bg-gray-700"></div>
-          <span className="font-bebas text-xl text-[#ea580c] tracking-widest uppercase">
-            {mode === "create" ? "Forjar Novo Valente" : "Editar Ficha"}
-          </span>
+          <h1 className="hud-title-lg text-6xl text-white m-0 drop-shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+            {mode === "create" ? "FORJAR VALENTE" : "EDITAR FICHA"}
+          </h1>
+          <p className="hud-label-tactical text-gray-400 mt-2 italic-none">
+            CONFIGURAÇÃO DE PERFIL DE COMBATE
+          </p>
         </div>
         <button 
           onClick={handleSave}
-          className="bg-[#ea580c] text-white font-barlow font-bold px-8 py-2 rounded-sm uppercase text-sm shadow-lg hover:bg-[#c2410c] transition-all"
+          className="bg-brand text-white hud-title-md text-3xl px-12 py-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:brightness-110 transition-all"
         >
-          {mode === "create" ? "Recrutar" : "Salvar Alterações"}
+          {mode === "create" ? "RECRUTAR" : "SALVAR ALTERAÇÕES"}
         </button>
       </header>
 
-      {/* IDENTITY & PORTRAIT */}
-      <section className="bg-[#1a1c19] border border-gray-800 p-8 rounded-sm shadow-xl">
-        <h2 className="font-bebas text-3xl text-white tracking-widest mb-8 border-b border-gray-700 pb-2">Identidade</h2>
-        <div className="flex flex-col lg:flex-row gap-8">
-          
-          <div className="flex-1 space-y-6">
-            <div className="flex flex-col gap-2">
-              <label className="font-barlow text-gray-400 font-bold uppercase tracking-widest text-xs">Nome de Guerra</label>
+      {/* 2. IDENTITY_SECTION (#01) */}
+      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand to-transparent"></div>
+        <h2 className="hud-title-md text-4xl text-white mb-8">
+          <span className="text-brand">#01</span> IDENTIDADE
+        </h2>
+        
+        <div className="flex flex-col lg:flex-row gap-12">
+          <div className="flex-1 space-y-8">
+            <div className="space-y-3">
+              <label className="hud-label-tactical text-gray-400 italic-none">NOME DE GUERRA</label>
               <input 
                 type="text" value={name} onChange={(e) => setName(e.target.value)} 
-                className="bg-[#232622] border border-gray-700 p-3 text-white font-barlow text-lg rounded-sm focus:border-[#ea580c] outline-none transition-colors w-full" 
-                placeholder="Ex: CADU" 
+                className="w-full bg-black/40 border border-white/20 p-4 text-white hud-title-md text-3xl rounded-xl focus:border-brand outline-none transition-all shadow-inner" 
+                placeholder="EX: CADU" 
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="font-barlow text-gray-400 font-bold uppercase tracking-widest text-xs">Estrutura (Fração)</label>
-              <select 
-                value={structure} onChange={(e) => setStructure(e.target.value)} 
-                className="bg-[#232622] border border-gray-700 p-3 text-white font-barlow text-lg rounded-sm focus:border-[#ea580c] outline-none transition-colors w-full"
-              >
-                <option value="GAD">GAD (Geração de Adoradores)</option>
-                <option value="Mídia">Mídia e Comunicação</option>
-                <option value="Louvor">Louvor e Artes</option>
-                <option value="Intercessão">Intercessão</option>
-              </select>
+            
+            <div className="space-y-3 relative">
+              <label className="hud-label-tactical text-gray-400 italic-none">ESTRUTURA (FRAÇÃO)</label>
+              <div className="relative">
+                <select 
+                  value={structure} onChange={(e) => setStructure(e.target.value)} 
+                  className="w-full bg-black/40 border border-white/20 p-4 text-white hud-label-tactical font-bold text-sm rounded-xl focus:border-brand outline-none transition-all appearance-none cursor-pointer pr-12 shadow-inner"
+                >
+                  {Object.values(ESTRUTURAS).map((est) => (
+                    <option key={est.label} value={est.label} className="bg-dark-surface text-white">
+                      {est.label.toUpperCase()} — {est.fullName.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+                {/* CUSTOM_ARROW: Ensures dropdown visibility */}
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-brand text-xl">
+                  ▼
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="font-barlow text-gray-400 font-bold uppercase tracking-widest text-xs">Lore do Personagem (Opcional)</label>
+
+            <div className="space-y-3">
+              <label className="hud-label-tactical text-gray-400 italic-none">CRÔNICAS DO VALENTE (LORE)</label>
               <textarea 
                 value={description} onChange={(e) => setDescription(e.target.value)} rows={4} 
-                className="bg-[#232622] border border-gray-700 p-3 text-white font-barlow text-sm rounded-sm focus:border-[#ea580c] outline-none transition-colors w-full resize-none" 
+                className="w-full bg-black/40 border border-white/20 p-4 text-gray-200 font-barlow text-sm rounded-xl focus:border-brand outline-none transition-all resize-none shadow-inner" 
                 placeholder="A história de origem deste herói..." 
               />
             </div>
           </div>
 
-          <div className="w-full lg:w-[260px] flex flex-col items-center gap-4">
-            <label className="font-barlow text-gray-400 font-bold uppercase tracking-widest text-xs w-full text-left">Retrato do Herói</label>
+          <div className="w-full lg:w-[260px] space-y-4">
+            <label className="hud-label-tactical text-gray-400 italic-none">RETRATO DO HERÓI</label>
             <div 
               onClick={() => fileInputRef.current?.click()} 
-              className="w-full aspect-[3/4] bg-[#232622] border-2 border-dashed border-gray-700 hover:border-[#ea580c] rounded-sm flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
+              className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/20 hover:border-brand/60 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
             >
               {imagePreview ? (
-                <>
-                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover z-10" />
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                    <span className="text-white font-barlow font-bold tracking-widest uppercase text-xs">Trocar Imagem</span>
-                  </div>
-                </>
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
               ) : (
-                <div className="text-center p-4">
-                  <span className="text-4xl block mb-2 opacity-50">📷</span>
-                  <span className="text-gray-500 font-barlow text-xs uppercase font-bold tracking-widest">Upload de Imagem</span>
+                <div className="text-center opacity-40 group-hover:opacity-100 transition-all">
+                  <span className="text-6xl block mb-2">📷</span>
+                  <span className="hud-label-tactical text-xs italic-none">UPLOAD BIO-SCAN</span>
                 </div>
               )}
-              
-              <div className="absolute inset-3 border border-cyan-500/20 pointer-events-none z-30"></div>
-              <div className="absolute top-3 left-3 w-2 h-2 border-t-2 border-l-2 border-cyan-500/50 z-30"></div>
-              <div className="absolute top-3 right-3 w-2 h-2 border-t-2 border-r-2 border-cyan-500/50 z-30"></div>
-              <div className="absolute bottom-3 left-3 w-2 h-2 border-b-2 border-l-2 border-cyan-500/50 z-30"></div>
-              <div className="absolute bottom-3 right-3 w-2 h-2 border-b-2 border-r-2 border-cyan-500/50 z-30"></div>
+              <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-brand"></div>
+              <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-brand"></div>
             </div>
             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
           </div>
         </div>
       </section>
 
-      {/* ATTRIBUTES SECTION */}
-      <section className="bg-[#1a1c19] border border-gray-800 p-8 rounded-sm shadow-xl">
-        <h2 className="font-bebas text-3xl text-white tracking-widest mb-8 border-b border-gray-700 pb-2">Atributos Base (0-10)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+      {/* 3. SPIRITUAL_PROGRESS (#02) */}
+      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission to-transparent"></div>
+        <div className="flex justify-between items-end mb-10">
+          <h2 className="hud-title-md text-4xl text-white m-0">
+            <span className="text-mission">#02</span> PODER SANTO
+          </h2>
+          <span className="hud-label-tactical text-mission font-bold text-xs italic-none">DISCIPLINAS ESPIRITUAIS</span>
+        </div>
+        
+        <div className="space-y-6">
+          {Object.entries(holyPower).map(([key, data]: [string, any]) => (
+            <div key={key} className="bg-black/20 p-8 border border-white/10 rounded-2xl group hover:border-mission transition-all shadow-xl">
+              <div className="flex items-center gap-4 mb-8">
+                <img 
+                  src={key === 'Oração' ? ICONS.oracao : key === 'Leitura' ? ICONS.leitura : ICONS.jejum}
+                  alt={key}
+                  className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(16,185,129,0.6)]"
+                />
+                <h3 className="hud-title-md text-3xl text-white">{key}</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="space-y-3">
+                  <label className="hud-label-tactical text-gray-400 italic-none">PROG. ATUAL</label>
+                  <input 
+                    type="number" value={data.current} 
+                    onChange={(e) => handleHolyPowerChange(key, 'current', e.target.value)} 
+                    className="w-full bg-black/40 border border-white/20 p-4 text-white hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner" 
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="hud-label-tactical text-gray-500 italic-none">META SEMANAL</label>
+                  <input 
+                    type="number" value={data.goal} 
+                    onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
+                    className="w-full bg-black/40 border border-white/20 p-4 text-gray-400 hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner" 
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="hud-label-tactical text-xp italic-none flex items-center gap-2">
+                    STREAK <img src={ICONS.xp} className="w-4 h-4" alt="xp" />
+                  </label>
+                  <input 
+                    type="number" value={data.streak} 
+                    onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
+                    className="w-full bg-black/40 border border-xp/40 p-4 text-xp hud-value text-4xl rounded-xl focus:border-xp outline-none shadow-[0_0_15px_rgba(234,88,12,0.15)]" 
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="hud-label-tactical text-gray-500 italic-none">UNIDADE</label>
+                  <input 
+                    type="text" value={data.unit} 
+                    onChange={(e) => handleHolyPowerChange(key, 'unit', e.target.value)} 
+                    className="w-full bg-black/40 border border-white/20 p-4 text-gray-400 hud-label-tactical text-sm rounded-xl focus:border-mission outline-none shadow-inner" 
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 4. ATTRIBUTES (#03) */}
+      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-xp to-transparent"></div>
+        <h2 className="hud-title-md text-4xl text-white mb-8">
+          <span className="text-xp">#03</span> ATRIBUTOS BASE
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {Object.entries(skills).map(([key, value]) => (
-            <div key={key} className="flex flex-col bg-[#232622] p-4 border border-gray-800 rounded-sm relative">
-              <div className="flex justify-between items-end mb-4">
-                <label className="font-barlow text-gray-400 font-bold uppercase text-[10px] tracking-widest">{key}</label>
-                <span className="font-staatliches text-3xl text-[#ea580c] leading-none">{value as number}</span>
+            <div key={key} className="bg-black/20 p-6 border border-white/10 rounded-xl group hover:border-xp transition-all shadow-xl">
+              <div className="flex justify-between items-center mb-6">
+                <label className="hud-label-tactical text-gray-400 italic-none">{key}</label>
+                <span className="hud-value text-4xl text-xp drop-shadow-[0_0_15px_rgba(234,88,12,0.7)]">{value as number}</span>
               </div>
               <input 
                 type="range" min="0" max="10" value={value as number} 
                 onChange={(e) => setSkills({...skills, [key]: parseInt(e.target.value)})} 
-                className="w-full h-2 bg-gray-900 rounded-lg appearance-none cursor-pointer accent-[#ea580c]" 
+                className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-xp" 
               />
             </div>
           ))}
         </div>
       </section>
 
-      {/* NEW HABIT TRACKER SECTION (Poder Santo) */}
-      <section className="bg-[#1a1c19] border border-gray-800 p-8 rounded-sm shadow-xl">
-        <div className="flex justify-between items-end mb-8 border-b border-gray-700 pb-2">
-          <h2 className="font-bebas text-3xl text-white tracking-widest m-0">Habit Tracker: Poder Santo</h2>
-          <span className="font-barlow text-[#ea580c] font-bold text-[10px] uppercase tracking-widest">Painel de Disciplinas</span>
-        </div>
-        
-        <div className="flex flex-col gap-6">
-          {Object.entries(holyPower).map(([key, data]: [string, any]) => (
-            <div key={key} className="bg-[#232622] p-6 border border-gray-800 rounded-sm shadow-md">
-              <h3 className="font-bebas text-2xl text-cyan-400 tracking-widest mb-6 flex items-center gap-3">
-                <span className="text-3xl drop-shadow-md">
-                  {key === 'Oração' ? '🙏' : key === 'Leitura' ? '📖' : '🕊️'}
-                </span> 
-                {key}
-              </h3>
-              
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                <div className="flex flex-col gap-2">
-                  <label className="font-barlow text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                    Progresso Atual
-                  </label>
-                  <input 
-                    type="number" min="0" value={data.current} 
-                    onChange={(e) => handleHolyPowerChange(key, 'current', e.target.value)} 
-                    className="bg-[#1a1c19] border border-gray-700 p-3 text-white font-staatliches text-2xl rounded-sm focus:border-cyan-400 outline-none transition-colors" 
-                  />
+      {/* 5. LOVE_LANGUAGES (#04) */}
+      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+        <h2 className="hud-title-md text-4xl text-white mb-8">
+          <span className="text-gray-400">#04</span> LINGUAGENS DE AMOR
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {LOVE_LANGUAGES.map((lang) => {
+            const val = loveLanguages[lang.key] || 0;
+            return (
+              <div key={lang.key} className="bg-black/20 p-6 border border-white/10 rounded-xl group hover:border-white/40 transition-all shadow-xl">
+                <div className="flex justify-between items-center mb-6">
+                  <label className="hud-label-tactical text-gray-400 italic-none">{lang.name}</label>
+                  {/* NUMERIC_GLOW: Matches the Atributos Base effect */}
+                  <span 
+                    className="hud-value text-4xl leading-none" 
+                    style={{ 
+                        color: lang.colors[0],
+                        filter: `drop-shadow(0 0 15px ${lang.colors[0]}88)` 
+                    }}
+                  >
+                    {val}
+                  </span>
                 </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="font-barlow text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                    Meta Semanal
-                  </label>
-                  <input 
-                    type="number" min="1" value={data.goal} 
-                    onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
-                    className="bg-[#1a1c19] border border-gray-700 p-3 text-gray-300 font-staatliches text-2xl rounded-sm focus:border-cyan-400 outline-none transition-colors" 
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2 relative">
-                  <label className="font-barlow text-orange-500 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                    Dias de Ofensiva (Streak) 🔥
-                  </label>
-                  <input 
-                    type="number" min="0" value={data.streak} 
-                    onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
-                    className="bg-[#1a1c19] border border-orange-900/50 p-3 text-orange-500 font-staatliches text-2xl rounded-sm focus:border-orange-500 outline-none transition-colors" 
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="font-barlow text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                    Unidade (Medida)
-                  </label>
-                  <input 
-                    type="text" value={data.unit} 
-                    onChange={(e) => handleHolyPowerChange(key, 'unit', e.target.value)} 
-                    placeholder="Ex: dias, cap..."
-                    className="bg-[#1a1c19] border border-gray-700 p-3 text-gray-400 font-barlow font-bold text-sm uppercase tracking-widest rounded-sm focus:border-cyan-400 outline-none transition-colors" 
-                  />
-                </div>
-
+                <input 
+                  type="range" min="0" max="12" value={val} 
+                  onChange={(e) => setLoveLanguages({...loveLanguages, [lang.key]: parseInt(e.target.value)})} 
+                  className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer" 
+                  style={{ accentColor: lang.colors[0] }}
+                />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
-
     </div>
   );
 }
