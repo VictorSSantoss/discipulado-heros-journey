@@ -55,10 +55,9 @@ model Valente {
   userId      String
   managedBy   User     @relation(fields: [userId], references: [id])
 
-  // 1-to-1 Relations (The Radar and Bar Charts)
   attributes    Attributes?
   loveLanguages LoveLanguages?
-  holyPower     HolyPower?
+  holyPower     HolyPower[]
 
   // Self-Relation: A Valente can have many friends, and be a friend to many
   friends       Valente[] @relation("Friendship")
@@ -106,11 +105,12 @@ model LoveLanguages {
 
 model HolyPower {
   id        String  @id @default(uuid())
-  oracao    Int     @default(0)
-  leitura   Int     @default(0)
-  jejum     Int     @default(0)
+  name      String  // This will store "Oração", "Leitura", etc.
+  current   Int     @default(0)
+  goal      Int     @default(30)
+  streak    Int     @default(0)
 
-  valenteId String  @unique
+  valenteId String
   valente   Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
 }
 

@@ -3,13 +3,13 @@ import { Valente, Mission } from '../types';
 export const caduProfile: Valente = {
   id: 'cadu-001',
   name: 'CADU',
-  image: '/images/cadu-avatar.png',
+  image: '/images/man-silhouette.svg',
   totalXP: 8350, 
   structure: 'GAD',
   skills: {
-    Liderança: 6,
-    TrabalhoEmEquipe: 3,
-    Criatividade: 9,
+    Liderança: 1,
+    TrabalhoEmEquipe: 13,
+    Criatividade: 1,
     ResoluçãoDeProblemas: 4,
     Comunicação: 6
   },

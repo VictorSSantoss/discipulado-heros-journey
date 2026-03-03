@@ -2,7 +2,10 @@ import { defineConfig } from '@prisma/config';
 
 export default defineConfig({
   datasource: {
-    // This tells Prisma to look for the URL in your .env file
     url: process.env.DATABASE_URL,
+  },
+  // The seed command MUST be inside migrations for Prisma 7
+  migrations: {
+    seed: 'tsx --env-file=.env prisma/seed.ts',
   },
 });

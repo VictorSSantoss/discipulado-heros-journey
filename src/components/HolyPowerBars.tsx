@@ -1,27 +1,19 @@
 "use client";
 
-import { PowerHabit } from "@/types";
 import { ICONS } from "@/constants/gameConfig";
 
-interface HolyPowerBarsProps {
-  powers?: {
-    Oração: PowerHabit;
-    Leitura: PowerHabit;
-    Jejum: PowerHabit;
-  };
+interface HolyPowerHabit {
+  name: string;
+  current: number;
+  goal: number;
+  streak: number;
 }
 
-/**
- * HolyPowerBars Component
- * Displays spiritual progression metrics in a compact, rectangular HUD format.
- * Optimized for horizontal density to prevent vertical bloat.
- */
-export default function HolyPowerBars({ powers }: HolyPowerBarsProps) {
-  /* ERROR_BOUNDARY: EMPTY_STATE */
-  if (!powers) {
+export default function HolyPowerBars({ powers }: { powers?: HolyPowerHabit[] }) {
+  if (!powers || powers.length === 0) {
     return (
-      <div className="hud-label-tactical text-gray-500 text-center py-12 text-lg italic-none">
-        Sem registros de poder...
+      <div className="hud-label-tactical text-gray-500 text-center py-12 text-lg italic-none opacity-40">
+        AGUARDANDO SINCRONIZAÇÃO...
       </div>
     );
   }
@@ -34,87 +26,79 @@ export default function HolyPowerBars({ powers }: HolyPowerBarsProps) {
 
   const THEME_CONFIG: Record<string, { gradient: string; glow: string; text: string }> = {
     Oração: { 
-      gradient: 'from-brand to-cyan-700', 
-      glow: 'shadow-[0_0_15px_rgba(17,194,199,0.3)]',
-      text: 'text-brand'
+      gradient: 'from-cyan-400 to-cyan-700', 
+      glow: 'shadow-[0_0_15px_rgba(34,211,238,0.4)]',
+      text: 'text-cyan-400'
     },
     Leitura: { 
-      gradient: 'from-mission to-emerald-700', 
-      glow: 'shadow-[0_0_15px_rgba(16,185,129,0.3)]',
-      text: 'text-mission'
+      gradient: 'from-emerald-400 to-emerald-700', 
+      glow: 'shadow-[0_0_15px_rgba(52,211,153,0.4)]',
+      text: 'text-emerald-400'
     },
     Jejum: { 
-      gradient: 'from-xp to-orange-700', 
-      glow: 'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
-      text: 'text-xp'
+      gradient: 'from-orange-400 to-orange-700', 
+      glow: 'shadow-[0_0_15px_rgba(251,146,60,0.4)]',
+      text: 'text-orange-400'
     }
   };
 
   return (
     <div className="flex flex-col gap-3 w-full">
-      {/* CONTAINER 1: COMPACT_LIST_WRAPPER */}
-      {Object.entries(powers).map(([key, habit]) => {
+      {powers.map((habit) => {
         const percent = habit.goal > 0 ? Math.min((habit.current / habit.goal) * 100, 100) : 0;
         const isCompleted = habit.current >= habit.goal;
-        const currentTheme = THEME_CONFIG[key];
+        const currentTheme = THEME_CONFIG[habit.name] || THEME_CONFIG['Oração'];
 
         return (
-          <div 
-            key={key} 
-            className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-3.5 rounded-xl shadow-xl relative overflow-hidden group transition-all hover:border-white/10"
-          >
-            {/* CONTAINER 2: RECTANGULAR_TACTICAL_STRIP */}
-
-            <div className="flex justify-between items-center mb-2 relative z-10">
-              {/* CONTAINER 3: COMPACT_IDENTITY_BLOCK */}
-              <div className="flex items-center gap-2.5">
+          <div key={habit.name} className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-4 rounded-xl shadow-xl relative overflow-hidden group transition-all hover:border-white/10">
+            
+            {/* TOP ROW */}
+            <div className="flex justify-between items-center mb-4 relative z-10">
+              <div className="flex items-center gap-3">
                 <img 
-                  src={HABIT_ICONS[key]} 
-                  alt={key} 
-                  className="w-6 h-6 object-contain opacity-80 group-hover:scale-110 transition-transform" 
+                  src={HABIT_ICONS[habit.name]} 
+                  alt="" 
+                  className="w-6 h-6 object-contain transition-transform group-hover:scale-110" 
                 />
-                <span className="hud-title-md text-xl text-white m-0">
-                  {key}
+                <span className="hud-title-md text-2xl text-white m-0 uppercase tracking-tighter">
+                  {habit.name}
                 </span>
               </div>
 
-              {/* CONTAINER 4: MINI_STREAK_READOUT */}
-              <div className="flex items-center gap-2 bg-dark-bg/80 px-2 py-0.5 rounded-lg border border-white/5 shadow-inner">
+              {/* 🛠️ FIXED: Shrunk this container significantly */}
+              <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-white/5 shadow-inner min-w-[50px] justify-center">
                 <img 
                   src={ICONS.xp} 
-                  alt="Streak" 
-                  className={`w-3 h-3 object-contain ${habit.streak > 0 ? 'animate-pulse' : 'opacity-20 grayscale'}`} 
+                  alt="" 
+                  className={`w-4 h-4 object-contain ${habit.streak > 0 ? 'animate-pulse' : 'opacity-20 grayscale'}`} 
                 />
-                <span className={`hud-value text-lg leading-none ${habit.streak > 0 ? 'text-xp' : 'text-gray-700'}`}>
+                <span className={`hud-value text-xl leading-none ${habit.streak > 0 ? 'text-xp' : 'text-gray-700'}`}>
                   {habit.streak}
                 </span>
               </div>
             </div>
 
-            {/* CONTAINER 5: REFINED_PROGRESS_TRACK */}
-            <div className="w-full h-2.5 bg-dark-bg border border-white/5 rounded-full overflow-hidden relative z-10 shadow-inner">
+            {/* PROGRESS TRACK */}
+            <div className="w-full h-3 bg-black/60 border border-white/5 rounded-full overflow-hidden relative z-10 mb-3">
               <div 
                 className={`h-full bg-gradient-to-r ${currentTheme.gradient} ${currentTheme.glow} transition-all duration-1000 ease-out`}
                 style={{ width: `${percent}%` }}
               >
-                <div className="absolute top-0 left-0 w-full h-1/2 bg-white/5"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.1)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.1)_75%,transparent_75%,transparent)] bg-[length:8px_8px] opacity-30"></div>
               </div>
             </div>
 
-            <div className="flex justify-between items-end mt-2 relative z-10">
-              {/* CONTAINER 6: TRACKING_LABELS_COMPACT */}
-              <div className="flex flex-col">
-                <span className="hud-label-tactical text-gray-600 text-[8px] italic-none">
-                  STATUS: {isCompleted ? 'MAX' : 'SYNCING'}
-                </span>
-              </div>
+            {/* BOTTOM ROW */}
+            <div className="flex justify-between items-end relative z-10">
+              <span className={`hud-label-tactical ${isCompleted ? currentTheme.text : 'text-gray-600'} text-[9px] italic-none animate-pulse`}>
+                {isCompleted ? '✧ MAX CAPACITY' : '⚡ RECHARGING'}
+              </span>
               
-              {/* CONTAINER 7: NUMERIC_STAT_READOUT_RECT */}
               <div className="flex items-baseline gap-1">
-                <span className={`hud-value text-2xl leading-none ${isCompleted ? currentTheme.text : 'text-white'}`}>
+                <span className={`hud-value text-3xl leading-none ${isCompleted ? currentTheme.text : 'text-white'}`}>
                   {habit.current}
                 </span>
-                <span className="hud-value text-sm text-gray-700">
+                <span className="hud-value text-base text-gray-700">
                    / {habit.goal}
                 </span>
               </div>

@@ -87,8 +87,8 @@ export const BASE_ATTRIBUTES = [
 
 export const LOVE_LANGUAGES = [
   { name: 'Presentes', key: 'presentes', colors: ['#fbbf24', '#d97706'] },        // Gold
-  { name: 'Toque Físico', key: 'toqueFisico', colors: ['#fb7185', '#e11d48'] },    // Rose
-  { name: 'Tempo de Qual.', key: 'tempoQualidade', colors: ['#c084fc', '#6d28d9'] },// Purple
-  { name: 'Afirmação', key: 'palavrasAfirmacao', colors: ['#22d3ee', '#0284c7'] }, // Cyan
-  { name: 'Serviço', key: 'atosServico', colors: ['#34d399', '#059669'] },         // Emerald
+  { name: 'Toque Físico', key: 'toque', colors: ['#fb7185', '#e11d48'] },    // Rose
+  { name: 'Tempo de Qual.', key: 'tempo', colors: ['#c084fc', '#6d28d9'] },// Purple
+  { name: 'Afirmação', key: 'palavras', colors: ['#22d3ee', '#0284c7'] }, // Cyan
+  { name: 'Serviço', key: 'servico', colors: ['#34d399', '#059669'] },         // Emerald
 ] as const;

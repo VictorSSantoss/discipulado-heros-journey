@@ -2,16 +2,9 @@
 
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
-/* GLOBAL CONFIGURATION IMPORTS */
-/* Synchronizes the chart axes with the core attribute definitions. */
-import { BASE_ATTRIBUTES } from '@/constants/gameConfig';
-
-type Skills = Record<string, number>;
-
 /**
  * CustomTick Component
- * Handles multi-line label rendering for long attribute names.
- * Font size increased to 11px for enhanced legibility on higher-density displays.
+ * Optimized for scannability and HUD aesthetics.
  */
 const CustomTick = ({ payload, x, y, textAnchor }: any) => {
   const words = payload.value.split(' ');
@@ -21,15 +14,11 @@ const CustomTick = ({ payload, x, y, textAnchor }: any) => {
       <text 
         textAnchor={textAnchor} 
         fill="#9ca3af" 
-        className="hud-label-tactical italic-none"
-        style={{ fontSize: '11px' }} /* Increased from 8px for better visibility */
+        className="hud-label-tactical italic-none uppercase tracking-widest"
+        style={{ fontSize: '10px' }}
       >
         {words.map((word: string, index: number) => (
-          <tspan 
-            x={0} 
-            dy={index === 0 ? 0 : 12} /* Increased dy to 12 to match larger font size */
-            key={index}
-          >
+          <tspan x={0} dy={index === 0 ? 0 : 12} key={index}>
             {word}
           </tspan>
         ))}
@@ -40,63 +29,71 @@ const CustomTick = ({ payload, x, y, textAnchor }: any) => {
 
 /**
  * AttributesChart Component
- * Renders a radar visualization of a Valente's tactical capabilities.
+ * Now accepts a 'theme' prop to sync colors with the Valente's structure.
  */
-export default function AttributesChart({ skills }: { skills?: Skills }) {
-  /* ERROR_BOUNDARY: EMPTY_STATE */
+export default function AttributesChart({ skills, theme }: { skills?: any, theme?: { hex: string } }) {
+  // Fallback to orange if no theme is provided
+  const activeColor = theme?.hex || "#ea580c";
+
   if (!skills) return (
-    <div className="hud-label-tactical text-gray-500 text-center py-10 italic-none">
-      Sem atributos registrados...
+    <div className="hud-label-tactical text-gray-500 text-center py-10 italic-none tracking-widest opacity-40">
+      AGUARDANDO DADOS TÁTICOS...
     </div>
   );
 
-  /* DATA_MAPPING_LOGIC */
-  const data = BASE_ATTRIBUTES.map((attr) => {
-    const matchingKey = Object.keys(skills).find(
-      (k) => k.replace(/\s/g, '').toLowerCase() === attr.replace(/\s/g, '').toLowerCase()
-    );
-
-    return {
-      subject: attr.toUpperCase(), 
-      A: matchingKey ? skills[matchingKey] : 0,
-      fullMark: 10 
-    };
-  });
+  const data = [
+    { subject: 'FORÇA', A: skills.forca || 0 },
+    { subject: 'DESTREZA', A: skills.destreza || 0 },
+    { subject: 'CONSTITUIÇÃO', A: skills.constituicao || 0 },
+    { subject: 'INTELIGÊNCIA', A: skills.inteligencia || 0 },
+    { subject: 'SABEDORIA', A: skills.sabedoria || 0 },
+    { subject: 'CARISMA', A: skills.carisma || 0 },
+  ];
 
   return (
-    <div className="h-[250px] w-full">
-      {/* CHART_VIEWPORT_CONTAINER */}
+    <div className="h-[280px] w-full relative group">
+      {/* Background Decorative HUD Ring */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+        <div className="w-48 h-48 border border-white rounded-full animate-pulse" />
+      </div>
+
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius="60%" data={data}>
-          <PolarGrid stroke="#374151" />
+        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
+          {/* Grid lines now match the tech-look */}
+          <PolarGrid stroke="#374151" strokeDasharray="3 3" />
           
           <PolarAngleAxis 
             dataKey="subject" 
             tick={<CustomTick />} 
           />
           
-          <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
+          {/* Radius set to 15 to allow room for growth/XP buffs */}
+          <PolarRadiusAxis domain={[0, 15]} tick={false} axisLine={false} />
           
           <Radar 
             name="Atributos" 
             dataKey="A" 
-            stroke="#ea580c" 
-            fill="#ea580c" 
-            fillOpacity={0.5} 
+            stroke={activeColor} 
+            fill={activeColor} 
+            fillOpacity={0.4} 
+            strokeWidth={2}
+            animationBegin={300}
+            animationDuration={1500}
           />
           
-          <Tooltip<number, string>
+          <Tooltip
             contentStyle={{ 
-              backgroundColor: '#1a1c19', 
-              borderColor: '#374151', 
-              borderRadius: '8px', 
-              borderWidth: '1px'
+              backgroundColor: 'rgba(10, 10, 10, 0.9)', 
+              borderColor: 'rgba(255, 255, 255, 0.1)', 
+              borderRadius: '4px', 
+              borderWidth: '1px',
+              backdropFilter: 'blur(8px)'
             }}
             itemStyle={{ 
-              color: '#ea580c', 
+              color: activeColor, 
               fontWeight: 'bold', 
               fontFamily: 'var(--font-barlow)',
-              fontSize: '11px',
+              fontSize: '12px',
               textTransform: 'uppercase'
             }}
           />
