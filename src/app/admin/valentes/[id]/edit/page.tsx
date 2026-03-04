@@ -1,36 +1,37 @@
-"use client";
-
-import { use } from "react";
-import { mockValentes } from "@/lib/mockData";
 import { notFound } from "next/navigation";
+import prisma from "@/lib/prisma";
 import ValenteForm from "@/components/ValenteForm";
 
 /**
  * EditValentePage Component
  * Serves as the administrative bridge for modifying existing hero data.
- * Coordinates data retrieval before handing off to the unified ValenteForm.
+ * Coordinates database retrieval before handing off to the ValenteForm.
  */
-export default function EditValentePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditValentePage({ params }: { params: Promise<{ id: string }> }) {
   /* DATA EXTRACTION */
   /* Unwraps the route parameters to identify the specific hero in the database. */
-  const { id } = use(params);
-  
+  const { id } = await params;
+
   /* DATA RETRIEVAL LOGIC */
-  const valenteData = mockValentes.find((v) => v.id === id);
+  /* Fetches hero data, attributes, love languages, and holy power from the registry. */
+  const valente = await prisma.valente.findUnique({
+    where: { id },
+    include: { 
+      attributes: true,
+      loveLanguages: true,
+      holyPower: true
+    }
+  });
 
   /* ERROR BOUNDARY */
-  /* Redirects to a 404 state if the hero dossier is not found. */
-  if (!valenteData) notFound();
+  /* Redirects to a 404 state if the hero dossier is not located in the registry. */
+  if (!valente) return notFound();
 
   return (
     <main className="min-h-screen p-6 max-w-5xl mx-auto text-white font-barlow">
-      {/* CONTAINER 1: EDIT_VALENTE_MASTER_WRAPPER */}
-      {/* Establishes the layout boundaries and base typography for the modification interface. */}
-
-      <ValenteForm mode="edit" initialData={valenteData} />
       {/* COMPONENT: VALENTE_DATA_FORGE */}
-      {/* The core interface where hero stats and structure are recalculated. */}
-      
+      {/* Passes the serialized dossier to the client form for attribute recalibration. */}
+      <ValenteForm mode="edit" initialData={JSON.parse(JSON.stringify(valente))} />
     </main>
   );
 }

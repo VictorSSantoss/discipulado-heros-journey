@@ -92,3 +92,12 @@ export const LOVE_LANGUAGES = [
   { name: 'Afirmação', key: 'palavras', colors: ['#22d3ee', '#0284c7'] }, // Cyan
   { name: 'Serviço', key: 'servico', colors: ['#34d399', '#059669'] },         // Emerald
 ] as const;
+
+export const GET_XP_MULTIPLIER = () => {
+  const today = new Date().getDay(); // 0 is Sunday, 6 is Saturday
+  
+  if (today === 0) return { factor: 1.2, label: "BÔNUS DE DOMINGO (1.2x)" };
+  if (today === 6) return { factor: 1.1, label: "FIM DE SEMANA (1.1x)" };
+  
+  return { factor: 1.0, label: "NORMAL" };
+};

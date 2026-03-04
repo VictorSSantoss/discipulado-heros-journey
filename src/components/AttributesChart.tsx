@@ -30,6 +30,7 @@ const CustomTick = ({ payload, x, y, textAnchor }: any) => {
 /**
  * AttributesChart Component
  * Now accepts a 'theme' prop to sync colors with the Valente's structure.
+ * Labels reflect the fivefold ministry mapping.
  */
 export default function AttributesChart({ skills, theme }: { skills?: any, theme?: { hex: string } }) {
   // Fallback to orange if no theme is provided
@@ -41,13 +42,14 @@ export default function AttributesChart({ skills, theme }: { skills?: any, theme
     </div>
   );
 
+  // Mapped RPG stats (from DB) to Ministry names (for UI)
   const data = [
-    { subject: 'FORÇA', A: skills.forca || 0 },
-    { subject: 'DESTREZA', A: skills.destreza || 0 },
-    { subject: 'CONSTITUIÇÃO', A: skills.constituicao || 0 },
-    { subject: 'INTELIGÊNCIA', A: skills.inteligencia || 0 },
-    { subject: 'SABEDORIA', A: skills.sabedoria || 0 },
-    { subject: 'CARISMA', A: skills.carisma || 0 },
+    { subject: 'LIDERANÇA', A: skills.forca || 0 },
+    { subject: 'SERVO', A: skills.destreza || 0 },
+    { subject: 'TRABALHO EM EQUIPE', A: skills.constituicao || 0 },
+    { subject: 'MESTRE', A: skills.inteligencia || 0 },
+    { subject: 'PROFETA', A: skills.sabedoria || 0 },
+    { subject: 'EVANGELISMO', A: skills.carisma || 0 },
   ];
 
   return (

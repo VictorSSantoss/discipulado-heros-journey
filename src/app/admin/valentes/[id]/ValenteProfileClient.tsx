@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
 import { updateValenteXp } from "@/app/actions/valenteActions";
+import { addCompanheiro } from "@/app/actions/companheiroActions";
 
 import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
@@ -13,25 +15,45 @@ import GrantXpModal from "@/components/GrantXpModal";
 import TavernaPreview from "@/components/TavernaPreview";
 import MedalRack from "@/components/MedalRack"; 
 import MissionLog from "@/components/MissionLog";
+import LevelUpNotification from "@/components/LevelUpNotification";
+import AchievementToast from "@/components/AchievementToast";
+import AddCompanionModal from "@/components/profile/AddCompanionModal";
 
-export default function ValenteProfileClient({ initialValente }: { initialValente: any }) {
+export default function ValenteProfileClient({ 
+  initialValente, 
+  initialCompanheiros,
+  ranking: initialRanking,
+  personalRank 
+}: { 
+  initialValente: any, 
+  initialCompanheiros: any[],
+  ranking: any[],
+  personalRank: { rank: number, total: number } 
+}) {
   const [mounted, setMounted] = useState(false);
   const [xpWidth, setXpWidth] = useState(0); 
   const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
-
+  const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [valente, setValente] = useState(initialValente);
-
-  if (valente && !valente.skills) {
-    valente.skills = valente.attributes;
-  }
+  const [companheiros, setCompanheiros] = useState(initialCompanheiros);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [unlockedMedal, setUnlockedMedal] = useState<any>(null);
 
   const currentLevelInfo = valente 
     ? [...LEVEL_SYSTEM].reverse().find(lvl => valente.totalXP >= lvl.minXP) || LEVEL_SYSTEM[0] 
     : LEVEL_SYSTEM[0];
+
+  const [prevLevel, setPrevLevel] = useState(currentLevelInfo.name);
+
   const currentLevelIndex = LEVEL_SYSTEM.findIndex(lvl => lvl.name === currentLevelInfo.name);
   const nextLevelInfo = LEVEL_SYSTEM[currentLevelIndex + 1];
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    setValente(initialValente);
+    setCompanheiros(initialCompanheiros);
+  }, [initialValente, initialCompanheiros]);
 
   useEffect(() => {
     if (mounted && valente) {
@@ -46,15 +68,41 @@ export default function ValenteProfileClient({ initialValente }: { initialValent
     if (valente) { 
       const result = await updateValenteXp(valente.id, xpAmount);
       
-      if (result.success) {
+      if (result.success && result.newTotalXP !== undefined) {
+        const newXp = result.newTotalXP;
+        
+        const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
+
+        if (newLevel.name !== prevLevel) {
+          setShowLevelUp(true);
+          setPrevLevel(newLevel.name);
+        }
+
+        if (result.newMedals && result.newMedals.length > 0) {
+          const specialMedal = result.newMedals.find(
+            (m: any) => m.rarity === "RARE" || m.rarity === "LEGENDARY"
+          );
+          if (specialMedal) {
+            setUnlockedMedal(specialMedal);
+          }
+        }
+
         setValente({ 
           ...valente, 
-          totalXP: result.newTotalXP,
-          xpLogs: result.newLogs 
+          totalXP: newXp,
+          xpLogs: result.newLogs || [],
+          medals: result.newMedals ? [...valente.medals, ...result.newMedals.map((m: any) => ({ medal: m, awardedAt: new Date() }))] : valente.medals
         }); 
       }
     }
     setIsGrantModalOpen(false);
+  };
+
+  const handleAddFriend = async (friendId: string) => {
+    const result = await addCompanheiro(valente.id, friendId);
+    if (result.success) {
+      // Server revalidation handles the update of initialCompanheiros
+    }
   };
 
   if (!mounted) return (
@@ -100,14 +148,39 @@ export default function ValenteProfileClient({ initialValente }: { initialValent
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* COLUMN 1: CHARACTER IDENTITY */}
           <div className="flex flex-col gap-8">
             <div className="flex flex-col items-center bg-dark-bg/40 backdrop-blur-xl p-10 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
               
-              <h1 className="hud-title-lg text-white text-center m-0 mb-10">
-                {valente.name}
-              </h1>
+              <div className="relative flex items-center justify-center w-full mb-6 mt-2">
+                <div 
+                  className="h-[1px] flex-1 max-w-[60px] opacity-60 mr-4" 
+                  style={{ background: `linear-gradient(to left, ${theme.hex}, transparent)` }}
+                />
+                <h1 
+                  className="hud-title-lg text-white text-center m-0 uppercase tracking-[0.15em] relative z-10"
+                  style={{ textShadow: `
+                    0 0 10px ${theme.hex}FF, 
+                    0 0 20px ${theme.hex}AA, 
+                    0 0 40px ${theme.hex}60, 
+                    0 0 70px ${theme.hex}30
+                  ` }}
+                >
+                  {valente.name}
+                </h1>
+                <div 
+                  className="h-[1px] flex-1 max-w-[60px] opacity-60 ml-4" 
+                  style={{ background: `linear-gradient(to right, ${theme.hex}, transparent)` }}
+                />
+              </div>
+
+              <div className="flex items-center gap-2 mb-8 bg-brand/5 border border-brand/20 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.05)]">
+                <span className="text-brand text-xs animate-pulse">●</span>
+                <span className="hud-label-tactical text-[10px] text-gray-400">POSIÇÃO NO REINO:</span>
+                <span className="hud-value text-sm text-brand">#{personalRank.rank}</span>
+                <span className="text-white/20 text-[10px] mx-1">/</span>
+                <span className="hud-label-tactical text-[10px] text-gray-500">{personalRank.total}</span>
+              </div>
 
               <div className="relative w-full max-w-[220px] aspect-[3/4] flex items-center justify-center bg-dark-bg/60 border border-white/10 rounded-xl shadow-2xl overflow-hidden group">
                 <img 
@@ -185,35 +258,43 @@ export default function ValenteProfileClient({ initialValente }: { initialValent
             <MedalRack medals={valente.medals || []} />
           </div>
 
-          {/* COLUMN 2: ANALYTICS & RANKING */}
           <div className="flex flex-col gap-8">
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
-              <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6">ATRIBUTOS</h2>
+              <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Atributos</h2>
               <AttributesChart skills={valente.attributes} theme={theme} />
             </div>
             
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
-              <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6">LINGUAGENS</h2>
+              <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Linguagens</h2>
               <LoveLanguagesChart data={valente.loveLanguages} color={theme.hex} />
             </div>
             
-            {/* 🛠️ FIXED: Taverna container with fixed visible height for 3 items and scrolling for the rest */}
             <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden flex flex-col max-h-[380px]">
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <TavernaPreview />
+              <div className="flex-1 overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-white/5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/40 transition-colors">
+                <TavernaPreview ranking={initialRanking} />
               </div>
             </div>
           </div>
 
-          {/* COLUMN 3: POWER, SOCIAL, & MISSION LOG */}
           <div className="flex flex-col gap-8">
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
-              <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6">PODER SANTO</h2>
+              <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Poder Santo</h2>
               <HolyPowerBars powers={valente.holyPower} />
             </div>
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
-              <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6">COMPANHEIROS</h2>
-              <BestFriendsList friendIds={valente.friendIds} />
+              <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-6">
+                <h2 className="hud-title-md text-white uppercase m-0">Companheiros</h2>
+                <button 
+                  onClick={() => setIsAddFriendOpen(true)}
+                  className="text-brand text-[10px] border border-brand/20 px-3 py-1 rounded-full hover:bg-brand/10 transition-all uppercase"
+                >
+                  + ADICIONAR
+                </button>
+              </div>
+              <BestFriendsList 
+                friends={companheiros} 
+                currentValenteId={valente.id} 
+              />
             </div>
 
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl flex-1 flex flex-col">
@@ -225,7 +306,6 @@ export default function ValenteProfileClient({ initialValente }: { initialValent
           </div>
         </div>
 
-        {/* MURAL SECTION */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
           <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
             <span className="text-gray-700 text-2xl">⚔️</span>
@@ -233,24 +313,24 @@ export default function ValenteProfileClient({ initialValente }: { initialValent
 
           <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div>
-              <h2 className="hud-title-lg text-white flex items-center gap-4 m-0">
-                <img src={ICONS.missoes} className="w-12 h-12 object-contain" alt="" /> MURAL DE DECRETOS
+              <h2 className="hud-title-lg text-white flex items-center gap-4 m-0 uppercase">
+                <img src={ICONS.missoes} className="w-12 h-12 object-contain" alt="" /> Mural de Decretos
               </h2>
-              <p className="hud-label-tactical mt-2">Operações Ativas para {valente.name}</p>
+              <p className="hud-label-tactical mt-2 uppercase">Operações Ativas para {valente.name}</p>
             </div>
-            <button className="hud-label-tactical text-gray-500 hover:text-white border border-white/5 hover:border-white/20 px-6 py-3 rounded-2xl transition-all bg-white/[0.02]">HISTÓRICO COMPLETO →</button>
+            <button className="hud-label-tactical text-gray-500 hover:text-white border border-white/5 hover:border-white/20 px-6 py-3 rounded-2xl transition-all bg-white/[0.02] uppercase">Histórico Completo →</button>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-8 rounded-2xl flex flex-col hover:border-mission/30 transition-all group relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/40 to-transparent"></div>
               <div className="flex justify-between items-start mb-6">
-                <span className="bg-white/5 text-gray-400 border border-white/5 hud-label-tactical px-3 py-1 rounded-full text-[9px] italic-none">HÁBITOS</span>
+                <span className="bg-white/5 text-gray-400 border border-white/5 hud-label-tactical px-3 py-1 rounded-full text-[9px] italic-none uppercase tracking-widest">Hábitos</span>
                 <span className="hud-value text-mission text-3xl">+150 XP</span>
               </div>
-              <h3 className="hud-title-md text-white mb-3">Jejum Matinal</h3>
+              <h3 className="hud-title-md text-white mb-3 uppercase tracking-wider">Jejum Matinal</h3>
               <p className="font-barlow text-gray-400 text-sm mb-8 flex-1 leading-relaxed">Realizar um jejum até o meio-dia, dedicando o tempo da refeição à leitura da Palavra.</p>
-              <button className="w-full bg-mission/10 border border-mission/20 hover:bg-mission hover:text-white text-mission hud-btn-text py-3 rounded-2xl transition-all">CONCLUIR MISSÃO</button>
+              <button className="w-full bg-mission/10 border border-mission/20 hover:bg-mission hover:text-white text-mission hud-btn-text py-3 rounded-2xl transition-all uppercase tracking-widest">Concluir Missão</button>
             </div>
           </div>
         </section>
@@ -258,6 +338,34 @@ export default function ValenteProfileClient({ initialValente }: { initialValent
       </main>
 
       <GrantXpModal isOpen={isGrantModalOpen} onClose={() => setIsGrantModalOpen(false)} onGrant={handleGrantXp} valenteName={valente.name} />
+
+      <AddCompanionModal 
+        isOpen={isAddFriendOpen} 
+        onClose={() => setIsAddFriendOpen(false)} 
+        onAdd={handleAddFriend}
+        currentValenteId={valente.id}
+      />
+
+      <AnimatePresence>
+        {showLevelUp && (
+          <LevelUpNotification 
+            levelName={currentLevelInfo.name} 
+            levelIcon={currentLevelInfo.icon}
+            themeColor={theme.hex}
+            onComplete={() => setShowLevelUp(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {unlockedMedal && (
+          <AchievementToast 
+            medal={unlockedMedal} 
+            themeColor={theme.hex} 
+            onClose={() => setUnlockedMedal(null)} 
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

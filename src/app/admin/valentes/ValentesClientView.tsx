@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /* GLOBAL CONFIGURATION IMPORTS */
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
@@ -11,6 +12,7 @@ import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
  * Receives live database data and renders the tactical HUD.
  */
 export default function ValentesClientView({ initialValentes }: { initialValentes: any[] }) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
 
   const getTheme = (valenteStructure: string) => {
@@ -60,7 +62,8 @@ export default function ValentesClientView({ initialValentes }: { initialValente
           </div>
 
           <Link 
-            href="/admin/valentes/novo"
+            // UPDATED ROUTE: Points to the new creation page
+            href="/admin/valentes/create"
             className="bg-brand text-white hover:brightness-125 hud-title-md text-2xl px-10 py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.4)] flex items-center leading-none"
           >
             + RECRUTAR
@@ -94,7 +97,8 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                   className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-700 opacity-100" 
                 />
                 
-                <div className="absolute top-3 left-3 right-3 flex justify-between items-center gap-2">
+                {/* HUD BADGES OVERLAY */}
+                <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
                   <div 
                     className="px-3 h-8 flex items-center justify-center rounded-full backdrop-blur-2xl shadow-lg transition-all w-fit min-w-[60px]"
                     style={{ 
@@ -107,29 +111,49 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                      </span>
                   </div>
 
-                  <div 
-                    className="px-3 h-8 flex items-center justify-center gap-2 rounded-full backdrop-blur-md transition-all group-hover:bg-mission/10"
-                    style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)' }} 
-                  >
-                    <img 
-                      src={lvlInfo.icon} 
-                      alt="" 
-                      className="w-4 h-4 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" 
-                    />
-                    <span className="hud-label-tactical text-white text-[10px] font-bold italic-none leading-none opacity-90">
-                      {lvlInfo.name.split(' ').pop()}
-                    </span>
+                  <div className="flex flex-col items-end gap-2 pointer-events-auto">
+                    {/* LEVEL BADGE */}
+                    <div 
+                      className="px-3 h-8 flex items-center justify-center gap-2 rounded-full backdrop-blur-md transition-all bg-black/40 border border-white/10"
+                    >
+                      <img 
+                        src={lvlInfo.icon} 
+                        alt="" 
+                        className="w-4 h-4 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" 
+                      />
+                      <span className="hud-label-tactical text-white text-[10px] font-bold italic-none leading-none opacity-90 uppercase">
+                        {lvlInfo.name.split(' ').pop()}
+                      </span>
+                    </div>
+
+                    {/* QUICK EDIT SHORTCUT */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault(); // Prevents the Link from triggering
+                        router.push(`/admin/valentes/${valente.id}/edit`);
+                      }}
+                      className="px-3 h-8 flex items-center justify-center gap-2 rounded-full backdrop-blur-md transition-all bg-black/60 border border-brand/30 hover:bg-brand hover:border-brand text-brand hover:text-white opacity-0 group-hover:opacity-100 translate-y-[-10px] group-hover:translate-y-0"
+                      title="Calibrar Ficha"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                      </svg>
+                      <span className="hud-label-tactical text-[9px] font-bold italic-none leading-none uppercase tracking-widest">
+                        EDITAR
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>
 
               <div className="p-5 flex flex-col flex-1 bg-gradient-to-b from-transparent to-black/40">
-                <h3 className="hud-title-md text-3xl text-white mb-1 truncate group-hover:text-brand transition-colors leading-tight">
+                <h3 className="hud-title-md text-3xl text-white mb-1 truncate group-hover:text-brand transition-colors leading-tight uppercase">
                   {valente.name}
                 </h3>
                 
                 <div className="flex justify-between items-end mt-4 mb-3">
-                  <span className="hud-label-tactical text-[9px] text-gray-500">HONRA & XP</span>
+                  <span className="hud-label-tactical text-[9px] text-gray-500 uppercase tracking-widest">HONRA & XP</span>
                   <span className="hud-value text-2xl text-white leading-none">
                     {valente.totalXP} <span className="text-[10px] text-gray-600 hud-label-tactical italic-none">/ {nextLvl ? nextLvl.minXP : 'MAX'}</span>
                   </span>
@@ -149,7 +173,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                 </div>
 
                 <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
-                   <span className="hud-label-tactical text-brand opacity-80 group-hover:opacity-100 transition-opacity text-[10px] font-bold">
+                   <span className="hud-label-tactical text-brand opacity-80 group-hover:opacity-100 transition-opacity text-[10px] font-bold uppercase tracking-widest">
                      ABRIR FICHA DE COMBATE →
                    </span>
                 </div>

@@ -1,55 +1,73 @@
 "use client";
 
-interface Medal {
-  name: string;
-  icon: string;
-  tier: string;
+import Image from "next/image";
+
+interface MedalRackProps {
+  // This matches the structure returned by Prisma include: { medals: { include: { medal: true } } }
+  medals: {
+    medal: {
+      name: string;
+      icon: string;
+      rarity: string;
+      description: string;
+    };
+    awardedAt: Date;
+  }[];
 }
 
-/**
- * MedalRack Component
- * Displays a hero's decorative achievements and honors.
- * Integrated with the HUD Typography System using a compact precision scale.
- */
-export default function MedalRack({ medals }: { medals: Medal[] }) {
+export default function MedalRack({ medals }: MedalRackProps) {
+  const totalSlots = 6;
+  const earnedCount = medals.length;
+  const emptySlots = Math.max(0, totalSlots - earnedCount);
+
   return (
-    <div className="bg-dark-bg/40 backdrop-blur-xl p-5 border border-white/5 rounded-xl shadow-xl relative overflow-hidden">
-      {/* CONTAINER 1: RACK_MASTER_SHELL */}
-      
-      <h3 className="hud-title-md text-xl text-white mb-4 border-b border-white/5 pb-2">
-        MEDALHAS DE HONRA
-      </h3>
-      
-      <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-        {/* CONTAINER 2: MEDAL_GRID_VIEWPORT */}
-        {medals.length > 0 ? (
-          medals.map((medal, index) => (
-            <div 
-              key={index} 
-              className="group relative flex flex-col items-center"
-            >
-              {/* CONTAINER 3: TIERED_MEDAL_INSIGNIA */}
-              {/* Dynamic border and glow colors based on achievement tier. */}
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-lg transition-all group-hover:scale-110 border-2 ${
-                medal.tier === 'gold' ? 'bg-yellow-500/10 border-yellow-600 shadow-yellow-600/20' :
-                medal.tier === 'silver' ? 'bg-gray-400/10 border-gray-400 shadow-gray-400/20' :
-                'bg-amber-700/10 border-amber-800 shadow-amber-800/20'
-              }`}>
-                {medal.icon}
-              </div>
-              
-              {/* CONTAINER 4: TACTICAL_TOOLTIP */}
-              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/90 text-white hud-label-tactical text-[8px] px-2 py-1 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 italic-none">
-                {medal.name.toUpperCase()}
-              </div>
+    <div className="bg-dark-bg/40 border border-white/5 rounded-2xl p-6 backdrop-blur-md">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="hud-label-tactical text-xs text-gray-500 uppercase tracking-widest">
+          Medalhas de Honra
+        </h3>
+        <span className="hud-value text-brand text-sm">
+          {earnedCount}/{totalSlots}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+        {/* EARNED MEDALS */}
+        {medals.map((vm, index) => (
+          <div 
+            key={index}
+            className="group relative aspect-square flex items-center justify-center bg-white/5 border border-white/10 rounded-xl hover:border-brand/50 hover:bg-brand/5 transition-all cursor-help"
+          >
+            <div className="relative w-10 h-10 transition-transform group-hover:scale-110">
+              <Image 
+                src={vm.medal.icon} 
+                alt={vm.medal.name} 
+                fill 
+                className="object-contain drop-shadow-[0_0_8px_rgba(17,194,199,0.3)]"
+              />
             </div>
-          ))
-        ) : (
-          /* CONTAINER 5: EMPTY_STATE_READOUT */
-          <p className="hud-label-tactical text-gray-600 text-[9px] italic-none">
-            NENHUMA CONQUISTA REGISTRADA NO SISTEMA
-          </p>
-        )}
+
+            {/* TOOLTIP */}
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 bg-dark-bg border border-white/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+              <p className="hud-label-tactical text-[10px] text-brand mb-1">{vm.medal.rarity}</p>
+              <p className="hud-title-md text-xs text-white mb-1">{vm.medal.name}</p>
+              <p className="text-[9px] text-gray-400 leading-tight mb-2">{vm.medal.description}</p>
+              <p className="text-[8px] text-gray-500 border-t border-white/5 pt-1 uppercase">
+                Conquistado em: {new Date(vm.awardedAt).toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          </div>
+        ))}
+
+        {/* EMPTY SLOTS */}
+        {[...Array(emptySlots)].map((_, i) => (
+          <div 
+            key={`empty-${i}`}
+            className="aspect-square flex items-center justify-center bg-black/20 border border-dashed border-white/5 rounded-xl grayscale opacity-30"
+          >
+            <div className="w-8 h-8 rounded-full bg-white/5" />
+          </div>
+        ))}
       </div>
     </div>
   );
