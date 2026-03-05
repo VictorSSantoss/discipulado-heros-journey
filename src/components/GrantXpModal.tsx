@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { mockMissions } from "@/lib/mockData";
-import { GET_XP_MULTIPLIER } from "@/constants/gameConfig"; // Added Import
+import { GET_XP_MULTIPLIER } from "@/constants/gameConfig";
 
 interface GrantXpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onGrant: (amount: number) => void;
+  // Atualizado para aceitar o motivo (reason) exigido pelo ProfileClient
+  onGrant: (amount: number, reason: string) => void; 
   valenteName: string;
 }
 
@@ -16,7 +17,6 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
   const [selectedMissionId, setSelectedMissionId] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("TODAS");
 
-  // Get multiplier data
   const multiplier = GET_XP_MULTIPLIER();
   const isActive = multiplier.factor > 1;
 
@@ -24,14 +24,12 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
 
   const categories = ["TODAS", "Hábitos Espirituais", "Evangelismo e Liderança", "Conhecimento", "Estrutura e Participação", "Eventos e Especiais"];
 
-  // Search filter logic
   const filteredMissions = mockMissions.filter(mission => {
     const matchesSearch = mission.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === "TODAS" || mission.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
-  // Find the currently selected mission to calculate preview
   const selectedMission = mockMissions.find(m => m.id === selectedMissionId);
   const baseXp = selectedMission 
     ? (selectedMission.xpReward === 'LVL UP DIRETO' ? 2000 : selectedMission.xpReward as number)
@@ -41,8 +39,9 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedMission) {
-      // Apply multiplier logic during the grant action
-      onGrant(finalXpPreview);
+      // Integração: Enviando o valor calculado e o Título da Missão como motivo
+      onGrant(finalXpPreview, `Missão: ${selectedMission.title}`);
+      
       setSelectedMissionId("");
       setSearchTerm("");
     }
@@ -119,7 +118,6 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
           )}
         </div>
 
-        {/* Action Trigger Footer with Multiplier Logic */}
         <div className="p-6 bg-dark-bg/80 border-t border-white/5">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             

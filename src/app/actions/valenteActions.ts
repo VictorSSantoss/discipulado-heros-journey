@@ -3,13 +3,12 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { GET_XP_MULTIPLIER } from "@/constants/gameConfig";
-import { PrismaClient } from '@prisma/client';
 
 /**
  * Updates total XP, grants medals based on milestones, and logs the transaction.
- * Handles the many-to-many relationship for medals and clears the server cache.
+ * Now accepts an optional 'customReason' to sync with the Manual Reward Modal.
  */
-export async function updateValenteXp(valenteId: string, baseAmount: number) {
+export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
     // 1. Calculation of the temporal multiplier
     const multiplier = GET_XP_MULTIPLIER();
@@ -31,8 +30,7 @@ export async function updateValenteXp(valenteId: string, baseAmount: number) {
 
     const newTotalXP = currentValente.totalXP + finalXp;
 
-    // 3. Identification of new medals based on milestones defined in the Medal table
-    // This assumes Medal records with type XP_MILESTONE are already seeded.
+    // 3. Identification of new medals based on milestones
     const alreadyEarnedMedalIds = currentValente.medals.map(vm => vm.medalId);
     
     const eligibleMedals = await prisma.medal.findMany({
@@ -43,7 +41,13 @@ export async function updateValenteXp(valenteId: string, baseAmount: number) {
       }
     });
 
-    // 4. Execution of the atomic update
+    // 4. Determine Log Reason
+    // Prioritizes the reason typed in the modal, fallback to multiplier logic
+    const finalReason = customReason || (multiplier.factor > 1 
+      ? `Treino Finalizado (${multiplier.label})` 
+      : "Treino Finalizado / Atividade");
+
+    // 5. Execution of the atomic update
     const updatedValente = await prisma.valente.update({
       where: { id: valenteId },
       data: {
@@ -51,12 +55,9 @@ export async function updateValenteXp(valenteId: string, baseAmount: number) {
         xpLogs: {
           create: {
             amount: finalXp,
-            reason: multiplier.factor > 1 
-              ? `Treino Finalizado (${multiplier.label})` 
-              : "Treino Finalizado / Ajuste de Atributos"
+            reason: finalReason
           }
         },
-        // Creation of entries in the ValenteMedal join table
         medals: {
           create: eligibleMedals.map(m => ({
             medal: { connect: { id: m.id } }
@@ -74,15 +75,16 @@ export async function updateValenteXp(valenteId: string, baseAmount: number) {
       }
     });
 
-    // 5. Revalidation of affected cache paths for immediate UI updates
+    // 6. Revalidation of affected cache paths for immediate UI updates
     revalidatePath(`/admin/valentes/${valenteId}`);
     revalidatePath(`/admin/valentes`);
+    revalidatePath(`/admin`); // Updates the Kingdom Dashboard counters
 
     return { 
       success: true, 
       newTotalXP: updatedValente.totalXP,
       newLogs: updatedValente.xpLogs,
-      newMedals: eligibleMedals // Provides data for frontend notifications
+      newMedals: eligibleMedals 
     };
   } catch (error) {
     console.error("Critical error during XP update process:", error);
@@ -137,19 +139,16 @@ export async function getPersonalRank(currentXp: number) {
 
 /**
  * Updates the Valente profile in the database.
- * Maps Ministry UI labels (Liderança, etc.) to Prisma Schema fields (forca, etc.)
  */
 export async function updateValenteProfile(valenteId: string, data: any) {
   try {
     await prisma.$transaction(async (tx) => {
-      // 1. Update core info, love languages, and map attributes
       await tx.valente.update({
         where: { id: valenteId },
         data: {
           name: data.name,
           structure: data.structure,
           description: data.description,
-          // MAPPING: Form (Ministry Keys) -> DB Schema (RPG Keys)
           attributes: {
             update: {
               forca: data.attributes["Liderança"],
@@ -172,7 +171,6 @@ export async function updateValenteProfile(valenteId: string, data: any) {
         }
       });
 
-      // 2. Update Holy Power (Upsert logic since they might not exist yet)
       for (const power of data.holyPower) {
         const existingPower = await tx.holyPower.findFirst({
           where: { valenteId, name: power.name }
@@ -212,12 +210,9 @@ export async function updateValenteProfile(valenteId: string, data: any) {
 
 /**
  * Forges a new Valente profile in the database.
- * Establishes initial relations for Attributes, Love Languages, and Holy Power.
  */
 export async function createValente(data: any) {
   try {
-    // TEMPORARY: Fetching a default user to satisfy the 'managedBy' relation. 
-    // Replace this with session.user.id once Auth is implemented.
     const defaultUser = await prisma.user.findFirst();
     if (!defaultUser) throw new Error("Nenhum Discipulador encontrado no sistema.");
 
@@ -228,7 +223,6 @@ export async function createValente(data: any) {
           structure: data.structure,
           description: data.description,
           userId: defaultUser.id,
-          // MAPPING: Form (Ministry Keys) -> DB Schema (RPG Keys)
           attributes: {
             create: {
               forca: data.attributes["Liderança"],
@@ -270,18 +264,16 @@ export async function createValente(data: any) {
 
 
 /**
- * Permanently deletes a Valente and all their associated records from the database.
+ * Permanently deletes a Valente and all their associated records.
  */
 export async function deleteValente(valenteId: string) {
   try {
-    // Note: If your Prisma schema does not have onDelete: Cascade set for relations
-    // like Attributes or HolyPower, you might need to delete them first inside a transaction.
-    // Assuming standard cascading is in place:
     await prisma.valente.delete({
       where: { id: valenteId },
     });
 
     revalidatePath("/admin/valentes");
+    revalidatePath("/admin");
     return { success: true };
   } catch (error) {
     console.error("Failed to delete profile:", error);

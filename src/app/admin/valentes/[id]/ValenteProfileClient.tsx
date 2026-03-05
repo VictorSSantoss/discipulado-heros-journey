@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
 import { updateValenteXp } from "@/app/actions/valenteActions";
 import { addCompanheiro } from "@/app/actions/companheiroActions";
+import { completeMission } from "@/app/actions/missionActions"; // Importação Integrada
 
 import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
@@ -22,11 +23,13 @@ import AddCompanionModal from "@/components/profile/AddCompanionModal";
 export default function ValenteProfileClient({ 
   initialValente, 
   initialCompanheiros,
+  availableMissions, // Propriedade Integrada
   ranking: initialRanking,
   personalRank 
 }: { 
   initialValente: any, 
   initialCompanheiros: any[],
+  availableMissions: any[], // Tipagem adicionada
   ranking: any[],
   personalRank: { rank: number, total: number } 
 }) {
@@ -38,6 +41,7 @@ export default function ValenteProfileClient({
   const [companheiros, setCompanheiros] = useState(initialCompanheiros);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [unlockedMedal, setUnlockedMedal] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false); // Estado de processamento
 
   const currentLevelInfo = valente 
     ? [...LEVEL_SYSTEM].reverse().find(lvl => valente.totalXP >= lvl.minXP) || LEVEL_SYSTEM[0] 
@@ -64,44 +68,73 @@ export default function ValenteProfileClient({
     }
   }, [mounted, valente, nextLevelInfo]);
 
-  const handleGrantXp = async (xpAmount: number) => {
+  /**
+   * MANUAL XP GRANT (Top Button)
+   * Agora processa o motivo (reason) para o Dashboard.
+   */
+  const handleGrantManualXp = async (xpAmount: number, reason: string) => {
+    setIsProcessing(true);
     if (valente) { 
-      const result = await updateValenteXp(valente.id, xpAmount);
+      const result = await updateValenteXp(valente.id, xpAmount, reason);
       
-      if (result.success && result.newTotalXP !== undefined) {
-        const newXp = result.newTotalXP;
-        
-        const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
-
-        if (newLevel.name !== prevLevel) {
-          setShowLevelUp(true);
-          setPrevLevel(newLevel.name);
-        }
-
-        if (result.newMedals && result.newMedals.length > 0) {
-          const specialMedal = result.newMedals.find(
-            (m: any) => m.rarity === "RARE" || m.rarity === "LEGENDARY"
-          );
-          if (specialMedal) {
-            setUnlockedMedal(specialMedal);
-          }
-        }
-
-        setValente({ 
-          ...valente, 
-          totalXP: newXp,
-          xpLogs: result.newLogs || [],
-          medals: result.newMedals ? [...valente.medals, ...result.newMedals.map((m: any) => ({ medal: m, awardedAt: new Date() }))] : valente.medals
-        }); 
+      if (result.success) {
+        refreshValenteData(result);
       }
     }
+    setIsProcessing(false);
     setIsGrantModalOpen(false);
+  };
+
+  /**
+   * MISSION COMPLETION (Bottom Cards)
+   * Integração com o Mural de Decretos dinâmico.
+   */
+  const handleCompleteMission = async (mission: any) => {
+    setIsProcessing(true);
+    const result = await completeMission(valente.id, mission.id, mission.xpReward, mission.title);
+    
+    if (result.success) {
+      // Atualização local imediata para feedback visual
+      const xpToAdd = mission.xpReward === 9999 ? 0 : mission.xpReward;
+      const newXp = valente.totalXP + xpToAdd;
+      
+      setValente({ ...valente, totalXP: newXp });
+      alert(`Missão "${mission.title}" concluída com sucesso!`);
+    }
+    setIsProcessing(false);
+  };
+
+  // Função auxiliar para atualizar estados após ganho de XP
+  const refreshValenteData = (result: any) => {
+    if (result.newTotalXP !== undefined) {
+      const newXp = result.newTotalXP;
+      const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
+
+      if (newLevel.name !== prevLevel) {
+        setShowLevelUp(true);
+        setPrevLevel(newLevel.name);
+      }
+
+      if (result.newMedals && result.newMedals.length > 0) {
+        const specialMedal = result.newMedals.find(
+          (m: any) => m.rarity === "RARE" || m.rarity === "LEGENDARY"
+        );
+        if (specialMedal) setUnlockedMedal(specialMedal);
+      }
+
+      setValente({ 
+        ...valente, 
+        totalXP: newXp,
+        xpLogs: result.newLogs || valente.xpLogs,
+        medals: result.newMedals ? [...valente.medals, ...result.newMedals.map((m: any) => ({ medal: m, awardedAt: new Date() }))] : valente.medals
+      }); 
+    }
   };
 
   const handleAddFriend = async (friendId: string) => {
     const result = await addCompanheiro(valente.id, friendId);
     if (result.success) {
-      // Server revalidation handles the update of initialCompanheiros
+      // Revalidação automática via server actions
     }
   };
 
@@ -146,6 +179,7 @@ export default function ValenteProfileClient({
           </div>
         </header>
 
+        {/* CONTAINER DE ATRIBUTOS E CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           <div className="flex flex-col gap-8">
@@ -306,6 +340,7 @@ export default function ValenteProfileClient({
           </div>
         </div>
 
+        {/* --- DYNAMIC MURAL DE DECRETOS INTEGRADO --- */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
           <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
             <span className="text-gray-700 text-2xl">⚔️</span>
@@ -313,31 +348,46 @@ export default function ValenteProfileClient({
 
           <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div>
-              <h2 className="hud-title-lg text-white flex items-center gap-4 m-0 uppercase">
+              <h2 className="hud-title-lg text-white flex items-center gap-4 m-0 uppercase text-3xl">
                 <img src={ICONS.missoes} className="w-12 h-12 object-contain" alt="" /> Mural de Decretos
               </h2>
-              <p className="hud-label-tactical mt-2 uppercase">Operações Ativas para {valente.name}</p>
+              <p className="hud-label-tactical mt-2 uppercase text-gray-500">Operações Ativas para {valente.name}</p>
             </div>
             <button className="hud-label-tactical text-gray-500 hover:text-white border border-white/5 hover:border-white/20 px-6 py-3 rounded-2xl transition-all bg-white/[0.02] uppercase">Histórico Completo →</button>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-8 rounded-2xl flex flex-col hover:border-mission/30 transition-all group relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/40 to-transparent"></div>
-              <div className="flex justify-between items-start mb-6">
-                <span className="bg-white/5 text-gray-400 border border-white/5 hud-label-tactical px-3 py-1 rounded-full text-[9px] italic-none uppercase tracking-widest">Hábitos</span>
-                <span className="hud-value text-mission text-3xl">+150 XP</span>
+            {availableMissions?.slice(0, 6).map((mission: any) => (
+              <div key={mission.id} className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-8 rounded-2xl flex flex-col hover:border-mission/30 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/40 to-transparent"></div>
+                <div className="flex justify-between items-start mb-6">
+                  <span className="bg-white/5 text-gray-500 border border-white/5 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest">{mission.type}</span>
+                  <span className="hud-value text-mission text-3xl">
+                    {mission.xpReward === 9999 ? 'LVL UP' : `+${mission.xpReward} XP`}
+                  </span>
+                </div>
+                <h3 className="hud-title-md text-white mb-3 uppercase tracking-wider">{mission.title}</h3>
+                <p className="font-barlow text-gray-500 text-sm mb-8 flex-1 leading-relaxed line-clamp-2">{mission.description}</p>
+                <button 
+                  onClick={() => handleCompleteMission(mission)}
+                  disabled={isProcessing}
+                  className="w-full bg-mission/10 border border-mission/20 hover:bg-mission hover:text-white text-mission hud-btn-text py-3 rounded-2xl transition-all uppercase tracking-widest disabled:opacity-50"
+                >
+                  {isProcessing ? "PROCESSANDO..." : "CONCLUIR MISSÃO"}
+                </button>
               </div>
-              <h3 className="hud-title-md text-white mb-3 uppercase tracking-wider">Jejum Matinal</h3>
-              <p className="font-barlow text-gray-400 text-sm mb-8 flex-1 leading-relaxed">Realizar um jejum até o meio-dia, dedicando o tempo da refeição à leitura da Palavra.</p>
-              <button className="w-full bg-mission/10 border border-mission/20 hover:bg-mission hover:text-white text-mission hud-btn-text py-3 rounded-2xl transition-all uppercase tracking-widest">Concluir Missão</button>
-            </div>
+            ))}
           </div>
         </section>
 
       </main>
 
-      <GrantXpModal isOpen={isGrantModalOpen} onClose={() => setIsGrantModalOpen(false)} onGrant={handleGrantXp} valenteName={valente.name} />
+      <GrantXpModal 
+        isOpen={isGrantModalOpen} 
+        onClose={() => setIsGrantModalOpen(false)} 
+        onGrant={handleGrantManualXp} // Chamando a função que agora aceita motivo
+        valenteName={valente.name} 
+      />
 
       <AddCompanionModal 
         isOpen={isAddFriendOpen} 
