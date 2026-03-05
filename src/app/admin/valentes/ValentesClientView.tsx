@@ -62,7 +62,6 @@ export default function ValentesClientView({ initialValentes }: { initialValente
           </div>
 
           <Link 
-            // UPDATED ROUTE: Points to the new creation page
             href="/admin/valentes/create"
             className="bg-brand text-white hover:brightness-125 hud-title-md text-2xl px-10 py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.4)] flex items-center leading-none"
           >

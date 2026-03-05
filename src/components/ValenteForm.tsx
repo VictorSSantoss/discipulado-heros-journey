@@ -283,34 +283,59 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                
+                {/* PROG. ATUAL with tactical arrows */}
                 <div className="space-y-3">
                   <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">Prog. Atual</label>
-                  <input 
-                    type="number" value={data.current} 
-                    onChange={(e) => handleHolyPowerChange(key, 'current', e.target.value)} 
-                    className="w-full bg-black/40 border border-white/20 p-4 text-white hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner" 
-                  />
+                  <div className="relative flex items-center">
+                    <input 
+                      type="number" value={data.current} 
+                      onChange={(e) => handleHolyPowerChange(key, 'current', e.target.value)} 
+                      className="w-full bg-black/40 border border-white/20 p-4 pr-16 text-white hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]" 
+                    />
+                    <div className="absolute top-0 right-0 h-full w-12 flex flex-col border-l border-white/10">
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Number(data.current) + 1)} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-tr-xl border-b border-white/10 transition-colors text-[10px]">▲</button>
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Math.max(0, Number(data.current) - 1))} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-br-xl transition-colors text-[10px]">▼</button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* META SEMANAL with tactical arrows */}
                 <div className="space-y-3">
                   <label className="hud-label-tactical text-gray-500 italic-none uppercase tracking-widest">Meta Semanal</label>
-                  <input 
-                    type="number" value={data.goal} 
-                    onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
-                    className="w-full bg-black/40 border border-white/20 p-4 text-gray-400 hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner" 
-                  />
+                  <div className="relative flex items-center">
+                    <input 
+                      type="number" value={data.goal} 
+                      onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
+                      className="w-full bg-black/40 border border-white/20 p-4 pr-16 text-gray-400 hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]" 
+                    />
+                    <div className="absolute top-0 right-0 h-full w-12 flex flex-col border-l border-white/10">
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'goal', Number(data.goal) + 1)} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-tr-xl border-b border-white/10 transition-colors text-[10px]">▲</button>
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'goal', Math.max(0, Number(data.goal) - 1))} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-br-xl transition-colors text-[10px]">▼</button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* STREAK with tactical arrows (XP Color Theme) */}
                 <div className="space-y-3">
                   <label className="hud-label-tactical text-xp italic-none flex items-center gap-2 uppercase tracking-widest">
                     STREAK <img src={ICONS.xp} className="w-4 h-4" alt="xp" />
                   </label>
-                  <input 
-                    type="number" value={data.streak} 
-                    onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
-                    className="w-full bg-black/40 border border-xp/40 p-4 text-xp hud-value text-4xl rounded-xl focus:border-xp outline-none shadow-[0_0_15px_rgba(234,88,12,0.15)]" 
-                  />
+                  <div className="relative flex items-center">
+                    <input 
+                      type="number" value={data.streak} 
+                      onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
+                      className="w-full bg-black/40 border border-xp/40 p-4 pr-16 text-xp hud-value text-4xl rounded-xl focus:border-xp outline-none shadow-[0_0_15px_rgba(234,88,12,0.15)] [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]" 
+                    />
+                    <div className="absolute top-0 right-0 h-full w-12 flex flex-col border-l border-xp/20">
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'streak', Number(data.streak) + 1)} className="flex-1 text-xp hover:bg-xp hover:text-white w-full flex items-center justify-center rounded-tr-xl border-b border-xp/20 transition-colors text-[10px]">▲</button>
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'streak', Math.max(0, Number(data.streak) - 1))} className="flex-1 text-xp hover:bg-xp hover:text-white w-full flex items-center justify-center rounded-br-xl transition-colors text-[10px]">▼</button>
+                    </div>
+                  </div>
                 </div>
+
                 <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-500 italic-none uppercase tracking-widest">Unidade</label>
+                  <label className="hud-label-tactical text-gray-500 italic-none uppercase tracking-widest">UNIDADE</label>
                   <input 
                     type="text" value={data.unit} 
                     onChange={(e) => handleHolyPowerChange(key, 'unit', e.target.value)} 

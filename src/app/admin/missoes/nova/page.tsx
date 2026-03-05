@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 /* GLOBAL CONFIGURATION IMPORTS */
-/* Imports core assets for data synchronization across the administration panel. */
 import { MISSION_CATEGORIES } from "@/constants/gameConfig";
+import { createMission } from "@/app/actions/missionActions";
 
 /**
  * NovaMissaoPage Component
@@ -18,29 +18,46 @@ export default function NovaMissaoPage() {
 
   /* FORM STATE MANAGEMENT */
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Hábitos Espirituais");
+  const [category, setCategory] = useState<string>(MISSION_CATEGORIES[0] || "Hábitos Espirituais");
   const [xpReward, setXpReward] = useState<number | string>(100);
   const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
    * FORM SUBMISSION HANDLER
    * Finalizes the creation process and redirects the administrator to the Mission Board.
    */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Nova Missão: "${title}" forjada com sucesso!`);
-    router.push('/admin/missoes');
+    if (!title) return;
+    
+    setIsSubmitting(true);
+
+    // Convert 'LVL UP DIRETO' to a recognizable integer for the database schema (e.g., 9999)
+    const finalXpReward = xpReward === 'LVL UP DIRETO' ? 9999 : Number(xpReward);
+
+    const result = await createMission({
+      title,
+      description,
+      xpReward: finalXpReward,
+      type: category,
+    });
+
+    if (result.success) {
+      router.push('/admin/missoes');
+      router.refresh();
+    } else {
+      alert("Falha ao forjar missão. O banco de dados bloqueou a operação.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
     /* CONTAINER 1: PAGE MASTER WRAPPER */
-    /* Establishes viewport boundaries and primary background theme. */
     <main className="min-h-screen p-6 max-w-4xl mx-auto text-white font-barlow">
       
       {/* CONTAINER 2: MISSION_HEADER_CONTROL */}
-      {/* Houses navigation shortcuts and the primary publication trigger. */}
-      <header className="w-full bg-dark-bg/60 backdrop-blur-xl border border-white/10 p-5 mb-10 rounded-2xl flex justify-between items-center shadow-2xl relative overflow-hidden">
-        {/* Visual highlight line for HUD depth */}
+      <header className="w-full bg-dark-bg/60 backdrop-blur-xl border border-white/10 p-5 mb-10 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/40 to-transparent"></div>
         
         <div className="flex items-center gap-6">
@@ -54,18 +71,17 @@ export default function NovaMissaoPage() {
         </div>
         <button 
           onClick={handleSubmit}
-          className="bg-brand hover:brightness-110 text-dark-bg hud-title-md px-8 py-2 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.3)]"
+          disabled={isSubmitting}
+          className="bg-brand hover:brightness-110 text-dark-bg hud-title-md px-8 py-2 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.3)] disabled:opacity-50"
         >
-          PUBLICAR MISSÃO
+          {isSubmitting ? "FORJANDO..." : "PUBLICAR MISSÃO"}
         </button>
       </header>
 
       {/* CONTAINER 3: MISSION_FORGE_FORM */}
-      {/* Primary input area for decree configuration. */}
-      <form onSubmit={handleSubmit} className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-10 rounded-2xl shadow-2xl space-y-10 relative overflow-hidden">
+      <form onSubmit={handleSubmit} className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-6 md:p-10 rounded-2xl shadow-2xl space-y-10 relative overflow-hidden">
         
         {/* CONTAINER 4: CORE_IDENTITY_GRID */}
-        {/* Groups title and category selection for high-density entry. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="flex flex-col">
             <label className="hud-label-tactical mb-3">TÍTULO DA QUEST</label>
@@ -96,16 +112,15 @@ export default function NovaMissaoPage() {
         </div>
 
         {/* CONTAINER 5: REWARD_CONFIGURATION_WRAPPER */}
-        {/* Defines the XP payout or level-up status for the mission. */}
         <div className="flex flex-col max-w-sm">
           <label className="hud-label-tactical mb-3">RECOMPENSA DE EXPERIÊNCIA</label>
           <div className="flex gap-4 items-center bg-dark-bg/60 p-3 rounded-2xl border border-white/5 shadow-inner">
             <input 
               type="number" 
               value={xpReward === 'LVL UP DIRETO' ? '' : xpReward}
-              onChange={(e) => setXpReward(parseInt(e.target.value))}
+              onChange={(e) => setXpReward(parseInt(e.target.value) || 0)}
               disabled={xpReward === 'LVL UP DIRETO'}
-              className="bg-dark-bg/80 border border-white/10 p-3 rounded-lg text-xp hud-value outline-none focus:border-xp/50 w-28 disabled:opacity-20 transition-all"
+              className="bg-dark-bg/80 border border-white/10 p-3 rounded-lg text-xp hud-value outline-none focus:border-xp/50 w-28 disabled:opacity-20 transition-all [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]"
             />
             <span className="hud-title-md text-xp/50">XP</span>
             <div className="h-10 w-px bg-white/5 mx-2"></div>
@@ -124,7 +139,6 @@ export default function NovaMissaoPage() {
         </div>
 
         {/* CONTAINER 6: INSTRUCTION_ENTRY_WRAPPER */}
-        {/* Large text area for detailed character instructions. */}
         <div className="flex flex-col">
           <label className="hud-label-tactical mb-3">INSTRUÇÕES PARA O VALENTE</label>
           <textarea 
