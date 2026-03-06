@@ -157,7 +157,6 @@ export const mockValentes: Valente[] = [
 ];
 
 export const mockMissions: Mission[] = [
-  // ... (Missions remain unchanged)
   { id: 'm1', title: 'LER 1 CAPÍTULO DA BÍBLIA', xpReward: 50, category: 'Hábitos Espirituais' },
   { id: 'm2', title: 'LER 5 CAPÍTULOS DA BÍBLIA', xpReward: 300, category: 'Hábitos Espirituais' },
   { id: 'm3', title: 'ORAR POR 15 MINUTOS', xpReward: 50, category: 'Hábitos Espirituais' },

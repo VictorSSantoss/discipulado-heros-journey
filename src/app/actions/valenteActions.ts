@@ -4,10 +4,6 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { GET_XP_MULTIPLIER } from "@/constants/gameConfig";
 
-/**
- * Updates total XP, grants reliquias based on milestones, and logs the transaction.
- * Accepts an optional 'customReason' to sync with the Manual Reward Modal.
- */
 export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
     const multiplier = GET_XP_MULTIPLIER();
@@ -60,13 +56,18 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
       }
     });
 
+    // CRITICAL FIX: Tell Next.js to refresh the data
+    revalidatePath(`/admin/valentes/${valenteId}`);
+    revalidatePath("/admin/valentes");
+
     return { 
       success: true, 
       newTotalXP: updated.totalXP, 
-      newRelics: newlyEarned 
+      newMedals: newlyEarned, // Renamed to match Client expectations
+      newLogs: updated.xpLogs   // Added for instant log update
     };
   } catch (error) {
-    console.error(error);
+    console.error("XP Update Error:", error);
     return { success: false };
   }
 }

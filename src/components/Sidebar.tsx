@@ -9,23 +9,52 @@ import { SIDEBAR_MENU, ICONS } from '@/constants/gameConfig';
 /**
  * Sidebar Component
  * Persistent navigation terminal for the Hero's Journey administration.
- * Responsive: Slides out on mobile via a tactical trigger.
+ * Features a scroll-reactive mobile trigger that fades out on down-scroll.
  */
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  
+  // SCROLL-REACTIVE STATES
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
-  // Close sidebar automatically when the route changes (on mobile)
+  // Close sidebar on route change
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
 
+  // SCROLL OBSERVER LOGIC
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Logic: Show if scrolling up OR at the very top (buffer of 10px)
+      // Hide if scrolling down AND past 50px (to avoid jitter at the top)
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        setIsVisible(false); // Scrolling Down
+      } else {
+        setIsVisible(true); // Scrolling Up
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
+
   return (
     <>
-      {/* 1. MOBILE TRIGGER (Hamburger Button) */}
+      {/* 1. MOBILE TRIGGER (Hamburger Button with Dynamic Visibility) */}
       <button 
         onClick={() => setIsOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-dark-bg/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-[0_0_15px_rgba(17,194,199,0.2)] active:scale-95 transition-all"
+        className={`
+          lg:hidden fixed top-4 left-4 z-50 p-3 bg-dark-bg/80 backdrop-blur-xl 
+          border border-white/10 rounded-xl shadow-[0_0_15px_rgba(17,194,199,0.2)] 
+          active:scale-95 transition-all duration-500 ease-in-out
+          ${isVisible || isOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10 pointer-events-none"}
+        `}
       >
         <div className="w-6 h-5 flex flex-col justify-between">
           <span className="w-full h-0.5 bg-brand"></span>

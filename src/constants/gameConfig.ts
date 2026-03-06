@@ -13,7 +13,8 @@ export const ICONS = {
   leitura: '/images/leitura-icon.svg',
   jejum: '/images/jejum-icon.svg',
   search: '/images/search-icon.svg',
-  codex: '/images/codex-icon.svg'
+  codex: '/images/codex-icon.svg',
+  voltar: "/images/back-arrow.svg",
 } as const;
 
 export const SIDEBAR_MENU = [

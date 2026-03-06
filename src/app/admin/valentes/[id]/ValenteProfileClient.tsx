@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // Added for ranking sync
 import { motion, AnimatePresence } from "framer-motion";
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
 import { updateValenteXp } from "@/app/actions/valenteActions";
@@ -45,6 +46,7 @@ export default function ValenteProfileClient({
   personalRank: { rank: number, total: number },
   medalCatalog: any[]
 }) {
+  const router = useRouter(); // Hook initialized
   const [mounted, setMounted] = useState(false);
   const [xpWidth, setXpWidth] = useState(0); 
   const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
@@ -71,25 +73,23 @@ export default function ValenteProfileClient({
   const prevMedalsRef = useRef(initialValente?.medals || []);
 
   useEffect(() => {
-  const currentMedals = initialValente?.medals || [];
-  
-  if (currentMedals.length > prevMedalsRef.current.length) {
-    const prevIds = new Set(prevMedalsRef.current.map((m: any) => m.medal.id));
+    const currentMedals = initialValente?.medals || [];
     
-    // Explicitly type 'm' as any (since it comes from Prisma) then cast the result
-    const newlyEarned = currentMedals
-      .filter((m: any) => !prevIds.has(m.medal.id))
-      .map((m: any) => m.medal as Medal);
+    if (currentMedals.length > prevMedalsRef.current.length) {
+      const prevIds = new Set(prevMedalsRef.current.map((m: any) => m.medal?.id || m.reliquia?.id));
+      
+      const newlyEarned = currentMedals
+        .filter((m: any) => !prevIds.has(m.medal?.id || m.reliquia?.id))
+        .map((m: any) => (m.medal || m.reliquia) as Medal);
 
-    if (newlyEarned.length > 0) {
-      setMedalQueue((prev: Medal[]) => {
-        // Explicitly type 'm' here as Medal
-        const currentQueueIds = new Set(prev.map((m: Medal) => m.id));
-        const uniqueNew = newlyEarned.filter((m: Medal) => !currentQueueIds.has(m.id));
-        return [...prev, ...uniqueNew];
-      });
+      if (newlyEarned.length > 0) {
+        setMedalQueue((prev: Medal[]) => {
+          const currentQueueIds = new Set(prev.map((m: Medal) => m.id));
+          const uniqueNew = newlyEarned.filter((m: Medal) => !currentQueueIds.has(m.id));
+          return [...prev, ...uniqueNew];
+        });
+      }
     }
-  }
     
     prevMedalsRef.current = currentMedals;
     setValente(initialValente);
@@ -107,49 +107,64 @@ export default function ValenteProfileClient({
 
   /**
    * CONSOLIDATED REFRESH LOGIC
+   * Maps database 'reliquias' to the UI format and updates local state.
    */
   const refreshValenteData = (result: any) => {
     if (result.newTotalXP !== undefined) {
       const newXp = result.newTotalXP;
       
+      // Check for Level Up
       const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
       if (newLevel.name !== prevLevel) {
         setShowLevelUp(true);
         setPrevLevel(newLevel.name);
       }
 
+      // Handle new medals/relics in the queue
       if (result.newMedals && result.newMedals.length > 0) {
         setMedalQueue((prev: Medal[]) => {
           const existingIds = new Set(prev.map((m: Medal) => m.id));
-          const uniqueNew = result.newMedals.filter((m: Medal) => !existingIds.has(m.id));
+          const uniqueNew = result.newMedals.filter((m: any) => !existingIds.has(m.id));
           return [...prev, ...uniqueNew];
         });
       }
 
-      setValente({ 
-        ...valente, 
+      // Update the local valente object
+      setValente((prev: any) => ({ 
+        ...prev, 
         totalXP: newXp,
-        xpLogs: result.newLogs || valente.xpLogs,
+        xpLogs: result.newLogs || prev.xpLogs,
+        // Map reliquias to the "medals" format the UI expects
         medals: result.newMedals 
-          ? [...valente.medals, ...result.newMedals.map((m: any) => ({ medal: m, awardedAt: new Date() }))] 
-          : valente.medals
-      }); 
+          ? [...prev.medals, ...result.newMedals.map((m: any) => ({ reliquia: m, awardedAt: new Date() }))] 
+          : prev.medals
+      })); 
     }
   };
 
   /**
    * 🛡️ MANUAL XP GRANT
+   * Triggers the server action and forces a router refresh for ranking sync.
    */
   const handleGrantManualXp = async (xpAmount: number, reason: string) => {
     setIsProcessing(true);
-    if (valente) { 
-      const result = await updateValenteXp(valente.id, xpAmount, reason);
-      if (result.success) {
-        refreshValenteData(result);
+    try {
+      if (valente) { 
+        const result = await updateValenteXp(valente.id, xpAmount, reason);
+        if (result.success) {
+          // 1. Update local state for instant feedback
+          refreshValenteData(result);
+          
+          // 2. Force Next.js to re-fetch server props (like Ranking)
+          router.refresh(); 
+        }
       }
+    } catch (err) {
+      console.error("Failed to grant XP:", err);
+    } finally {
+      setIsProcessing(false);
+      setIsGrantModalOpen(false);
     }
-    setIsProcessing(false);
-    setIsGrantModalOpen(false);
   };
 
   /**
@@ -161,9 +176,8 @@ export default function ValenteProfileClient({
     
     if (result.success) {
       const xpToAdd = mission.xpReward === 9999 ? 0 : mission.xpReward;
-      // The local XP update provides instant feedback, 
-      // while the "Radar" useEffect above handles the medal popups
-      setValente({ ...valente, totalXP: valente.totalXP + xpToAdd });
+      setValente((prev: any) => ({ ...prev, totalXP: prev.totalXP + xpToAdd }));
+      router.refresh(); // Sync potential ranking changes
     }
     setIsProcessing(false);
   };
@@ -171,7 +185,7 @@ export default function ValenteProfileClient({
   const handleAddFriend = async (friendId: string) => {
     const result = await addCompanheiro(valente.id, friendId);
     if (result.success) {
-      // Automatic revalidation
+      router.refresh();
     }
   };
 
@@ -199,9 +213,33 @@ export default function ValenteProfileClient({
       <main className="min-h-screen p-6 max-w-7xl mx-auto flex flex-col pb-40 text-white font-barlow">
         
         <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <Link href="/admin/valentes" className="hud-label-tactical flex items-center gap-3 hover:text-brand transition-all">
-            <span>←</span> VOLTAR AO QUARTEL
+          <Link 
+            href="/admin/valentes" 
+            className="group relative flex items-center gap-3 px-5 h-10 transition-all rounded-full 
+                      bg-mission/5 backdrop-blur-md border border-mission/20 
+                      hover:bg-mission/10 hover:border-mission/40 
+                      hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] 
+                      duration-500 overflow-hidden"
+          >
+            {/* THE ICON - Scaled down for the capsule */}
+            <img 
+              src={ICONS.voltar} 
+              alt="" 
+              className="w-10 h-10 object-contain relative z-10 border-style: none; transition-transform duration-500 group-hover:-translate-x-1 opacity-80 group-hover:opacity-100" 
+            />
+            
+            {/* THE TEXT - Minimalist and sharp */}
+            <span className="
+              hud-label-tactical text-[11px] text-mission/80 group-hover:text-mission 
+              tracking-[0.15em] relative z-10 font-bold uppercase transition-colors
+            ">
+              Voltar
+            </span>
+
+            {/* INTERNAL SCAN-LINE (Subtle detail) */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-mission/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
           </Link>
+
           <div className="flex gap-4">
             <Link href={`/admin/valentes/${valente.id}/edit`} className="bg-white/5 border border-white/10 text-white hover:border-brand/50 hud-btn-text px-8 py-2 rounded-2xl transition-all">
               EDITAR FICHA
@@ -239,7 +277,6 @@ export default function ValenteProfileClient({
               </div>
 
               <div className="relative w-full max-w-[220px] aspect-[3/4] flex items-center justify-center bg-dark-bg/60 border border-white/10 rounded-xl shadow-2xl overflow-hidden group">
-                {/* Avatar Uploader handles the image and upload logic */}
                 <div className="absolute inset-0 z-10">
                   <AvatarUploader 
                     valenteId={valente.id} 
@@ -358,6 +395,7 @@ export default function ValenteProfileClient({
           </div>
         </div>
 
+        {/* Missions Section */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
           <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
             <span className="text-gray-700 text-2xl">⚔️</span>
@@ -423,11 +461,9 @@ export default function ValenteProfileClient({
       </AnimatePresence>
 
       <AnimatePresence>
-        {/* Renders the first medal in the queue. 
-            When it finishes and calls onClose, the queue shifts to the next medal */}
         {medalQueue.length > 0 && (
           <AchievementToast 
-            key={medalQueue[0].id} // Key forces animation to reset for each medal
+            key={medalQueue[0].id}
             medal={medalQueue[0]} 
             themeColor={theme.hex} 
             onClose={() => setMedalQueue(prev => prev.slice(1))} 
