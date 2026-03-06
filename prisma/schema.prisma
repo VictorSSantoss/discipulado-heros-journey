@@ -47,7 +47,7 @@ model Valente {
   id          String   @id @default(uuid())
   name        String
   image       String?  // Nullable, used for avatar displays
-  totalXP      Int      @default(0)
+  totalXP     Int      @default(0)
   structure   String   // e.g., "GAD", "IMS", "LOUVOR"
   description String?  @db.Text // Historical lore and chronicled feats
 
@@ -67,11 +67,11 @@ model Valente {
   friendIds   String[] @default([]) 
 
   // Many-to-Many Relations
-  medals        ValenteMedal[]
-  missions      ValenteMission[]
+  reliquias   ValenteReliquia[] // REPLACED: medals
+  missions    ValenteMission[]
   
   // Audit Trail (One-to-Many)
-  xpLogs        XpLog[]
+  xpLogs      XpLog[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -121,33 +121,35 @@ model HolyPower {
 }
 
 // -----------------------------------------------------------------------------
-// GAMEPLAY MECHANICS (Achievement & Progression Systems)
+// GAMEPLAY MECHANICS (Relics, Achievements & Progression)
 // -----------------------------------------------------------------------------
 
-model Medal {
+model Reliquia {
   id          String         @id @default(uuid())
   name        String
   description String
-  icon        String         // Storage path for the SVG asset
+  icon        String         // Storage path for the SVG/Image asset
   rarity      String         // e.g., "COMMON", "RARE", "LEGENDARY"
   
-  // Fields for milestone automation logic
-  type        String         // Categorization (e.g., "XP_MILESTONE", "MISSION_COUNT")
-  requirement Int            // Numerical value needed to trigger the award (e.g., 5000 XP)
+  // DYNAMIC RULES ENGINE
+  triggerType String         // e.g., "XP_MILESTONE", "HABIT_STREAK", "MISSION_COUNT", "MANUAL"
+  ruleParams  Json           // JSON box holding the exact criteria (e.g., {"habit": "Jejum", "streak": 21})
   
+  createdAt   DateTime       @default(now())
+
   // Many-to-Many relationship through the join table
-  valentes    ValenteMedal[]
+  valentes    ValenteReliquia[]
 }
 
-model ValenteMedal {
-  valenteId String
-  medalId   String
-  awardedAt DateTime @default(now())
+model ValenteReliquia {
+  valenteId  String
+  reliquiaId String
+  awardedAt  DateTime @default(now())
 
-  valente   Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
-  medal     Medal    @relation(fields: [medalId], references: [id], onDelete: Cascade)
+  valente    Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+  reliquia   Reliquia @relation(fields: [reliquiaId], references: [id], onDelete: Cascade)
 
-  @@id([valenteId, medalId])
+  @@id([valenteId, reliquiaId])
 }
 
 model Mission {
@@ -156,6 +158,7 @@ model Mission {
   description String           @db.Text
   xpReward    Int
   type        String           // Mission categorization (HABIT, EVENT, TASK)
+  createdAt   DateTime         @default(now())
 
   // Many-to-Many relationship through the join table
   valentes    ValenteMission[]
@@ -165,7 +168,8 @@ model ValenteMission {
   id          String    @id @default(uuid())
   valenteId   String
   missionId   String
-  status      String    @default("ACTIVE") // State control (ACTIVE, COMPLETED, FAILED)
+  status      String    @default("ACTIVE") 
+  createdAt   DateTime  @default(now()) 
   completedAt DateTime?
 
   valente     Valente   @relation(fields: [valenteId], references: [id], onDelete: Cascade)

@@ -1,6 +1,6 @@
 "use client";
 
-import { format } from "date-fns"; // Optional: npm install date-fns
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface LogEntry {

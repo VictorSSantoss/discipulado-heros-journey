@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
 import { updateValenteXp } from "@/app/actions/valenteActions";
 import { addCompanheiro } from "@/app/actions/companheiroActions";
-import { completeMission } from "@/app/actions/missionActions"; // Importação Integrada
+import { completeMission } from "@/app/actions/missionActions"; 
 
 import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
@@ -20,18 +20,29 @@ import LevelUpNotification from "@/components/LevelUpNotification";
 import AchievementToast from "@/components/AchievementToast";
 import AddCompanionModal from "@/components/profile/AddCompanionModal";
 
+interface Medal {
+  id: string;
+  name: string;
+  icon: string;
+  rarity: string;
+  description: string;
+  requirement: number;
+}
+
 export default function ValenteProfileClient({ 
   initialValente, 
   initialCompanheiros,
-  availableMissions, // Propriedade Integrada
+  availableMissions,
   ranking: initialRanking,
-  personalRank 
+  personalRank,
+  medalCatalog
 }: { 
   initialValente: any, 
   initialCompanheiros: any[],
-  availableMissions: any[], // Tipagem adicionada
+  availableMissions: any[],
   ranking: any[],
-  personalRank: { rank: number, total: number } 
+  personalRank: { rank: number, total: number },
+  medalCatalog: any[]
 }) {
   const [mounted, setMounted] = useState(false);
   const [xpWidth, setXpWidth] = useState(0); 
@@ -40,21 +51,46 @@ export default function ValenteProfileClient({
   const [valente, setValente] = useState(initialValente);
   const [companheiros, setCompanheiros] = useState(initialCompanheiros);
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [unlockedMedal, setUnlockedMedal] = useState<any>(null);
-  const [isProcessing, setIsProcessing] = useState(false); // Estado de processamento
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Holds medals to be displayed one after another
+  const [medalQueue, setMedalQueue] = useState<Medal[]>([]);
 
   const currentLevelInfo = valente 
     ? [...LEVEL_SYSTEM].reverse().find(lvl => valente.totalXP >= lvl.minXP) || LEVEL_SYSTEM[0] 
     : LEVEL_SYSTEM[0];
 
   const [prevLevel, setPrevLevel] = useState(currentLevelInfo.name);
-
   const currentLevelIndex = LEVEL_SYSTEM.findIndex(lvl => lvl.name === currentLevelInfo.name);
   const nextLevelInfo = LEVEL_SYSTEM[currentLevelIndex + 1];
 
   useEffect(() => { setMounted(true); }, []);
 
+  // Detects new medals even if awarded via Missions/Server background
+  const prevMedalsRef = useRef(initialValente?.medals || []);
+
   useEffect(() => {
+  const currentMedals = initialValente?.medals || [];
+  
+  if (currentMedals.length > prevMedalsRef.current.length) {
+    const prevIds = new Set(prevMedalsRef.current.map((m: any) => m.medal.id));
+    
+    // Explicitly type 'm' as any (since it comes from Prisma) then cast the result
+    const newlyEarned = currentMedals
+      .filter((m: any) => !prevIds.has(m.medal.id))
+      .map((m: any) => m.medal as Medal);
+
+    if (newlyEarned.length > 0) {
+      setMedalQueue((prev: Medal[]) => {
+        // Explicitly type 'm' here as Medal
+        const currentQueueIds = new Set(prev.map((m: Medal) => m.id));
+        const uniqueNew = newlyEarned.filter((m: Medal) => !currentQueueIds.has(m.id));
+        return [...prev, ...uniqueNew];
+      });
+    }
+  }
+    
+    prevMedalsRef.current = currentMedals;
     setValente(initialValente);
     setCompanheiros(initialCompanheiros);
   }, [initialValente, initialCompanheiros]);
@@ -69,14 +105,44 @@ export default function ValenteProfileClient({
   }, [mounted, valente, nextLevelInfo]);
 
   /**
-   * MANUAL XP GRANT (Top Button)
-   * Agora processa o motivo (reason) para o Dashboard.
+   * CONSOLIDATED REFRESH LOGIC
+   */
+  const refreshValenteData = (result: any) => {
+    if (result.newTotalXP !== undefined) {
+      const newXp = result.newTotalXP;
+      
+      const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
+      if (newLevel.name !== prevLevel) {
+        setShowLevelUp(true);
+        setPrevLevel(newLevel.name);
+      }
+
+      if (result.newMedals && result.newMedals.length > 0) {
+        setMedalQueue((prev: Medal[]) => {
+          const existingIds = new Set(prev.map((m: Medal) => m.id));
+          const uniqueNew = result.newMedals.filter((m: Medal) => !existingIds.has(m.id));
+          return [...prev, ...uniqueNew];
+        });
+      }
+
+      setValente({ 
+        ...valente, 
+        totalXP: newXp,
+        xpLogs: result.newLogs || valente.xpLogs,
+        medals: result.newMedals 
+          ? [...valente.medals, ...result.newMedals.map((m: any) => ({ medal: m, awardedAt: new Date() }))] 
+          : valente.medals
+      }); 
+    }
+  };
+
+  /**
+   * 🛡️ MANUAL XP GRANT
    */
   const handleGrantManualXp = async (xpAmount: number, reason: string) => {
     setIsProcessing(true);
     if (valente) { 
       const result = await updateValenteXp(valente.id, xpAmount, reason);
-      
       if (result.success) {
         refreshValenteData(result);
       }
@@ -86,55 +152,25 @@ export default function ValenteProfileClient({
   };
 
   /**
-   * MISSION COMPLETION (Bottom Cards)
-   * Integração com o Mural de Decretos dinâmico.
+   * ⚔️ MISSION COMPLETION
    */
   const handleCompleteMission = async (mission: any) => {
     setIsProcessing(true);
     const result = await completeMission(valente.id, mission.id, mission.xpReward, mission.title);
     
     if (result.success) {
-      // Atualização local imediata para feedback visual
       const xpToAdd = mission.xpReward === 9999 ? 0 : mission.xpReward;
-      const newXp = valente.totalXP + xpToAdd;
-      
-      setValente({ ...valente, totalXP: newXp });
-      alert(`Missão "${mission.title}" concluída com sucesso!`);
+      // The local XP update provides instant feedback, 
+      // while the "Radar" useEffect above handles the medal popups
+      setValente({ ...valente, totalXP: valente.totalXP + xpToAdd });
     }
     setIsProcessing(false);
-  };
-
-  // Função auxiliar para atualizar estados após ganho de XP
-  const refreshValenteData = (result: any) => {
-    if (result.newTotalXP !== undefined) {
-      const newXp = result.newTotalXP;
-      const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
-
-      if (newLevel.name !== prevLevel) {
-        setShowLevelUp(true);
-        setPrevLevel(newLevel.name);
-      }
-
-      if (result.newMedals && result.newMedals.length > 0) {
-        const specialMedal = result.newMedals.find(
-          (m: any) => m.rarity === "RARE" || m.rarity === "LEGENDARY"
-        );
-        if (specialMedal) setUnlockedMedal(specialMedal);
-      }
-
-      setValente({ 
-        ...valente, 
-        totalXP: newXp,
-        xpLogs: result.newLogs || valente.xpLogs,
-        medals: result.newMedals ? [...valente.medals, ...result.newMedals.map((m: any) => ({ medal: m, awardedAt: new Date() }))] : valente.medals
-      }); 
-    }
   };
 
   const handleAddFriend = async (friendId: string) => {
     const result = await addCompanheiro(valente.id, friendId);
     if (result.success) {
-      // Revalidação automática via server actions
+      // Automatic revalidation
     }
   };
 
@@ -179,7 +215,6 @@ export default function ValenteProfileClient({
           </div>
         </header>
 
-        {/* CONTAINER DE ATRIBUTOS E CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           <div className="flex flex-col gap-8">
@@ -187,25 +222,11 @@ export default function ValenteProfileClient({
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
               
               <div className="relative flex items-center justify-center w-full mb-6 mt-2">
-                <div 
-                  className="h-[1px] flex-1 max-w-[60px] opacity-60 mr-4" 
-                  style={{ background: `linear-gradient(to left, ${theme.hex}, transparent)` }}
-                />
-                <h1 
-                  className="hud-title-lg text-white text-center m-0 uppercase tracking-[0.15em] relative z-10"
-                  style={{ textShadow: `
-                    0 0 10px ${theme.hex}FF, 
-                    0 0 20px ${theme.hex}AA, 
-                    0 0 40px ${theme.hex}60, 
-                    0 0 70px ${theme.hex}30
-                  ` }}
-                >
+                <div className="h-[1px] flex-1 max-w-[60px] opacity-60 mr-4" style={{ background: `linear-gradient(to left, ${theme.hex}, transparent)` }} />
+                <h1 className="hud-title-lg text-white text-center m-0 uppercase tracking-[0.15em] relative z-10" style={{ textShadow: `0 0 10px ${theme.hex}FF, 0 0 20px ${theme.hex}AA, 0 0 40px ${theme.hex}60, 0 0 70px ${theme.hex}30` }}>
                   {valente.name}
                 </h1>
-                <div 
-                  className="h-[1px] flex-1 max-w-[60px] opacity-60 ml-4" 
-                  style={{ background: `linear-gradient(to right, ${theme.hex}, transparent)` }}
-                />
+                <div className="h-[1px] flex-1 max-w-[60px] opacity-60 ml-4" style={{ background: `linear-gradient(to right, ${theme.hex}, transparent)` }} />
               </div>
 
               <div className="flex items-center gap-2 mb-8 bg-brand/5 border border-brand/20 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.05)]">
@@ -217,19 +238,8 @@ export default function ValenteProfileClient({
               </div>
 
               <div className="relative w-full max-w-[220px] aspect-[3/4] flex items-center justify-center bg-dark-bg/60 border border-white/10 rounded-xl shadow-2xl overflow-hidden group">
-                <img 
-                  src={valente.image || '/images/man-silhouette.svg'} 
-                  className="w-full h-full object-cover p-5 opacity-90 transition-opacity group-hover:opacity-100 z-10" 
-                  alt=""
-                />
-                <div 
-                  className="absolute left-0 right-0 h-[1.5px] z-[15] pointer-events-none animate-scan-hologram mix-blend-screen"
-                  style={{ 
-                    background: `linear-gradient(90deg, transparent, ${theme.hex}, transparent)`,
-                    boxShadow: `0 0 20px ${theme.hex}`,
-                    width: '100%',
-                  }}
-                />
+                <img src={valente.image || '/images/man-silhouette.svg'} className="w-full h-full object-cover p-5 opacity-90 transition-opacity group-hover:opacity-100 z-10" alt="" />
+                <div className="absolute left-0 right-0 h-[1.5px] z-[15] pointer-events-none animate-scan-hologram mix-blend-screen" style={{ background: `linear-gradient(90deg, transparent, ${theme.hex}, transparent)`, boxShadow: `0 0 20px ${theme.hex}`, width: '100%' }} />
                 <div className="absolute inset-4 border border-solid z-20 pointer-events-none" style={{ borderColor: theme.hex }}>
                   <div className="absolute inset-0" style={{ boxShadow: `inset 0 0 15px ${theme.hex}44` }} />
                 </div>
@@ -251,7 +261,6 @@ export default function ValenteProfileClient({
                   <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="12" strokeLinecap="round" />
                   <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="url(#heroXpGradient)" strokeWidth="12" strokeLinecap="round" strokeDasharray={arcLength} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out"/>
                 </svg>
-
                 <div className="absolute inset-0 flex flex-col items-center justify-start">
                   <img src={currentLevelInfo.icon} alt={currentLevelInfo.name} className="w-16 h-16 object-contain -mt-24 animate-bounce-slow" />
                   <span className="hud-title-md text-white mt-1">{currentLevelInfo.name}</span>
@@ -289,7 +298,7 @@ export default function ValenteProfileClient({
               </p>
             </div>
 
-            <MedalRack medals={valente.medals || []} />
+            <MedalRack medals={valente.medals || []} catalog={medalCatalog} currentXp={valente.totalXP} />
           </div>
 
           <div className="flex flex-col gap-8">
@@ -304,7 +313,7 @@ export default function ValenteProfileClient({
             </div>
             
             <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden flex flex-col max-h-[380px]">
-              <div className="flex-1 overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-white/5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/40 transition-colors">
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 <TavernaPreview ranking={initialRanking} />
               </div>
             </div>
@@ -315,6 +324,7 @@ export default function ValenteProfileClient({
               <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Poder Santo</h2>
               <HolyPowerBars powers={valente.holyPower} />
             </div>
+            
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
               <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-6">
                 <h2 className="hud-title-md text-white uppercase m-0">Companheiros</h2>
@@ -325,27 +335,24 @@ export default function ValenteProfileClient({
                   + ADICIONAR
                 </button>
               </div>
-              <BestFriendsList 
-                friends={companheiros} 
-                currentValenteId={valente.id} 
-              />
+              <BestFriendsList friends={companheiros} currentValenteId={valente.id} />
             </div>
 
-            <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl flex-1 flex flex-col">
-              <h2 className="hud-title-md text-white border-b border-white/5 pb-4 mb-6 uppercase flex items-center justify-center gap-2">
+            <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl h-[400px] flex flex-col">
+              <h2 className="hud-title-md text-white border-b border-white/5 pb-4 mb-6 uppercase flex items-center justify-center gap-2 shrink-0">
                 <span className="text-emerald-500 animate-pulse">●</span> Crônicas de Batalha
               </h2>
-              <MissionLog logs={valente.xpLogs} />
+              <div className="flex-1 overflow-hidden">
+                <MissionLog logs={valente.xpLogs} />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* --- DYNAMIC MURAL DE DECRETOS INTEGRADO --- */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
           <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
             <span className="text-gray-700 text-2xl">⚔️</span>
           </div>
-
           <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div>
               <h2 className="hud-title-lg text-white flex items-center gap-4 m-0 uppercase text-3xl">
@@ -379,13 +386,12 @@ export default function ValenteProfileClient({
             ))}
           </div>
         </section>
-
       </main>
 
       <GrantXpModal 
         isOpen={isGrantModalOpen} 
         onClose={() => setIsGrantModalOpen(false)} 
-        onGrant={handleGrantManualXp} // Chamando a função que agora aceita motivo
+        onGrant={handleGrantManualXp} 
         valenteName={valente.name} 
       />
 
@@ -408,11 +414,14 @@ export default function ValenteProfileClient({
       </AnimatePresence>
 
       <AnimatePresence>
-        {unlockedMedal && (
+        {/* Renders the first medal in the queue. 
+            When it finishes and calls onClose, the queue shifts to the next medal */}
+        {medalQueue.length > 0 && (
           <AchievementToast 
-            medal={unlockedMedal} 
+            key={medalQueue[0].id} // Key forces animation to reset for each medal
+            medal={medalQueue[0]} 
             themeColor={theme.hex} 
-            onClose={() => setUnlockedMedal(null)} 
+            onClose={() => setMedalQueue(prev => prev.slice(1))} 
           />
         )}
       </AnimatePresence>

@@ -3,73 +3,69 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 
-interface AchievementToastProps {
-  medal: {
-    name: string;
-    description: string;
-    icon: string;
-    rarity: string;
-  };
-  themeColor: string;
-  onClose: () => void;
-}
-
-export default function AchievementToast({ medal, themeColor, onClose }: AchievementToastProps) {
-  // Auto-close the toast after 5 seconds
+export default function AchievementToast({ medal, themeColor, onClose }: any) {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000);
+    // Auto-close after 4 seconds to let the next medal in the queue pop up!
+    const timer = setTimeout(() => onClose(), 4000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  // Determine glow color based on rarity
-  const isLegendary = medal.rarity === "LEGENDARY";
-  const glowColor = isLegendary ? "#fbbf24" : themeColor; // Gold for legendary, theme for rare
+  // Built-in color dictionary
+  const RARITY_COLORS: Record<string, string> = {
+    COMMON: "#9CA3AF",    // Tactical Gray
+    RARE: "#10B981",      // Emerald Green
+    LEGENDARY: "#F59E0B"  // Premium Gold
+  };
+
+  const glowColor = RARITY_COLORS[medal.rarity] || themeColor || "#9CA3AF";
+
+  // Dynamic titles based on rarity
+  const rarityLabels: Record<string, string> = {
+    COMMON: "NOVA CONQUISTA",
+    RARE: "NOVA CONQUISTA RARA",
+    LEGENDARY: "NOVA CONQUISTA LENDÁRIA"
+  };
+  const titleLabel = rarityLabels[medal.rarity] || "NOVA CONQUISTA";
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.9 }}
+      initial={{ opacity: 0, y: 100, scale: 0.8 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 20, scale: 0.9 }}
-      className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] pointer-events-none"
+      exit={{ opacity: 0, scale: 0.8 }}
+      className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[500] pointer-events-none w-full max-w-sm px-4"
     >
       <div 
-        className="relative bg-dark-bg/95 backdrop-blur-xl border border-white/20 p-4 rounded-2xl shadow-2xl flex items-center gap-6 min-w-[320px] overflow-hidden"
-        style={{ boxShadow: `0 10px 40px -10px ${glowColor}80` }}
+        className="relative bg-dark-bg/95 backdrop-blur-2xl border-2 p-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-6 overflow-hidden"
+        style={{ 
+          boxShadow: `0 10px 40px -10px ${glowColor}60`,
+          borderColor: `${glowColor}40` 
+        }}
       >
-        {/* Animated Background Glow */}
         <div 
-          className="absolute inset-0 opacity-20 animate-pulse pointer-events-none"
+          className="absolute inset-0 opacity-10 animate-pulse"
           style={{ background: `radial-gradient(circle at 20% 50%, ${glowColor}, transparent 70%)` }}
         />
 
-        {/* Floating Icon */}
-        <motion.div 
-          initial={{ rotate: -15, scale: 0.5 }}
-          animate={{ rotate: 0, scale: 1 }}
-          transition={{ type: "spring", bounce: 0.6, duration: 0.8 }}
-          className="relative w-16 h-16 shrink-0 z-10"
-        >
+        <div className="relative w-20 h-20 shrink-0 z-10 flex items-center justify-center bg-black/40 rounded-2xl border border-white/5">
           <img 
             src={medal.icon} 
-            alt={medal.name} 
-            className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" 
+            alt="" 
+            className="w-full h-full object-contain p-2" 
+            style={{ filter: `drop-shadow(0 0 10px ${glowColor})` }}
           />
-        </motion.div>
+        </div>
 
-        {/* Text Payload */}
         <div className="flex flex-col z-10">
           <span 
-            className="hud-label-tactical text-[10px] uppercase tracking-[0.2em] mb-1 animate-pulse"
+            className="hud-label-tactical text-[10px] uppercase tracking-[0.2em] mb-1 font-bold"
             style={{ color: glowColor }}
           >
-            {isLegendary ? "NOVA CONQUISTA LENDÁRIA" : "NOVA CONQUISTA RARA"}
+            {titleLabel}
           </span>
-          <h4 className="hud-title-md text-white text-lg leading-none mb-1 shadow-black drop-shadow-md">
+          <h4 className="hud-title-md text-white text-xl leading-tight mb-1">
             {medal.name}
           </h4>
-          <p className="text-gray-400 text-xs font-barlow leading-tight">
+          <p className="text-gray-400 text-[11px] font-barlow leading-snug">
             {medal.description}
           </p>
         </div>

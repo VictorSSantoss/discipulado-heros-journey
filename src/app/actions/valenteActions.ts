@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { GET_XP_MULTIPLIER } from "@/constants/gameConfig";
 
 /**
- * Updates total XP, grants medals based on milestones, and logs the transaction.
- * Now accepts an optional 'customReason' to sync with the Manual Reward Modal.
+ * Updates total XP, grants reliquias based on milestones, and logs the transaction.
+ * Accepts an optional 'customReason' to sync with the Manual Reward Modal.
  */
 export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
@@ -14,12 +14,12 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
     const multiplier = GET_XP_MULTIPLIER();
     const finalXp = Math.floor(baseAmount * multiplier.factor);
 
-    // 2. Retrieval of current data and existing medals
+    // 2. Retrieval of current data and existing reliquias
     const currentValente = await prisma.valente.findUnique({
       where: { id: valenteId },
       include: { 
-        medals: {
-          include: { medal: true }
+        reliquias: {
+          include: { reliquia: true }
         }
       }
     });
@@ -30,19 +30,26 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
 
     const newTotalXP = currentValente.totalXP + finalXp;
 
-    // 3. Identification of new medals based on milestones
-    const alreadyEarnedMedalIds = currentValente.medals.map(vm => vm.medalId);
+    // 3. Identification of new reliquias based on milestones
+    const alreadyEarnedReliquiaIds = currentValente.reliquias.map(vr => vr.reliquiaId);
     
-    const eligibleMedals = await prisma.medal.findMany({
+    // Fetch all XP milestone reliquias not yet earned
+    const allMilestones = await prisma.reliquia.findMany({
       where: {
-        type: "XP_MILESTONE",
-        requirement: { lte: newTotalXP },
-        id: { notIn: alreadyEarnedMedalIds }
+        triggerType: "XP_MILESTONE",
+        id: { notIn: alreadyEarnedReliquiaIds }
       }
     });
 
+    // Filter by the target value stored in ruleParams JSON
+    const eligibleReliquias = allMilestones
+      .filter((r: any) => {
+        const params = r.ruleParams as any;
+        return params && params.target <= newTotalXP;
+      })
+      .sort((a: any, b: any) => (b.ruleParams as any).target - (a.ruleParams as any).target);
+
     // 4. Determine Log Reason
-    // Prioritizes the reason typed in the modal, fallback to multiplier logic
     const finalReason = customReason || (multiplier.factor > 1 
       ? `Treino Finalizado (${multiplier.label})` 
       : "Treino Finalizado / Atividade");
@@ -58,9 +65,9 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
             reason: finalReason
           }
         },
-        medals: {
-          create: eligibleMedals.map(m => ({
-            medal: { connect: { id: m.id } }
+        reliquias: {
+          create: eligibleReliquias.map(r => ({
+            reliquia: { connect: { id: r.id } }
           }))
         }
       },
@@ -69,8 +76,8 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
           orderBy: { createdAt: 'desc' },
           take: 10
         },
-        medals: {
-          include: { medal: true }
+        reliquias: {
+          include: { reliquia: true }
         }
       }
     });
@@ -78,13 +85,13 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
     // 6. Revalidation of affected cache paths for immediate UI updates
     revalidatePath(`/admin/valentes/${valenteId}`);
     revalidatePath(`/admin/valentes`);
-    revalidatePath(`/admin`); // Updates the Kingdom Dashboard counters
+    revalidatePath(`/admin`);
 
     return { 
       success: true, 
       newTotalXP: updatedValente.totalXP,
       newLogs: updatedValente.xpLogs,
-      newMedals: eligibleMedals 
+      newMedals: eligibleReliquias 
     };
   } catch (error) {
     console.error("Critical error during XP update process:", error);
@@ -207,7 +214,6 @@ export async function updateValenteProfile(valenteId: string, data: any) {
   }
 }
 
-
 /**
  * Forges a new Valente profile in the database.
  */
@@ -262,7 +268,6 @@ export async function createValente(data: any) {
   }
 } 
 
-
 /**
  * Permanently deletes a Valente and all their associated records.
  */
@@ -278,5 +283,19 @@ export async function deleteValente(valenteId: string) {
   } catch (error) {
     console.error("Failed to delete profile:", error);
     return { success: false };
+  }
+}
+
+/**
+ * Retrieves the complete catalog of Relíquias available in the Kingdom.
+ */
+export async function getAllReliquias() {
+  try {
+    return await prisma.reliquia.findMany({
+      orderBy: { createdAt: 'desc' } 
+    });
+  } catch (error) {
+    console.error("Failed to fetch reliquia catalog:", error);
+    return [];
   }
 }

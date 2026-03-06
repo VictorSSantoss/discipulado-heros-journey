@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link"; // Added Link
 import { ESTRUTURAS } from "@/constants/gameConfig";
 
 export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
@@ -36,12 +37,19 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
         }
       `}} />
 
+      {/* HEADER: Now with Navigation Button */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="hud-label-tactical text-gray-400 tracking-widest flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-brand animate-ping" />
           RANKING GLOBAL
         </h3>
-        <span className="hud-label-tactical text-[10px] opacity-30">TOP 5 VALENTES</span>
+        
+        <Link 
+          href="/taverna" 
+          className="hud-label-tactical text-[9px] text-brand/60 border border-brand/20 px-2 py-1 rounded-md hover:bg-brand/10 hover:text-brand hover:border-brand/40 transition-all uppercase tracking-tighter"
+        >
+          Ver Taverna →
+        </Link>
       </div>
 
       <div className="space-y-4">
@@ -52,7 +60,6 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
 
           const isTop3 = index < 3;
           const isChampion = index === 0;
-          const isRunnerUp = index === 1 || index === 2;
 
           return (
             <div 
@@ -65,12 +72,10 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
               {/* Champion Pulsing Glow Layer */}
               {isChampion && (
                 <>
-                  {/* Base Glow */}
                   <div 
                     className="absolute inset-0 opacity-10 blur-lg rounded-xl z-0"
                     style={{ backgroundColor: structureData.color }}
                   />
-                  {/* Pulsing Energy Layer */}
                   <div 
                     className="absolute inset-0 animate-glow-pulse rounded-xl z-0"
                     style={{ backgroundColor: structureData.color }}
@@ -116,17 +121,17 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
               </div>
 
               <div className="text-right relative z-10">
-              <div className="flex flex-col">
-                <span className={`hud-value text-sm transition-all duration-500
-                  ${isChampion ? 'text-brand drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'text-white'}
-                  ${index === 1 ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.7)]' : ''}
-                  ${index === 2 ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]' : ''}
-                `}>
-                  {player.totalXP.toLocaleString('pt-BR')}
-                </span>
-                <span className="hud-label-tactical text-[8px] text-gray-600 uppercase">PONTOS XP</span>
+                <div className="flex flex-col">
+                  <span className={`hud-value text-sm transition-all duration-500
+                    ${isChampion ? 'text-brand drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'text-white'}
+                    ${index === 1 ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.7)]' : ''}
+                    ${index === 2 ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]' : ''}
+                  `}>
+                    {player.totalXP.toLocaleString('pt-BR')}
+                  </span>
+                  <span className="hud-label-tactical text-[8px] text-gray-600 uppercase">PONTOS XP</span>
+                </div>
               </div>
-            </div>
             </div>
           );
         })}

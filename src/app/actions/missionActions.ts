@@ -3,25 +3,18 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-/**
- * Grants XP directly to a Valente for completing a mission.
- * Uses upsert to bypass the old "assignment" phase.
- */
 export async function completeMission(valenteId: string, missionId: string, xpReward: number, missionTitle: string) {
   try {
     await prisma.$transaction([
-      // 1. Directly mark the mission as completed in the Valente's record
       prisma.valenteMission.upsert({
         where: { valenteId_missionId: { valenteId, missionId } },
         create: { valenteId, missionId, status: "COMPLETED", completedAt: new Date() },
         update: { status: "COMPLETED", completedAt: new Date() }
       }),
-      // 2. Grant the actual XP to the Valente
       prisma.valente.update({
         where: { id: valenteId },
         data: { totalXP: { increment: xpReward } }
       }),
-      // 3. Write the exact mission name into the Kingdom Combat Log
       prisma.xpLog.create({
         data: {
           valenteId,
@@ -31,7 +24,6 @@ export async function completeMission(valenteId: string, missionId: string, xpRe
       })
     ]);
 
-    // Revalidate all affected routes
     revalidatePath("/admin/missoes");
     revalidatePath("/admin");
     revalidatePath(`/admin/valentes/${valenteId}`);
@@ -61,7 +53,7 @@ export async function createMission(data: { title: string; description: string; 
         title: data.title,
         description: data.description,
         xpReward: data.xpReward,
-        type: data.type, // Maps to the category in the UI
+        type: data.type,
       },
     });
     revalidatePath("/admin/missoes");

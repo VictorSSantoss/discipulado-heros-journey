@@ -14,9 +14,11 @@ async function main() {
   console.log('--- ⚔️ INICIANDO SEMEADURA COMPLETA DO REINO ---')
 
   // 1. LIMPEZA (Ordem inversa de dependência)
-  await prisma.mission.deleteMany() // Limpa as missões para não duplicar no seed
-  await prisma.valenteMedal.deleteMany()
-  await prisma.medal.deleteMany()
+  await prisma.valenteMission.deleteMany()
+  await prisma.mission.deleteMany() 
+  // 🛡️ REPLACED: medals with reliquias
+  await prisma.valenteReliquia.deleteMany() 
+  await prisma.reliquia.deleteMany()
   await prisma.xpLog.deleteMany()
   await prisma.holyPower.deleteMany()
   await prisma.attributes.deleteMany()
@@ -37,7 +39,7 @@ async function main() {
   })
   console.log('👤 Usuário Victor criado.')
 
-  // 3. CRIAR MISSÕES (As 15 que você tinha no mock)
+  // 3. CRIAR MISSÕES 
   const missionsData = [
     { title: 'LER 1 CAPÍTULO DA BÍBLIA', xpReward: 50, type: 'Hábitos Espirituais' },
     { title: 'LER 5 CAPÍTULOS DA BÍBLIA', xpReward: 300, type: 'Hábitos Espirituais' },
@@ -68,14 +70,35 @@ async function main() {
   }
   console.log('📜 Missões forjadas.')
 
-  // 4. MEDALHAS
-  const medalsData = [
-    { name: "Iniciante do Reino", description: "1.000 XP alcançados.", icon: "/images/bronze-achievement.svg", rarity: "COMMON", type: "XP_MILESTONE", requirement: 1000 },
-    { name: "Guerreiro de Elite", description: "5.000 XP registrados.", icon: "/images/silver-achievement.svg", rarity: "RARE", type: "XP_MILESTONE", requirement: 5000 },
-    { name: "Lenda do Reino", description: "10.000 XP registrados.", icon: "/images/gold-achievement.svg", rarity: "LEGENDARY", type: "XP_MILESTONE", requirement: 10000 },
+  // 4. RELÍQUIAS (Atualizado para a nova regra JSON)
+  const reliquiasData = [
+    { 
+      name: "Iniciante do Reino", 
+      description: "1.000 XP alcançados.", 
+      icon: "/images/bronze-achievement.svg", 
+      rarity: "COMMON", 
+      triggerType: "XP_MILESTONE", 
+      ruleParams: { target: 1000 } // <-- The new dynamic rules format!
+    },
+    { 
+      name: "Guerreiro de Elite", 
+      description: "5.000 XP registrados.", 
+      icon: "/images/silver-achievement.svg", 
+      rarity: "RARE", 
+      triggerType: "XP_MILESTONE", 
+      ruleParams: { target: 5000 } 
+    },
+    { 
+      name: "Lenda do Reino", 
+      description: "10.000 XP registrados.", 
+      icon: "/images/gold-achievement.svg", 
+      rarity: "LEGENDARY", 
+      triggerType: "XP_MILESTONE", 
+      ruleParams: { target: 10000 } 
+    },
   ]
-  for (const m of medalsData) { await prisma.medal.create({ data: m }) }
-  console.log('🏅 Medalhas criadas.')
+  for (const r of reliquiasData) { await prisma.reliquia.create({ data: r }) }
+  console.log('💎 Relíquias criadas.')
 
   // 5. VALENTES
   const valentes = [

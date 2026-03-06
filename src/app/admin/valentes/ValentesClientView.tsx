@@ -51,15 +51,22 @@ export default function ValentesClientView({ initialValentes }: { initialValente
         </div>
         
         <div className="flex w-full md:w-auto gap-5 items-center">
-          <div className="relative flex-1 md:w-80">
+          <div className="relative w-full sm:w-80 group">
             <input 
-              type="text" 
+              type="text"
               placeholder="LOCALIZAR VALENTE..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white/5 backdrop-blur-xl border border-white/10 p-5 rounded-xl text-white hud-label-tactical text-sm transition-all placeholder:text-gray-500 shadow-inner outline-none focus:border-brand italic-none"
+              className="w-full bg-dark-surface border border-mission/30 rounded-full px-5 py-2 text-[15px] font-bebas text-white outline-none focus:border-mission/50 transition-all tracking-[0.2em] pr-12"
             />
-          </div>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+              <img 
+                src={ICONS.search}
+                alt="Search" 
+                className="w-12 h-12 object-contain opacity-100 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all grayscale brightness-200"
+              />
+            </div>
+          </div> 
 
           <Link 
             href="/admin/valentes/create"

@@ -1,23 +1,26 @@
 import prisma from "@/lib/prisma";
-import MissoesClient from "./MissionsClient"; // <-- Ensure your client file is named exactly MissoesClient.tsx
+import MissoesClient from "./MissionsClient";
 
 export default async function MissoesPage() {
-  // Fetch real data from the database
-  const dbMissions = await prisma.mission.findMany({ orderBy: { title: 'asc' } });
+  // 1. Fetch Missions: Newest first within their categories
+  const dbMissions = await prisma.mission.findMany({ 
+    orderBy: { createdAt: 'desc' } 
+  });
   
+  // 2. Fetch Valentes for the reward modal
   const valentes = await prisma.valente.findMany({
     select: { id: true, name: true, structure: true },
     orderBy: { name: 'asc' }
   });
 
+  // 3. Fetch Active Decrees: Newest assignments first
   const activeDecrees = await prisma.valenteMission.findMany({
     where: { status: 'ACTIVE' },
     include: {
       valente: { select: { id: true, name: true, image: true } },
       mission: true
     },
-    // FIX: Removed 'createdAt'. Now ordering alphabetically by the Mission's title.
-    orderBy: { mission: { title: 'asc' } } 
+    orderBy: { createdAt: 'desc' } 
   });
 
   return (
