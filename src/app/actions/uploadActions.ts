@@ -9,8 +9,10 @@ export async function uploadValenteImage(valenteId: string, formData: FormData) 
     const imageFile = formData.get("image") as File;
     if (!imageFile) throw new Error("No image file provided.");
 
+    // Added addRandomSuffix to prevent blob collision errors
     const blob = await put(imageFile.name, imageFile, {
       access: "public",
+      addRandomSuffix: true, 
     });
 
     await prisma.valente.update({
@@ -18,7 +20,6 @@ export async function uploadValenteImage(valenteId: string, formData: FormData) 
       data: { image: blob.url }
     });
 
-    // This 'layout' string is the key to clearing the /edit page cache
     revalidatePath(`/admin/valentes/${valenteId}`, 'layout');
     revalidatePath("/admin/valentes");
 

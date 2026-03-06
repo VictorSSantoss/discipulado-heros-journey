@@ -1,33 +1,28 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 /* CONFIGURATION IMPORTS */
 import { ESTRUTURAS, BASE_ATTRIBUTES, LOVE_LANGUAGES, ICONS } from "@/constants/gameConfig";
 import { updateValenteProfile, createValente, deleteValente } from "@/app/actions/valenteActions";
+import AvatarUploader from "@/components/game/AvatarUploader";
+import { uploadValenteImage } from "@/app/actions/uploadActions";
 
 interface ValenteFormProps {
   initialData?: any;
   mode: "create" | "edit";
 }
 
-/**
- * ValenteForm Component
- * Renders the primary interface for hero record creation and record modification.
- * Manages complex mappings between the ministry-style UI and the RPG stat database schema.
- */
 export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  /* FINAL_ATTRIBUTE_REGISTRY */
   const ministrySkills = ["Liderança", "Trabalho em Equipe", "Evangelismo", "Servo", "Mestre", "Profeta"];
 
-  /* RPG_TO_MINISTRY_MAPPING */
   const rpgToMinistryMap: Record<string, string> = {
     forca: "Liderança",
     constituicao: "Trabalho em Equipe",
@@ -37,7 +32,6 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     sabedoria: "Profeta"
   };
 
-  /* STATE_MANAGEMENT: INITIALIZATION */
   const [name, setName] = useState(initialData?.name || "");
   const [structure, setStructure] = useState(initialData?.structure || ESTRUTURAS.GAD.label);
   const [description, setDescription] = useState(initialData?.description || "");
@@ -78,13 +72,18 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   };
   const [holyPower, setHolyPower] = useState(formatInitialHolyPower());
 
-  /* IMAGE_HANDLING */
+  // PREVENT NEXT.JS CACHE BUGS: Keep image in sync if server data changes
+  useEffect(() => {
+    if (initialData?.image && initialData.image !== imagePreview) {
+      setImagePreview(initialData.image);
+    }
+  }, [initialData]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setImagePreview(URL.createObjectURL(file));
   };
 
-  /* HOLY_POWER */
   const handleHolyPowerChange = (powerKey: string, field: string, value: string | number) => {
     setHolyPower((prev: any) => ({
       ...prev,
@@ -92,16 +91,24 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     }));
   };
 
-  /* FORM_SUBMISSION: Orchestrates transactional update or creation protocol. */
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const rpgAttributes = {
+      forca: skills["Liderança"],
+      constituicao: skills["Trabalho em Equipe"],
+      carisma: skills["Evangelismo"],
+      destreza: skills["Servo"],
+      inteligencia: skills["Mestre"],
+      sabedoria: skills["Profeta"]
+    };
 
     const payload = {
       name,
       structure,
       description,
-      attributes: skills, 
+      attributes: rpgAttributes,
       loveLanguages,
       holyPower: Object.entries(holyPower).map(([name, data]: [string, any]) => ({
         name,
@@ -112,6 +119,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     };
 
     if (mode === "edit" && initialData?.id) {
+      // EDIT MODE: (Remains unchanged)
       const result = await updateValenteProfile(initialData.id, payload);
       if (result.success) {
         router.push(`/admin/valentes/${initialData.id}`);
@@ -121,8 +129,18 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         setIsSubmitting(false);
       }
     } else {
+      // CREATE MODE: The Two-Step Process
       const result = await createValente(payload);
+      
       if (result.success && result.id) {
+        // STEP 2: Now that the hero exists, upload the image if one was selected!
+        const file = fileInputRef.current?.files?.[0];
+        if (file) {
+          const formData = new FormData();
+          formData.append("image", file);
+          await uploadValenteImage(result.id, formData);
+        }
+
         router.push(`/admin/valentes/${result.id}`);
         router.refresh();
       } else {
@@ -132,17 +150,13 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     }
   };
 
-  /* DELETION_PROTOCOL: Permanently removes the record. */
   const handleDelete = async () => {
     if (!initialData?.id) return;
-    
-    // Safety check
     const confirmed = window.confirm(`ATENÇÃO: Deseja realmente excluir o registro de ${name}? Esta ação não pode ser desfeita.`);
     if (!confirmed) return;
 
     setIsDeleting(true);
     const result = await deleteValente(initialData.id);
-    
     if (result.success) {
       router.push("/admin/valentes");
       router.refresh();
@@ -240,22 +254,39 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
 
           <div className="w-full lg:w-[260px] space-y-4">
             <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">Retrato do Herói</label>
-            <div 
-              onClick={() => fileInputRef.current?.click()} 
-              className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/20 hover:border-brand/60 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
-            >
-              {imagePreview ? (
-                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              ) : (
-                <div className="text-center opacity-40 group-hover:opacity-100 transition-all">
-                  <span className="text-6xl block mb-2">📷</span>
-                  <span className="hud-label-tactical text-xs italic-none uppercase tracking-widest">Upload Bio-Scan</span>
-                </div>
-              )}
-              <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-brand"></div>
-              <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-brand"></div>
-            </div>
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
+            
+            {/* CONDITIONAL UPLOADER: Native for Create, Vercel Blob for Edit */}
+            {mode === "edit" ? (
+              <div className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/20 hover:border-brand/60 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden group shadow-2xl">
+                 <AvatarUploader 
+                    valenteId={initialData.id} 
+                    currentImage={imagePreview}
+                    onImageUpdated={(newUrl) => setImagePreview(newUrl)} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    alt={`Foto de ${name}`}
+                  />
+                  <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-brand pointer-events-none z-20"></div>
+                  <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-brand pointer-events-none z-20"></div>
+              </div>
+            ) : (
+              <div 
+                onClick={() => fileInputRef.current?.click()} 
+                className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/20 hover:border-brand/60 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
+              >
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                ) : (
+                  <div className="text-center opacity-40 group-hover:opacity-100 transition-all">
+                    <span className="text-6xl block mb-2">📷</span>
+                    <span className="hud-label-tactical text-xs italic-none uppercase tracking-widest">Upload Bio-Scan</span>
+                    <span className="text-[9px] text-gray-500 block mt-2 leading-tight">Disponível após<br/>recrutamento</span>
+                  </div>
+                )}
+                <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-brand"></div>
+                <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-brand"></div>
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
+              </div>
+            )}
           </div>
         </div>
       </section>

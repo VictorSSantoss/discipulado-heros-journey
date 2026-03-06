@@ -13,12 +13,11 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
     const multiplier = GET_XP_MULTIPLIER();
     const finalXp = Math.floor(baseAmount * multiplier.factor);
 
-    // 1. Fetch Valente with all their current progress
     const currentValente = await prisma.valente.findUnique({
       where: { id: valenteId },
       include: { 
         reliquias: { include: { reliquia: true } },
-        holyPower: true // We need this to check streaks!
+        holyPower: true 
       }
     });
 
@@ -27,33 +26,23 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
     const newTotalXP = currentValente.totalXP + finalXp;
     const alreadyEarnedIds = new Set(currentValente.reliquias.map(vr => vr.reliquiaId));
 
-    // 2. Fetch ALL potential Relíquias
     const allReliquias = await prisma.reliquia.findMany();
 
-    // 3. THE RULES ENGINE: Filter reliquias that the user JUST earned
     const newlyEarned = allReliquias.filter(relic => {
       if (alreadyEarnedIds.has(relic.id)) return false;
-
       const params = relic.ruleParams as any;
 
       switch (relic.triggerType) {
         case "XP_MILESTONE":
           return newTotalXP >= params.target;
-
         case "HABIT_STREAK":
           const habit = currentValente.holyPower.find(h => h.name === params.habit);
           return habit ? habit.streak >= params.days : false;
-
-        case "ATTRIBUTE_LEVEL":
-          // Logic for checking Attribute levels will go here
-          return false;
-
         default:
           return false;
       }
     });
 
-    // 4. Save the progress and the new Relics
     const updated = await prisma.valente.update({
       where: { id: valenteId },
       data: {
@@ -74,7 +63,7 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
     return { 
       success: true, 
       newTotalXP: updated.totalXP, 
-      newRelics: newlyEarned // This triggers the BF1 popup on the frontend!
+      newRelics: newlyEarned 
     };
   } catch (error) {
     console.error(error);
@@ -110,17 +99,12 @@ export async function getGlobalRanking() {
 export async function getPersonalRank(currentXp: number) {
   try {
     const higherRankedCount = await prisma.valente.count({
-      where: {
-        totalXP: { gt: currentXp },
-      },
+      where: { totalXP: { gt: currentXp } },
     });
 
     const totalValentes = await prisma.valente.count();
 
-    return {
-      rank: higherRankedCount + 1,
-      total: totalValentes,
-    };
+    return { rank: higherRankedCount + 1, total: totalValentes };
   } catch (error) {
     console.error("Personal rank calculation failure:", error);
     return { rank: 0, total: 0 };
@@ -141,14 +125,15 @@ export async function updateValenteProfile(valenteId: string, data: any) {
           description: data.description,
           attributes: {
             update: {
-              forca: data.attributes["Liderança"],
-              destreza: data.attributes["Servo"],
-              constituicao: data.attributes["Trabalho em Equipe"],
-              inteligencia: data.attributes["Mestre"],
-              sabedoria: data.attributes["Profeta"],
-              carisma: data.attributes["Evangelismo"],
+              forca: data.attributes.forca,
+              destreza: data.attributes.destreza,
+              constituicao: data.attributes.constituicao,
+              inteligencia: data.attributes.inteligencia,
+              sabedoria: data.attributes.sabedoria,
+              carisma: data.attributes.carisma,
             }
           },
+          // Keeping loveLanguages logic as requested
           loveLanguages: {
             update: {
               palavras: data.loveLanguages.palavras,
@@ -161,35 +146,39 @@ export async function updateValenteProfile(valenteId: string, data: any) {
         }
       });
 
-      for (const power of data.holyPower) {
-        const existingPower = await tx.holyPower.findFirst({
-          where: { valenteId, name: power.name }
-        });
+      if (data.holyPower) {
+        for (const power of data.holyPower) {
+          const existingPower = await tx.holyPower.findFirst({
+            where: { valenteId, name: power.name }
+          });
 
-        if (existingPower) {
-          await tx.holyPower.update({
-            where: { id: existingPower.id },
-            data: {
-              current: power.current,
-              goal: power.goal,
-              streak: power.streak
-            }
-          });
-        } else {
-          await tx.holyPower.create({
-            data: {
-              valenteId,
-              name: power.name,
-              current: power.current,
-              goal: power.goal,
-              streak: power.streak
-            }
-          });
+          if (existingPower) {
+            await tx.holyPower.update({
+              where: { id: existingPower.id },
+              data: {
+                current: power.current,
+                goal: power.goal,
+                streak: power.streak
+              }
+            });
+          } else {
+            await tx.holyPower.create({
+              data: {
+                valenteId,
+                name: power.name,
+                current: power.current,
+                goal: power.goal,
+                streak: power.streak
+              }
+            });
+          }
         }
       }
     });
 
-    revalidatePath(`/admin/valentes/${valenteId}`);
+    // Solve the "Ghost image" issue by revalidating the layout
+    revalidatePath(`/admin/valentes/${valenteId}`, 'layout');
+    revalidatePath("/admin/valentes");
     return { success: true };
   } catch (error) {
     console.error("Failed to update profile:", error);
@@ -214,12 +203,12 @@ export async function createValente(data: any) {
           userId: defaultUser.id,
           attributes: {
             create: {
-              forca: data.attributes["Liderança"],
-              destreza: data.attributes["Servo"],
-              constituicao: data.attributes["Trabalho em Equipe"],
-              inteligencia: data.attributes["Mestre"],
-              sabedoria: data.attributes["Profeta"],
-              carisma: data.attributes["Evangelismo"],
+              forca: data.attributes.forca,
+              destreza: data.attributes.destreza,
+              constituicao: data.attributes.constituicao,
+              inteligencia: data.attributes.inteligencia,
+              sabedoria: data.attributes.sabedoria,
+              carisma: data.attributes.carisma,
             }
           },
           loveLanguages: {
