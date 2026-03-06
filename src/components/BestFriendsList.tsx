@@ -1,78 +1,86 @@
 "use client";
 
-import { ICONS } from "@/constants/gameConfig";
+import Image from "next/image";
+import { ESTRUTURAS } from "@/constants/gameConfig";
+import { removeCompanheiro } from "@/app/actions/companheiroActions";
+import { useState } from "react";
 
-/**
- * BestFriendsList Component
- * Manages the display of allied valentes linked to the current profile.
- * Calibrated with a more compact title scale to maintain visual hierarchy.
- */
-export default function BestFriendsList({ friendIds = [] }: { friendIds?: string[] }) {
-  const alliesCount = friendIds.length;
+export default function BestFriendsList({ 
+  friends, 
+  currentValenteId 
+}: { 
+  friends: any[]; 
+  currentValenteId: string; 
+}) {
+  const [isRemoving, setIsRemoving] = useState<string | null>(null);
 
-  /**
-   * PLACEHOLDER DATA
-   * Temporary data used for UI visualization until the database link is active.
-   */
-  const previewFriends = [
-    { id: '1', name: 'NATHAN', level: 'Nível 1', role: 'GAD', image: null },
-    { id: '2', name: 'VITOR', level: 'Nível 2', role: 'Mídia', image: null },
-  ];
+  const handleRemove = async (friendId: string) => {
+    setIsRemoving(friendId);
+    await removeCompanheiro(currentValenteId, friendId);
+    setIsRemoving(null);
+  };
+
+  if (!friends || friends.length === 0) {
+    return (
+      <div className="text-center py-8 opacity-30 italic text-xs uppercase tracking-widest">
+        Nenhuma conexão estabelecida ainda.
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* SECTION_HEADER_CONTAINER */}
-      <div className="flex justify-between items-center border-b border-white/10 pb-3">
-        <span className="hud-label-tactical text-gray-500 italic-none">
-          {alliesCount} ALIADOS RECRUTADOS
-        </span>
-      </div>
+    <div className="space-y-4">
+      {friends.map((friend) => {
+        const structureColor = Object.values(ESTRUTURAS).find(
+          s => s.label === friend.structure
+        )?.color || "#ffffff";
 
-      <div className="space-y-4">
-        {/* ALLIES_ITERATION_AREA */}
-        {previewFriends.map((friend) => (
-          <div 
-            key={friend.id} 
-            className="flex items-center gap-4 bg-dark-bg backdrop-blur-md border border-white/5 p-3 rounded-2xl hover:border-brand/50 transition-all cursor-pointer group shadow-xl"
-          >
-            {/* MINI_AVATAR_CONTAINER: Imagem Silhueta e Cores Vivas */}
-            <div className="w-12 h-12 bg-black/20 border border-white/10 rounded-lg flex items-center justify-center shrink-0 group-hover:border-brand transition-colors relative overflow-hidden">
-              <img 
+        return (
+          <div key={friend.id} className="flex items-center gap-4 group relative">
+            {/* Avatar with Glow */}
+            <div 
+              className="relative w-12 h-12 rounded-full border-2 overflow-hidden shrink-0"
+              style={{ borderColor: structureColor, boxShadow: `0 0 10px ${structureColor}40` }}
+            >
+              <Image 
                 src={friend.image || '/images/man-silhouette.svg'} 
-                alt="" 
-                onError={(e) => { 
-                  e.currentTarget.onerror = null; 
-                  e.currentTarget.src = '/images/man-silhouette.svg'; 
-                }}
-                className="w-full h-full object-contain p-1 opacity-100 transition-transform group-hover:scale-110" 
+                alt={friend.name} 
+                fill 
+                className="object-cover"
               />
             </div>
-            
-            <div className="flex-1 min-w-0">
-              {/* IDENTITY_INFO_BLOCK */}
-              <h4 className="hud-title-md text-xl text-white m-0 truncate leading-none group-hover:text-brand transition-colors">
+
+            {/* Tactical Info */}
+            <div className="flex flex-col flex-1">
+              <span className="hud-title-md text-sm text-white truncate max-w-[140px]">
                 {friend.name}
-              </h4>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="hud-value text-sm text-brand uppercase">
-                  {friend.level}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] uppercase tracking-tighter" style={{ color: structureColor }}>
+                  {friend.structure}
                 </span>
-                <span className="w-1 h-1 bg-white/10 rounded-full"></span>
-                <span className="hud-label-tactical text-gray-500 truncate italic-none">
-                  {friend.role}
+                <span className="text-white/20">•</span>
+                <span className="hud-value text-[10px] text-gray-400">
+                  {friend.totalXP} XP
                 </span>
               </div>
             </div>
+
+            {/* Tactical Remove Button */}
+            <button
+              onClick={() => handleRemove(friend.id)}
+              disabled={isRemoving === friend.id}
+              className="opacity-0 group-hover:opacity-100 transition-all p-2 hover:text-red-500 text-gray-600 disabled:animate-pulse"
+              title="Romper Vínculo"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                <line x1="12" y1="2" x2="12" y2="12" />
+              </svg>
+            </button>
           </div>
-        ))}
-      </div>
-      
-      <div className="pt-2">
-        {/* ALLIANCE_LINK_TRIGGER */}
-        <button className="w-full py-4 border border-dashed border-white/10 text-gray-600 hover:text-brand hover:border-brand/50 hover:bg-brand/5 rounded-2xl hud-label-tactical tracking-[0.4em] transition-all italic-none">
-          + VINCULAR ALIADO
-        </button>
-      </div>
+        );
+      })}
     </div>
   );
 }

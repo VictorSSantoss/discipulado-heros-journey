@@ -20,19 +20,19 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String   // Will store the hashed password
-  role      Role     @default(DISCIPULADOR)
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  password     String   // Stores the hashed password
+  role         Role     @default(DISCIPULADOR)
 
   // HIERARCHY: Self-referencing relationship
-  // A Gerente has many Discipuladores (subordinates). A Discipulador has one Gerente (reportsTo).
+  // One-to-Many relationship. A Gerente manages multiple Discipuladores.
   reportsToId  String?
-  reportsTo    User?   @relation("ManagementChain", fields: [reportsToId], references: [id])
-  subordinates User[]  @relation("ManagementChain")
+  reportsTo    User?    @relation("ManagementChain", fields: [reportsToId], references: [id])
+  subordinates User[]   @relation("ManagementChain")
 
-  // OWNERSHIP: The heroes managed by this specific user
+  // OWNERSHIP: One-to-Many relationship. Heroes managed by a specific user.
   managedValentes Valente[]
 
   createdAt DateTime @default(now())
@@ -46,37 +46,39 @@ model User {
 model Valente {
   id          String   @id @default(uuid())
   name        String
-  image       String?  // Nullable, frontend handles the silhouette fallback
+  image       String?  // Nullable, used for avatar displays
   totalXP     Int      @default(0)
-  structure   String   // e.g., "GAD", "Mídia", "Louvor"
-  description String?  @db.Text // Lore / Crônicas do Valente
+  structure   String   // e.g., "GAD", "IMS", "LOUVOR"
+  description String?  @db.Text // Historical lore and chronicled feats
 
-  // Link to the Discipulador who manages this Valente
+  // Relationship to the managing User (One-to-Many)
   userId      String
   managedBy   User     @relation(fields: [userId], references: [id])
 
-  // 1-to-1 Relations (The Radar and Bar Charts)
+  // Stat Relationships
   attributes    Attributes?
   loveLanguages LoveLanguages?
-  holyPower     HolyPower?
+  
+  // One-to-Many relationship for tracking spiritual habits and streaks
+  holyPower     HolyPower[]
 
-  // Self-Relation: A Valente can have many friends, and be a friend to many
-  friends       Valente[] @relation("Friendship")
-  friendOf      Valente[] @relation("Friendship")
+  // --- COMPANHEIROS SYSTEM ---
+  // Simple array of IDs to store friend connections efficiently
+  friendIds   String[] @default([]) 
 
   // Many-to-Many Relations
-  medals        ValenteMedal[]
-  missions      ValenteMission[]
+  reliquias   ValenteReliquia[] // REPLACED: medals
+  missions    ValenteMission[]
   
-  // History Audit Trail
-  xpLogs        XpLog[]
+  // Audit Trail (One-to-Many)
+  xpLogs      XpLog[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // -----------------------------------------------------------------------------
-// ANALYTICS & STATS (1-to-1 with Valente)
+// ANALYTICS & STATS (Profile Progress Data)
 // -----------------------------------------------------------------------------
 
 model Attributes {
@@ -88,6 +90,7 @@ model Attributes {
   sabedoria    Int     @default(0)
   carisma      Int     @default(0)
 
+  // One-to-One relationship with Valente
   valenteId    String  @unique
   valente      Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
 }
@@ -100,43 +103,53 @@ model LoveLanguages {
   tempo     Int     @default(0)
   toque     Int     @default(0)
 
+  // One-to-One relationship with Valente
   valenteId String  @unique
   valente   Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
 }
 
 model HolyPower {
   id        String  @id @default(uuid())
-  oracao    Int     @default(0)
-  leitura   Int     @default(0)
-  jejum     Int     @default(0)
+  name      String  // Identifies the specific power (Oração, Leitura, etc.)
+  current   Int     @default(0)
+  goal      Int     @default(30)
+  streak    Int     @default(0)
 
-  valenteId String  @unique
+  // One-to-Many relationship with Valente
+  valenteId String
   valente   Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
 }
 
 // -----------------------------------------------------------------------------
-// GAMEPLAY MECHANICS (Many-to-Many)
+// GAMEPLAY MECHANICS (Relics, Achievements & Progression)
 // -----------------------------------------------------------------------------
 
-model Medal {
+model Reliquia {
   id          String         @id @default(uuid())
   name        String
   description String
-  icon        String         // Path to the SVG
+  icon        String         // Storage path for the SVG/Image asset
   rarity      String         // e.g., "COMMON", "RARE", "LEGENDARY"
   
-  valentes    ValenteMedal[]
+  // DYNAMIC RULES ENGINE
+  triggerType String         // e.g., "XP_MILESTONE", "HABIT_STREAK", "MISSION_COUNT", "MANUAL"
+  ruleParams  Json           // JSON box holding the exact criteria (e.g., {"habit": "Jejum", "streak": 21})
+  
+  createdAt   DateTime       @default(now())
+
+  // Many-to-Many relationship through the join table
+  valentes    ValenteReliquia[]
 }
 
-model ValenteMedal {
-  valenteId String
-  medalId   String
-  awardedAt DateTime @default(now())
+model ValenteReliquia {
+  valenteId  String
+  reliquiaId String
+  awardedAt  DateTime @default(now())
 
-  valente   Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
-  medal     Medal    @relation(fields: [medalId], references: [id], onDelete: Cascade)
+  valente    Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+  reliquia   Reliquia @relation(fields: [reliquiaId], references: [id], onDelete: Cascade)
 
-  @@id([valenteId, medalId])
+  @@id([valenteId, reliquiaId])
 }
 
 model Mission {
@@ -144,8 +157,10 @@ model Mission {
   title       String
   description String           @db.Text
   xpReward    Int
-  type        String           // e.g., "HABIT", "EVENT", "TASK"
+  type        String           // Mission categorization (HABIT, EVENT, TASK)
+  createdAt   DateTime         @default(now())
 
+  // Many-to-Many relationship through the join table
   valentes    ValenteMission[]
 }
 
@@ -153,7 +168,8 @@ model ValenteMission {
   id          String    @id @default(uuid())
   valenteId   String
   missionId   String
-  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, FAILED
+  status      String    @default("ACTIVE") 
+  createdAt   DateTime  @default(now()) 
   completedAt DateTime?
 
   valente     Valente   @relation(fields: [valenteId], references: [id], onDelete: Cascade)
@@ -163,15 +179,16 @@ model ValenteMission {
 }
 
 // -----------------------------------------------------------------------------
-// AUDIT SYSTEM
+// AUDIT SYSTEM (Transaction Tracking)
 // -----------------------------------------------------------------------------
 
 model XpLog {
   id        String   @id @default(uuid())
   valenteId String
-  amount    Int      // Can be positive or negative
+  amount    Int      // Numerical change to totalXP
   reason    String   
   createdAt DateTime @default(now())
 
+  // One-to-Many relationship with Valente
   valente   Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
 }

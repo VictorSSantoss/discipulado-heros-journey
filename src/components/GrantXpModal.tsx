@@ -2,43 +2,46 @@
 
 import { useState } from "react";
 import { mockMissions } from "@/lib/mockData";
+import { GET_XP_MULTIPLIER } from "@/constants/gameConfig";
 
 interface GrantXpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onGrant: (amount: number) => void;
+  // Atualizado para aceitar o motivo (reason) exigido pelo ProfileClient
+  onGrant: (amount: number, reason: string) => void; 
   valenteName: string;
 }
 
-/**
- * GrantXpModal Component
- * Facilitates the manual allocation of experience points based on completed decrees.
- * Scale increased across all typography slots for improved tactical clarity.
- */
 export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: GrantXpModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMissionId, setSelectedMissionId] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("TODAS");
 
+  const multiplier = GET_XP_MULTIPLIER();
+  const isActive = multiplier.factor > 1;
+
   if (!isOpen) return null;
 
   const categories = ["TODAS", "Hábitos Espirituais", "Evangelismo e Liderança", "Conhecimento", "Estrutura e Participação", "Eventos e Especiais"];
 
-  /* SEARCH_FILTER_LOGIC */
   const filteredMissions = mockMissions.filter(mission => {
     const matchesSearch = mission.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === "TODAS" || mission.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
+  const selectedMission = mockMissions.find(m => m.id === selectedMissionId);
+  const baseXp = selectedMission 
+    ? (selectedMission.xpReward === 'LVL UP DIRETO' ? 2000 : selectedMission.xpReward as number)
+    : 0;
+  const finalXpPreview = Math.floor(baseXp * multiplier.factor);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const mission = mockMissions.find(m => m.id === selectedMissionId);
-    
-    if (mission) {
-      const xpValue = mission.xpReward === 'LVL UP DIRETO' ? 2000 : mission.xpReward as number;
+    if (selectedMission) {
+      // Integração: Enviando o valor calculado e o Título da Missão como motivo
+      onGrant(finalXpPreview, `Missão: ${selectedMission.title}`);
       
-      onGrant(xpValue);
       setSelectedMissionId("");
       setSearchTerm("");
     }
@@ -46,18 +49,13 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      {/* CONTAINER 1: MODAL_OVERLAY_WRAPPER */}
-      
       <div className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative">
-        {/* CONTAINER 2: MODAL_TERMINAL_SHELL */}
-        
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-xp/40 to-transparent"></div>
         
         <div className="p-6 border-b border-white/5 bg-dark-bg/80 flex justify-between items-center">
-          {/* CONTAINER 3: TACTICAL_HEADER_SECTION */}
           <div>
             <h2 className="hud-title-md text-3xl text-white m-0">CONCEDER XP</h2>
-            <p className="hud-label-tactical text-sm text-xp mt-1 italic-none">
+            <p className="hud-label-tactical text-sm text-white/50 mt-1 italic-none">
               Recompensar {valenteName}
             </p>
           </div>
@@ -67,7 +65,6 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
         </div>
 
         <div className="p-6 border-b border-white/5 space-y-5">
-          {/* CONTAINER 4: FILTER_SEARCH_CONTROL_BAR */}
           <input 
             type="text" 
             placeholder="BUSCAR MISSÃO..." 
@@ -94,7 +91,6 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-          {/* CONTAINER 5: MISSION_DIRECTORY_VIEWPORT */}
           {filteredMissions.length === 0 ? (
             <p className="hud-label-tactical text-lg text-center text-gray-500 py-12 italic-none">Nenhuma missão encontrada...</p>
           ) : (
@@ -122,24 +118,44 @@ export default function GrantXpModal({ isOpen, onClose, onGrant, valenteName }: 
           )}
         </div>
 
-        <div className="p-6 bg-dark-bg/80 border-t border-white/5 flex justify-end gap-5">
-          {/* CONTAINER 6: ACTION_TRIGGER_FOOTER */}
-          <button 
-            type="button" 
-            onClick={onClose} 
-            className="hud-label-tactical text-sm text-gray-500 hover:text-white px-5 transition-colors italic-none"
-          >
-            Cancelar
-          </button>
-          <button 
-            onClick={handleSubmit}
-            disabled={!selectedMissionId}
-            className="px-12 py-3.5 bg-xp hover:brightness-110 disabled:bg-gray-800 disabled:text-gray-600 disabled:opacity-50 text-white hud-title-md text-xl rounded-xl transition-all shadow-[0_0_25px_rgba(234,88,12,0.4)]"
-          >
-            Confirmar Recompensa
-          </button>
-        </div>
+        <div className="p-6 bg-dark-bg/80 border-t border-white/5">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <div className="flex flex-col gap-1">
+              {isActive && (
+                <div className="flex items-center gap-2 bg-brand/10 border border-brand/30 px-3 py-1 rounded-lg animate-pulse w-fit">
+                  <span className="text-brand text-xs">⚡</span>
+                  <span className="hud-label-tactical text-[10px] text-brand">
+                    {multiplier.label} ATIVO
+                  </span>
+                </div>
+              )}
+              
+              {selectedMissionId && (
+                <p className="hud-label-tactical text-gray-400 text-xs italic-none">
+                  VALOR FINAL: <span className="text-white text-sm">+{finalXpPreview} XP</span>
+                </p>
+              )}
+            </div>
 
+            <div className="flex gap-5 w-full md:w-auto">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="hud-label-tactical text-sm text-gray-500 hover:text-white px-5 transition-colors italic-none"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSubmit}
+                disabled={!selectedMissionId}
+                className="flex-1 md:flex-none px-12 py-3.5 bg-xp hover:brightness-110 disabled:bg-gray-800 disabled:text-gray-600 disabled:opacity-50 text-white hud-title-md text-xl rounded-xl transition-all shadow-[0_0_25px_rgba(234,88,12,0.4)]"
+              >
+                Confirmar Recompensa
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -12,6 +12,8 @@ export const ICONS = {
   oracao: '/images/oracao-icon.svg',
   leitura: '/images/leitura-icon.svg',
   jejum: '/images/jejum-icon.svg',
+  search: '/images/search-icon.svg',
+  codex: '/images/codex-icon.svg'
 } as const;
 
 export const SIDEBAR_MENU = [
@@ -87,8 +89,24 @@ export const BASE_ATTRIBUTES = [
 
 export const LOVE_LANGUAGES = [
   { name: 'Presentes', key: 'presentes', colors: ['#fbbf24', '#d97706'] },        // Gold
-  { name: 'Toque Físico', key: 'toqueFisico', colors: ['#fb7185', '#e11d48'] },    // Rose
-  { name: 'Tempo de Qual.', key: 'tempoQualidade', colors: ['#c084fc', '#6d28d9'] },// Purple
-  { name: 'Afirmação', key: 'palavrasAfirmacao', colors: ['#22d3ee', '#0284c7'] }, // Cyan
-  { name: 'Serviço', key: 'atosServico', colors: ['#34d399', '#059669'] },         // Emerald
+  { name: 'Toque Físico', key: 'toque', colors: ['#fb7185', '#e11d48'] },    // Rose
+  { name: 'Tempo de Qual.', key: 'tempo', colors: ['#c084fc', '#6d28d9'] },// Purple
+  { name: 'Afirmação', key: 'palavras', colors: ['#22d3ee', '#0284c7'] }, // Cyan
+  { name: 'Serviço', key: 'servico', colors: ['#34d399', '#059669'] },         // Emerald
 ] as const;
+
+export const GET_XP_MULTIPLIER = () => {
+  const today = new Date().getDay(); // 0 is Sunday, 6 is Saturday
+  
+  if (today === 0) return { factor: 1.2, label: "BÔNUS DE DOMINGO (1.2x)" };
+  if (today === 6) return { factor: 1.1, label: "FIM DE SEMANA (1.1x)" };
+  
+  return { factor: 1.0, label: "NORMAL" };
+};
+
+
+export const MEDAL_RARITY_COLORS: Record<string, string> = {
+  COMMON: "#9CA3AF",    // Tactical Gray
+  RARE: "#10B981",      // Emerald Green
+  LEGENDARY: "#F59E0B", // Premium Gold
+};

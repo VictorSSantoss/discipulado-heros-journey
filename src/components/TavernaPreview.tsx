@@ -1,108 +1,141 @@
 "use client";
 
-import { mockValentes } from "@/lib/mockData";
-import Link from "next/link";
-import { LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
+import Link from "next/link"; // Added Link
+import { ESTRUTURAS } from "@/constants/gameConfig";
 
-/**
- * TavernaPreview Component
- * High-visibility global ranking overview.
- * Position indicators moved above progress tracks for a cleaner tactical flow.
- */
-export default function TavernaPreview() {
-  /* RANKING_LOGIC */
-  const topThree = [...mockValentes]
-    .sort((a, b) => b.totalXP - a.totalXP)
-    .slice(0, 3);
+export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
+  if (!ranking || ranking.length === 0) {
+    return (
+      <div className="p-8 text-center hud-label-tactical opacity-30 animate-pulse">
+        SINCROZINANDO DADOS...
+      </div>
+    );
+  }
+
+  const getRankDisplay = (index: number) => {
+    switch (index) {
+      case 0: 
+        return <img src="/images/ranking-icon.svg" alt="1º" className="w-6 h-6 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] animate-bounce-slow" />;
+      case 1: 
+        return <img src="/images/ranking-icon.svg" alt="2º" className="w-6 h-6 object-contain drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]" />;
+      case 2: 
+        return <img src="/images/ranking-icon.svg" alt="3º" className="w-6 h-6 object-contain drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]" />;
+      default: 
+        return <span className="hud-value text-xs text-gray-500 ml-1">#{index + 1}</span>;
+    }
+  };
 
   return (
-    <Link href="/taverna" className="block group h-full">
-      {/* CONTAINER 1: MODULE_SHELL */}
-      <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-8 rounded-2xl hover:border-brand/30 transition-all shadow-2xl relative overflow-hidden h-full">
+    <div className="flex flex-col gap-4 p-5 font-barlow relative overflow-hidden">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 0.05; transform: scale(1); filter: blur(5px); }
+          50% { opacity: 0.1; transform: scale(1.01); filter: blur(7px); }
+        }
+        .animate-glow-pulse {
+          animation: glow-pulse 4s ease-in-out infinite;
+        }
+      `}} />
+
+      {/* HEADER: Now with Navigation Button */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="hud-label-tactical text-gray-400 tracking-widest flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand animate-ping" />
+          RANKING GLOBAL
+        </h3>
         
-        {/* CONTAINER 2: DECORATIVE_AMBIENT_LAYER */}
-        <img 
-          src={ICONS.taverna || "/taverna-icon.svg"} 
-          alt="" 
-          className="absolute -right-8 -bottom-8 w-56 h-56 opacity-5 group-hover:opacity-10 transition-all rotate-12 pointer-events-none grayscale"
-        />
+        <Link 
+          href="/taverna" 
+          className="hud-label-tactical text-[9px] text-brand/60 border border-brand/20 px-2 py-1 rounded-md hover:bg-brand/10 hover:text-brand hover:border-brand/40 transition-all uppercase tracking-tighter"
+        >
+          Ver Taverna →
+        </Link>
+      </div>
 
-        {/* CONTAINER 3: MODULE_HEADER */}
-        <div className="flex justify-between items-center mb-10 relative z-10">
-          <h3 className="hud-title-md text-3xl text-brand m-0 drop-shadow-[0_0_15px_rgba(17,194,199,0.3)]">
-            RANKING GLOBAL
-          </h3>
-          <span className="hud-label-tactical text-xs text-gray-500 group-hover:text-xp transition-colors italic-none">
-            VER TUDO →
-          </span>
-        </div>
+      <div className="space-y-4">
+        {ranking.map((player, index) => {
+          const structureData = Object.values(ESTRUTURAS).find(
+            s => s.label === player.structure
+          ) || ESTRUTURAS.GAD;
 
-        {/* CONTAINER 4: PODIUM_DATA_LIST */}
-        <div className="space-y-8 relative z-10">
-          {topThree.map((hero, index) => {
-            
-            /* PROGRESS_CALCULATION_LOGIC */
-            const currentLevelInfo = [...LEVEL_SYSTEM].reverse().find(lvl => hero.totalXP >= lvl.minXP) || LEVEL_SYSTEM[0];
-            const currentLevelIndex = LEVEL_SYSTEM.findIndex(lvl => lvl.name === currentLevelInfo.name);
-            const nextLevelInfo = LEVEL_SYSTEM[currentLevelIndex + 1];
-            const targetXP = nextLevelInfo ? nextLevelInfo.minXP : hero.totalXP;
-            const xpPercentage = nextLevelInfo ? Math.min((hero.totalXP / targetXP) * 100, 100) : 100;
+          const isTop3 = index < 3;
+          const isChampion = index === 0;
 
-            return (
-              <div key={hero.id} className="flex items-center gap-5">
-                
-                {/* AVATAR_CONTAINER: Silhouette fallback applied */}
-                <div className="w-12 h-12 bg-black/20 border border-white/10 rounded-lg flex items-center justify-center shrink-0 group-hover:border-brand transition-colors relative overflow-hidden">
-                  <img 
-                    src={hero.image || '/images/man-silhouette.svg'} 
-                    alt="" 
-                    onError={(e) => { 
-                      e.currentTarget.onerror = null; 
-                      e.currentTarget.src = '/images/man-silhouette.svg'; 
-                    }}
-                    className="w-full h-full object-contain p-1 opacity-100 transition-transform group-hover:scale-110" 
+          return (
+            <div 
+              key={player.id} 
+              className={`relative flex items-center justify-between group transition-all duration-300 p-2 rounded-xl 
+                ${isChampion ? 'bg-yellow-500/[0.03]' : ''} 
+                ${isTop3 && !isChampion ? 'bg-white/[0.02]' : ''}`}
+            >
+              
+              {/* Champion Pulsing Glow Layer */}
+              {isChampion && (
+                <>
+                  <div 
+                    className="absolute inset-0 opacity-10 blur-lg rounded-xl z-0"
+                    style={{ backgroundColor: structureData.color }}
+                  />
+                  <div 
+                    className="absolute inset-0 animate-glow-pulse rounded-xl z-0"
+                    style={{ backgroundColor: structureData.color }}
+                  />
+                </>
+              )}
+
+              {isTop3 && !isChampion && (
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity blur-xl rounded-xl z-0"
+                  style={{ backgroundColor: structureData.color }}
+                />
+              )}
+
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-9 flex justify-center items-center shrink-0">
+                  {getRankDisplay(index)}
+                </div>
+
+                <div className={`relative w-10 h-10 rounded-full overflow-hidden bg-dark-bg shrink-0 border
+                    ${isChampion ? 'border-brand/50' : 'border-white/5'}`}>
+                    <img 
+                    src={player.image || '/images/man-silhouette.svg'} 
+                    className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" 
+                    alt=""
                   />
                 </div>
-                
-                {/* HERO_IDENTITY_SNIPPET */}
-                <div className="flex-1 min-w-0">
-                  <p className="hud-title-md text-xl text-white truncate m-0 leading-none mb-2">
-                    {hero.name}
-                  </p>
-                  <p className="hud-value text-lg text-white leading-none">
-                    {hero.totalXP} 
-                    <span className="hud-label-tactical text-[11px] text-gray-600 ml-1 italic-none uppercase tracking-tighter">
-                      XP TOTAL
-                    </span>
-                  </p>
-                </div>
 
-                {/* RANK_AND_PROGRESS_BLOCK: Integrated Rank Label */}
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  {/* Position label on top of the bar */}
-                  <span className={`hud-title-md text-xl italic-none leading-none ${
-                    index === 0 ? 'text-brand' : 
-                    index === 1 ? 'text-gray-400' : 
-                    'text-xp'
-                  }`}>
-                    {index + 1}º LUGAR
+                <div className="flex flex-col">
+                  <span className={`hud-value text-sm transition-colors 
+                    ${isChampion ? 'text-brand drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]' : isTop3 ? 'text-white' : 'text-gray-400'}`}>
+                    {player.name}
                   </span>
-
-                  <div className="w-24 h-2 bg-dark-bg border border-white/5 rounded-full overflow-hidden shadow-inner relative">
-                    <div 
-                      className="absolute top-0 left-0 h-full bg-xp transition-all duration-1000 shadow-[0_0_10px_rgba(234,88,12,0.5)]" 
-                      style={{ width: `${xpPercentage}%` }}
+                  <div className="flex items-center gap-2">
+                    <span 
+                      className="hud-label-tactical text-[9px] uppercase tracking-tighter" 
+                      style={{ color: structureData.color }}
                     >
-                      <div className="absolute top-0 left-0 w-full h-1/2 bg-white/10"></div>
-                    </div>
+                      {player.structure}
+                    </span>
                   </div>
                 </div>
-
               </div>
-            );
-          })}
-        </div>
+
+              <div className="text-right relative z-10">
+                <div className="flex flex-col">
+                  <span className={`hud-value text-sm transition-all duration-500
+                    ${isChampion ? 'text-brand drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'text-white'}
+                    ${index === 1 ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.7)]' : ''}
+                    ${index === 2 ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]' : ''}
+                  `}>
+                    {player.totalXP.toLocaleString('pt-BR')}
+                  </span>
+                  <span className="hud-label-tactical text-[8px] text-gray-600 uppercase">PONTOS XP</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </Link>
+    </div>
   );
 }

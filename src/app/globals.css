@@ -52,3 +52,27 @@
     @apply font-staatliches text-5xl tracking-widest leading-none;
   }
 }
+
+
+@layer utilities {
+  @keyframes scan-hologram {
+    0% { 
+      top: 10%; 
+      opacity: 0; 
+    }
+    20% { 
+      opacity: 0.5; /* Visible but transparent */
+    }
+    80% { 
+      opacity: 0.5; 
+    }
+    100% { 
+      top: 90%; 
+      opacity: 0; 
+    }
+  }
+
+  .animate-scan-hologram {
+    animation: scan-hologram 6s ease-in-out infinite;
+  }
+}
