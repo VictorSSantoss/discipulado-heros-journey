@@ -91,17 +91,22 @@ export default function ValentesClientView({ initialValentes }: { initialValente
               href={`/admin/valentes/${valente.id}`}
               className="group relative bg-dark-surface-80 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-2 shadow-2xl"
             >
-              <div className="relative aspect-[4/5] overflow-hidden bg-dark-bg border-b border-white/5 flex items-center justify-center">
-                
+              <div className="relative aspect-[4/5] overflow-hidden bg-dark-bg border-b border-white/5">
+                {/* PORTRAIT RENDERER */}
                 <img 
                   src={valente.image || '/images/man-silhouette.svg'} 
-                  alt="" 
+                  alt={valente.name} 
                   onError={(e) => { 
                     e.currentTarget.onerror = null; 
                     e.currentTarget.src = '/images/man-silhouette.svg'; 
                   }}
-                  className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-700 opacity-100" 
+                  // Changed: Removed p-4, switched to object-cover and object-top for better face framing
+                  className={`w-full h-full transition-transform duration-700 group-hover:scale-110 
+                    ${valente.image ? 'object-cover object-top' : 'object-contain p-8 opacity-40'}`} 
                 />
+
+                {/* GRADIENT OVERLAY: Makes the name easier to read and adds depth */}
+                <div className="absolute inset-0 bg-gradient-to-t from-dark-surface via-transparent to-transparent opacity-60" />
                 
                 {/* HUD BADGES OVERLAY */}
                 <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
