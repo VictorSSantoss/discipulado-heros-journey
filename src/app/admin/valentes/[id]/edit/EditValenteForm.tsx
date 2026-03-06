@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateValenteProfile } from "@/app/actions/valenteActions";
 import { ESTRUTURAS } from "@/constants/gameConfig";
+import AvatarUploader from "@/components/game/AvatarUploader";
 
 /**
  * EditValenteForm Component
@@ -12,6 +13,7 @@ import { ESTRUTURAS } from "@/constants/gameConfig";
 export default function EditValenteForm({ valente }: { valente: any }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [currentAvatar, setCurrentAvatar] = useState(valente.image); // Dedicated state to bypass cache
   const [formData, setFormData] = useState({
     name: valente.name,
     description: valente.description || "",
@@ -42,9 +44,26 @@ export default function EditValenteForm({ valente }: { valente: any }) {
   const handleAttrChange = (attr: string, value: number) => {
     setFormData(prev => ({
       ...prev,
-      attributes: { ...prev.attributes, [attr]: value }
+      attributes: { 
+        ...prev.attributes, 
+        [attr]: value 
+      }
     }));
   };
+
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      name: valente.name,
+      description: valente.description || "",
+      structure: valente.structure,
+      attributes: { ...valente.attributes }
+    }));
+    // Also update currentAvatar if valente prop changes from a server refresh
+    if(valente.image !== currentAvatar){
+        setCurrentAvatar(valente.image);
+    }
+  }, [valente]); 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -52,14 +71,37 @@ export default function EditValenteForm({ valente }: { valente: any }) {
         
         {/* COLUMN 1: IDENTITY RECALIBRATION */}
         <div className="flex flex-col gap-8">
-          <div className="bg-dark-bg/40 backdrop-blur-xl p-8 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
+          <div className="bg-dark-bg/40 backdrop-blur-xl p-8 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden flex flex-col items-center">
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
             
-            <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-8 uppercase">
+            <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 w-full mb-8 uppercase">
               Identidade
             </h2>
 
-            <div className="space-y-6">
+            {/* AVATAR UPLOADER (Holographic Rectangle UI) */}
+            <div className="relative w-full max-w-[220px] aspect-[3/4] flex items-center justify-center bg-dark-bg/60 border border-white/10 rounded-xl shadow-2xl overflow-hidden group mb-8">
+              <div className="absolute inset-0 z-10">
+                <AvatarUploader 
+                  valenteId={valente.id} 
+                  currentImage={currentAvatar} 
+                  onImageUpdated={(newUrl) => setCurrentAvatar(newUrl)}
+                  className="w-full h-full object-cover p-5 opacity-90 transition-opacity group-hover:opacity-100"
+                  alt={`Foto de ${formData.name}`}
+                />
+              </div>
+              
+              {/* Hologram visual effects */}
+              <div className="absolute left-0 right-0 h-[1.5px] z-[15] pointer-events-none animate-scan-hologram mix-blend-screen" style={{ background: `linear-gradient(90deg, transparent, ${theme.hex}, transparent)`, boxShadow: `0 0 20px ${theme.hex}`, width: '100%' }} />
+              <div className="absolute inset-4 border border-solid z-20 pointer-events-none" style={{ borderColor: theme.hex }}>
+                <div className="absolute inset-0" style={{ boxShadow: `inset 0 0 15px ${theme.hex}44` }} />
+              </div>
+              <div className="absolute top-4 left-4 w-3 h-3 border-t-4 border-l-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+              <div className="absolute top-4 right-4 w-3 h-3 border-t-4 border-r-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+              <div className="absolute bottom-4 left-4 w-3 h-3 border-b-4 border-l-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+              <div className="absolute bottom-4 right-4 w-3 h-3 border-b-4 border-r-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+            </div>
+
+            <div className="space-y-6 w-full">
               <div className="flex flex-col gap-2">
                 <label className="hud-label-tactical text-gray-500 text-[10px]">Nome de Guerra</label>
                 <input 
@@ -112,25 +154,28 @@ export default function EditValenteForm({ valente }: { valente: any }) {
                   <div className="flex justify-between items-end">
                     <label className="hud-label-tactical text-gray-400 uppercase tracking-tighter text-[11px]">{attr}</label>
                     <span className="hud-value text-xl text-white" style={{ textShadow: `0 0 10px ${theme.hex}60` }}>
-                      {formData.attributes[attr]}
+                      {formData.attributes[attr as keyof typeof formData.attributes]}
                     </span>
                   </div>
-                  <div className="relative group">
+                  <div className="relative group w-full">
                     <input 
                       type="range" min="0" max="20" 
-                      className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-transparent"
-                      value={formData.attributes[attr]}
+                      className="absolute inset-0 w-full h-1.5 opacity-0 cursor-pointer z-10"
+                      value={formData.attributes[attr as keyof typeof formData.attributes]}
                       onChange={e => handleAttrChange(attr, parseInt(e.target.value))}
                     />
-                    {/* Visual Progress Bar */}
-                    <div 
-                      className="absolute top-1/2 -translate-y-1/2 left-0 h-1 rounded-full pointer-events-none transition-all duration-300"
-                      style={{ 
-                        width: `${(formData.attributes[attr] / 20) * 100}%`,
-                        backgroundColor: theme.hex,
-                        boxShadow: `0 0 15px ${theme.hex}80`
-                      }}
-                    />
+                    {/* Visual Progress Bar Background */}
+                    <div className="w-full h-1.5 bg-white/5 rounded-lg pointer-events-none mt-3 relative overflow-hidden">
+                      {/* Visual Progress Fill */}
+                      <div 
+                        className="absolute top-0 left-0 h-full transition-all duration-300 pointer-events-none"
+                        style={{ 
+                          width: `${(formData.attributes[attr as keyof typeof formData.attributes] / 20) * 100}%`,
+                          backgroundColor: theme.hex,
+                          boxShadow: `0 0 15px ${theme.hex}80`
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

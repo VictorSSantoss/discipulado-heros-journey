@@ -19,6 +19,7 @@ import MissionLog from "@/components/MissionLog";
 import LevelUpNotification from "@/components/LevelUpNotification";
 import AchievementToast from "@/components/AchievementToast";
 import AddCompanionModal from "@/components/profile/AddCompanionModal";
+import AvatarUploader from "@/components/game/AvatarUploader";
 
 interface Medal {
   id: string;
@@ -238,7 +239,15 @@ export default function ValenteProfileClient({
               </div>
 
               <div className="relative w-full max-w-[220px] aspect-[3/4] flex items-center justify-center bg-dark-bg/60 border border-white/10 rounded-xl shadow-2xl overflow-hidden group">
-                <img src={valente.image || '/images/man-silhouette.svg'} className="w-full h-full object-cover p-5 opacity-90 transition-opacity group-hover:opacity-100 z-10" alt="" />
+                {/* Avatar Uploader handles the image and upload logic */}
+                <div className="absolute inset-0 z-10">
+                  <AvatarUploader 
+                    valenteId={valente.id} 
+                    currentImage={valente.image} 
+                    className="w-full h-full object-cover p-5 opacity-90 transition-opacity group-hover:opacity-100"
+                    alt={`Foto de ${valente.name}`}
+                  />
+                </div>
                 <div className="absolute left-0 right-0 h-[1.5px] z-[15] pointer-events-none animate-scan-hologram mix-blend-screen" style={{ background: `linear-gradient(90deg, transparent, ${theme.hex}, transparent)`, boxShadow: `0 0 20px ${theme.hex}`, width: '100%' }} />
                 <div className="absolute inset-4 border border-solid z-20 pointer-events-none" style={{ borderColor: theme.hex }}>
                   <div className="absolute inset-0" style={{ boxShadow: `inset 0 0 15px ${theme.hex}44` }} />

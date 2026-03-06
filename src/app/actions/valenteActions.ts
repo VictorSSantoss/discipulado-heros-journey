@@ -10,92 +10,75 @@ import { GET_XP_MULTIPLIER } from "@/constants/gameConfig";
  */
 export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
-    // 1. Calculation of the temporal multiplier
     const multiplier = GET_XP_MULTIPLIER();
     const finalXp = Math.floor(baseAmount * multiplier.factor);
 
-    // 2. Retrieval of current data and existing reliquias
+    // 1. Fetch Valente with all their current progress
     const currentValente = await prisma.valente.findUnique({
       where: { id: valenteId },
       include: { 
-        reliquias: {
-          include: { reliquia: true }
-        }
+        reliquias: { include: { reliquia: true } },
+        holyPower: true // We need this to check streaks!
       }
     });
 
-    if (!currentValente) {
-      throw new Error("Target Valente not found in database.");
-    }
+    if (!currentValente) throw new Error("Valente not found.");
 
     const newTotalXP = currentValente.totalXP + finalXp;
+    const alreadyEarnedIds = new Set(currentValente.reliquias.map(vr => vr.reliquiaId));
 
-    // 3. Identification of new reliquias based on milestones
-    const alreadyEarnedReliquiaIds = currentValente.reliquias.map(vr => vr.reliquiaId);
-    
-    // Fetch all XP milestone reliquias not yet earned
-    const allMilestones = await prisma.reliquia.findMany({
-      where: {
-        triggerType: "XP_MILESTONE",
-        id: { notIn: alreadyEarnedReliquiaIds }
+    // 2. Fetch ALL potential Relíquias
+    const allReliquias = await prisma.reliquia.findMany();
+
+    // 3. THE RULES ENGINE: Filter reliquias that the user JUST earned
+    const newlyEarned = allReliquias.filter(relic => {
+      if (alreadyEarnedIds.has(relic.id)) return false;
+
+      const params = relic.ruleParams as any;
+
+      switch (relic.triggerType) {
+        case "XP_MILESTONE":
+          return newTotalXP >= params.target;
+
+        case "HABIT_STREAK":
+          const habit = currentValente.holyPower.find(h => h.name === params.habit);
+          return habit ? habit.streak >= params.days : false;
+
+        case "ATTRIBUTE_LEVEL":
+          // Logic for checking Attribute levels will go here
+          return false;
+
+        default:
+          return false;
       }
     });
 
-    // Filter by the target value stored in ruleParams JSON
-    const eligibleReliquias = allMilestones
-      .filter((r: any) => {
-        const params = r.ruleParams as any;
-        return params && params.target <= newTotalXP;
-      })
-      .sort((a: any, b: any) => (b.ruleParams as any).target - (a.ruleParams as any).target);
-
-    // 4. Determine Log Reason
-    const finalReason = customReason || (multiplier.factor > 1 
-      ? `Treino Finalizado (${multiplier.label})` 
-      : "Treino Finalizado / Atividade");
-
-    // 5. Execution of the atomic update
-    const updatedValente = await prisma.valente.update({
+    // 4. Save the progress and the new Relics
+    const updated = await prisma.valente.update({
       where: { id: valenteId },
       data: {
         totalXP: newTotalXP,
-        xpLogs: {
-          create: {
-            amount: finalXp,
-            reason: finalReason
-          }
-        },
+        xpLogs: { create: { amount: finalXp, reason: customReason || "Treino" } },
         reliquias: {
-          create: eligibleReliquias.map(r => ({
+          create: newlyEarned.map(r => ({
             reliquia: { connect: { id: r.id } }
           }))
         }
       },
       include: {
-        xpLogs: {
-          orderBy: { createdAt: 'desc' },
-          take: 10
-        },
-        reliquias: {
-          include: { reliquia: true }
-        }
+        reliquias: { include: { reliquia: true } },
+        xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 }
       }
     });
 
-    // 6. Revalidation of affected cache paths for immediate UI updates
-    revalidatePath(`/admin/valentes/${valenteId}`);
-    revalidatePath(`/admin/valentes`);
-    revalidatePath(`/admin`);
-
     return { 
       success: true, 
-      newTotalXP: updatedValente.totalXP,
-      newLogs: updatedValente.xpLogs,
-      newMedals: eligibleReliquias 
+      newTotalXP: updated.totalXP, 
+      newRelics: newlyEarned // This triggers the BF1 popup on the frontend!
     };
   } catch (error) {
-    console.error("Critical error during XP update process:", error);
-    return { success: false, error: "Database transaction failed." };
+    console.error(error);
+    return { success: false };
   }
 }
 

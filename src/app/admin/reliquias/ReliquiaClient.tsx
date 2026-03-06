@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createReliquia, deleteReliquia } from "@/app/actions/reliquiaActions";
 import { ICONS } from "@/constants/gameConfig";
+import IconUploader from "@/components/game/IconUploader"; // Ensure this import is here
 
 interface ReliquiaClientProps {
   initialCatalog: any[];
@@ -29,7 +30,7 @@ export default function ReliquiaClient({ initialCatalog }: ReliquiaClientProps) 
     setIsProcessing(true);
     const result = await createReliquia(formData);
     if (result.success) {
-      window.location.reload(); // Quickest way to sync server state
+      window.location.reload(); 
     }
     setIsProcessing(false);
   };
@@ -53,7 +54,7 @@ export default function ReliquiaClient({ initialCatalog }: ReliquiaClientProps) 
         <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
           +
         </div>
-        <span className="hud-label-tactical text-gray-400 group-hover:text-brand">FORJAR NOVA RELÍQUIA</span>
+        <span className="hud-label-tactical text-gray-400 group-hover:text-brand font-bold tracking-widest text-[10px]">FORJAR NOVA RELÍQUIA</span>
       </button>
 
       {/* --- CATALOG LIST --- */}
@@ -79,7 +80,7 @@ export default function ReliquiaClient({ initialCatalog }: ReliquiaClientProps) 
         </div>
       ))}
 
-      {/* --- THE FORGE MODAL (Shape-Shifting Form) --- */}
+      {/* --- THE FORGE MODAL --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
@@ -91,28 +92,40 @@ export default function ReliquiaClient({ initialCatalog }: ReliquiaClientProps) 
               <h2 className="hud-title-md text-white text-2xl mb-8 uppercase tracking-widest">Nova Relíquia</h2>
               
               <form onSubmit={handleCreate} className="space-y-6">
-                {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="hud-label-tactical text-[10px] text-gray-500">NOME</label>
-                    <input 
-                      required className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-brand outline-none"
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="hud-label-tactical text-[10px] text-gray-500">RARIDADE</label>
-                    <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-brand outline-none"
-                      onChange={(e) => setFormData({...formData, rarity: e.target.value})}
-                    >
-                      <option value="COMMON">COMMON</option>
-                      <option value="RARE">RARE</option>
-                      <option value="LEGENDARY">LEGENDARY</option>
-                    </select>
+                
+                {/* BASIC INFO WITH ICON UPLOADER */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* NEW: ICON UPLOADER */}
+                  <IconUploader 
+                    currentIcon={formData.icon} 
+                    onUploadComplete={(url) => setFormData({ ...formData, icon: url })} 
+                  />
+
+                  <div className="md:col-span-2 space-y-6">
+                    <div className="space-y-2">
+                      <label className="hud-label-tactical text-[10px] text-gray-500">NOME</label>
+                      <input 
+                        required 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-brand outline-none"
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="hud-label-tactical text-[10px] text-gray-500">RARIDADE</label>
+                      <select 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-brand outline-none"
+                        onChange={(e) => setFormData({...formData, rarity: e.target.value})}
+                      >
+                        <option value="COMMON">COMMON</option>
+                        <option value="RARE">RARE</option>
+                        <option value="LEGENDARY">LEGENDARY</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
+                {/* TRIGGER TYPE SELECTION */}
                 <div className="space-y-2">
                   <label className="hud-label-tactical text-[10px] text-gray-500">GATILHO (TRIGGER)</label>
                   <select 
@@ -130,36 +143,82 @@ export default function ReliquiaClient({ initialCatalog }: ReliquiaClientProps) 
 
                 {/* DYNAMIC PARAMETERS SECTION */}
                 <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
-                  <p className="hud-label-tactical text-[10px] text-brand">CONFIGURAÇÃO DA REGRA</p>
+                  <p className="hud-label-tactical text-[10px] text-brand uppercase">Configuração da Regra</p>
                   
                   {formData.triggerType === "XP_MILESTONE" && (
                     <div className="space-y-2">
-                      <label className="text-xs text-gray-400">XP Necessário</label>
-                      <input type="number" className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" 
-                        onChange={(e) => setFormData({...formData, ruleParams: { target: parseInt(e.target.value) }})} />
+                      <label className="text-[10px] text-gray-500 uppercase">XP Necessário</label>
+                      <input 
+                        type="number" 
+                        className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none" 
+                        onChange={(e) => setFormData({...formData, ruleParams: { target: parseInt(e.target.value) }})} 
+                      />
                     </div>
                   )}
 
                   {formData.triggerType === "HABIT_STREAK" && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-gray-400">Hábito</label>
-                        <select className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white" 
-                          onChange={(e) => setFormData({...formData, ruleParams: { ...formData.ruleParams, habit: e.target.value }})}>
-                          <option value="Leitura">Leitura</option>
-                          <option value="Oração">Oração</option>
-                          <option value="Jejum">Jejum</option>
-                        </select>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase">Hábito</label>
+                          <select 
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none" 
+                            onChange={(e) => setFormData({...formData, ruleParams: { ...formData.ruleParams, habit: e.target.value }})}
+                          >
+                            <option value="">Selecionar...</option>
+                            <option value="Leitura">Leitura</option>
+                            <option value="Oração">Oração</option>
+                            <option value="Jejum">Jejum</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase">Dias de Streak</label>
+                          <input 
+                            type="number" placeholder="Ex: 7"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none"
+                            onChange={(e) => setFormData({...formData, ruleParams: { ...formData.ruleParams, days: parseInt(e.target.value) }})} 
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs text-gray-400">Dias Seguidos</label>
-                        <input type="number" className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white"
-                          onChange={(e) => setFormData({...formData, ruleParams: { ...formData.ruleParams, days: parseInt(e.target.value) }})} />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase">Min. Capítulos/Minutos</label>
+                          <input 
+                            type="number" placeholder="Ex: 3"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none"
+                            onChange={(e) => setFormData({...formData, ruleParams: { ...formData.ruleParams, minValue: parseInt(e.target.value) }})} 
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Add more conditional blocks here as we define the logic! */}
+                  {formData.triggerType === "HABIT_WEEKLY" && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase">Dias no Mês</label>
+                          <input 
+                            type="number" placeholder="Ex: 4"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none"
+                            onChange={(e) => setFormData({...formData, ruleParams: { ...formData.ruleParams, monthlyTarget: parseInt(e.target.value) }})} 
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 uppercase">Horas por Jejum</label>
+                          <input 
+                            type="number" placeholder="Ex: 12"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-white outline-none"
+                            onChange={(e) => setFormData({...formData, ruleParams: { ...formData.ruleParams, minHours: parseInt(e.target.value) }})} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.triggerType === "MANUAL" && (
+                    <p className="text-[10px] text-gray-500 italic">Esta relíquia será concedida manualmente pelo Master.</p>
+                  )}
                 </div>
 
                 <div className="flex gap-4 pt-4">

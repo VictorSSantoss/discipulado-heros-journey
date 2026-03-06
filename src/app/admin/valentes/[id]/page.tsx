@@ -13,14 +13,13 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
       attributes: true,
       holyPower: true,
       loveLanguages: true,
-      reliquias: {include: { reliquia: true}},
+      reliquias: { include: { reliquia: true } },
       xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 }
     }
   });
 
   if (!rawValente) return notFound();
 
-  // ADDED rawMedalCatalog to the Promise.all
   const [globalRanking, personalRank, companheirosDetails, rawMissions, rawMedalCatalog] = await Promise.all([
     getGlobalRanking(),
     getPersonalRank(rawValente.totalXP),
@@ -33,16 +32,25 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
   const safeRanking = JSON.parse(JSON.stringify(globalRanking));
   const safeCompanheiros = JSON.parse(JSON.stringify(companheirosDetails));
   const safeMissions = JSON.parse(JSON.stringify(rawMissions));
-  const safeMedalCatalog = JSON.parse(JSON.stringify(rawMedalCatalog)); // Serialize catalog
+  const safeMedalCatalog = JSON.parse(JSON.stringify(rawMedalCatalog));
+
+  // Map reliquias to the "medals" format the client component expects
+  const valenteWithMappedMedals = {
+    ...safeValente,
+    medals: safeValente.reliquias.map((vr: any) => ({
+      medal: vr.reliquia,
+      awardedAt: vr.awardedAt
+    }))
+  };
 
   return (
     <ValenteProfileClient 
-      initialValente={safeValente} 
+      initialValente={valenteWithMappedMedals} 
       ranking={safeRanking}
       personalRank={personalRank}
       initialCompanheiros={safeCompanheiros}
       availableMissions={safeMissions}
-      medalCatalog={safeMedalCatalog} // Pass it to the client
+      medalCatalog={safeMedalCatalog} 
     />
   );
 }
