@@ -99,7 +99,7 @@ export default function MissoesClient({ initialMissions, valentes }: any) {
   const handleConfirmModal = async () => {
     if (!modalSelectedValente || !selectedMissionForModal) return;
     setIsProcessing(true);
-    await completeMission(modalSelectedValente, selectedMissionForModal.id, selectedMissionForModal.xpReward, selectedMissionForModal.title);
+    await completeMission(modalSelectedValente, selectedMissionForModal.id);
     setIsProcessing(false);
     setSelectedMissionForModal(null);
     setModalSelectedValente("");
