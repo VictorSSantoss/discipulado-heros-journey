@@ -16,7 +16,7 @@ async function main() {
   // 1. LIMPEZA (Ordem inversa de dependência)
   await prisma.valenteMission.deleteMany()
   await prisma.mission.deleteMany() 
-  // 🛡️ REPLACED: medals with reliquias
+  // REPLACED: medals with reliquias
   await prisma.valenteReliquia.deleteMany() 
   await prisma.reliquia.deleteMany()
   await prisma.xpLog.deleteMany()

@@ -135,7 +135,7 @@ export default function MissoesClient({ initialMissions, valentes }: any) {
           </div>
 
           <Link 
-            href="/admin/missoes/nova"
+            href="/admin/missoes/create"
             className="bg-mission hover:brightness-110 text-white hud-title-md px-8 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-2 group shrink-0 w-full sm:w-auto justify-center"
           >
             <span className="text-2xl group-hover:rotate-90 transition-transform duration-300 leading-none">+</span> 

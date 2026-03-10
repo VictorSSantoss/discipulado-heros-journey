@@ -1,11 +1,44 @@
 "use client";
 
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { ATTRIBUTE_MAP } from "@/constants/gameConfig"; // ⚔️ Dynamic Mapping Import
 
 /**
- * CustomTick Component
- * Optimized for scannability and HUD aesthetics.
+ * SCALABLE PROGRESSION ENGINE
+ * Define the milestones that trigger glowing UI nodes on the chart.
  */
+const ATTRIBUTE_MILESTONES = [5, 10, 25, 50, 100];
+const MAX_ATTRIBUTE_POINTS = 100;
+
+/**
+ * CustomDot Component
+ * Renders glowing Orbs at the vertices of the radar chart based on milestones.
+ */
+const CustomDot = (props: any) => {
+  const { cx, cy, value, stroke } = props;
+  
+  // Find the highest milestone the player has reached for this specific attribute
+  const reachedMilestone = ATTRIBUTE_MILESTONES.slice().reverse().find(m => value >= m);
+  
+  if (!reachedMilestone) return null;
+
+  let radius = 2;
+  let opacity = 0.5;
+
+  if (reachedMilestone >= 100) { radius = 8; opacity = 1; }
+  else if (reachedMilestone >= 50) { radius = 6; opacity = 0.9; }
+  else if (reachedMilestone >= 25) { radius = 5; opacity = 0.8; }
+  else if (reachedMilestone >= 10) { radius = 4; opacity = 0.7; }
+  else if (reachedMilestone >= 5) { radius = 3; opacity = 0.6; }
+
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={radius * 2.5} fill={stroke} opacity={opacity * 0.3} className="animate-pulse" />
+      <circle cx={cx} cy={cy} r={radius} fill={stroke} opacity={opacity} />
+    </g>
+  );
+};
+
 const CustomTick = ({ payload, x, y, textAnchor }: any) => {
   const words = payload.value.split(' ');
 
@@ -27,13 +60,7 @@ const CustomTick = ({ payload, x, y, textAnchor }: any) => {
   );
 };
 
-/**
- * AttributesChart Component
- * Now accepts a 'theme' prop to sync colors with the Valente's structure.
- * Labels reflect the fivefold ministry mapping.
- */
 export default function AttributesChart({ skills, theme }: { skills?: any, theme?: { hex: string } }) {
-  // Fallback to orange if no theme is provided
   const activeColor = theme?.hex || "#ea580c";
 
   if (!skills) return (
@@ -42,26 +69,28 @@ export default function AttributesChart({ skills, theme }: { skills?: any, theme
     </div>
   );
 
-  // Mapped RPG stats (from DB) to Ministry names (for UI)
+  /**
+   * ⚔️ DYNAMIC DATA MAPPING
+   * We now use the ATTRIBUTE_MAP from gameConfig to define the labels (subject).
+   * This ensures consistency between the Database and the HUD.
+   */
   const data = [
-    { subject: 'LIDERANÇA', A: skills.forca || 0 },
-    { subject: 'SERVO', A: skills.destreza || 0 },
-    { subject: 'TRABALHO EM EQUIPE', A: skills.constituicao || 0 },
-    { subject: 'MESTRE', A: skills.inteligencia || 0 },
-    { subject: 'PROFETA', A: skills.sabedoria || 0 },
-    { subject: 'EVANGELISMO', A: skills.carisma || 0 },
+    { subject: ATTRIBUTE_MAP.forca, A: Math.max(skills.forca || 1, 8) },
+    { subject: ATTRIBUTE_MAP.destreza, A: Math.max(skills.destreza || 1, 8) },
+    { subject: ATTRIBUTE_MAP.constituicao, A: Math.max(skills.constituicao || 1, 8) },
+    { subject: ATTRIBUTE_MAP.inteligencia, A: Math.max(skills.inteligencia || 1, 8) },
+    { subject: ATTRIBUTE_MAP.sabedoria, A: Math.max(skills.sabedoria || 1, 8) },
+    { subject: ATTRIBUTE_MAP.carisma, A: Math.max(skills.carisma || 1, 8) },
   ];
 
   return (
     <div className="h-[280px] w-full relative group">
-      {/* Background Decorative HUD Ring */}
       <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
         <div className="w-48 h-48 border border-white rounded-full animate-pulse" />
       </div>
 
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
-          {/* Grid lines now match the tech-look */}
           <PolarGrid stroke="#374151" strokeDasharray="3 3" />
           
           <PolarAngleAxis 
@@ -69,8 +98,7 @@ export default function AttributesChart({ skills, theme }: { skills?: any, theme
             tick={<CustomTick />} 
           />
           
-          {/* Radius set to 15 to allow room for growth/XP buffs */}
-          <PolarRadiusAxis domain={[0, 15]} tick={false} axisLine={false} />
+          <PolarRadiusAxis domain={[0, MAX_ATTRIBUTE_POINTS]} tick={false} axisLine={false} />
           
           <Radar 
             name="Atributos" 
@@ -81,6 +109,7 @@ export default function AttributesChart({ skills, theme }: { skills?: any, theme
             strokeWidth={2}
             animationBegin={300}
             animationDuration={1500}
+            dot={<CustomDot stroke={activeColor} />}
           />
           
           <Tooltip

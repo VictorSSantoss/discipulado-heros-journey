@@ -61,6 +61,9 @@ model Valente {
   
   // One-to-Many relationship for tracking spiritual habits and streaks
   holyPower     HolyPower[]
+  
+  // NEW: Historical log of all fasts completed by the hero
+  fastingLogs   FastingLog[]
 
   // --- COMPANHEIROS SYSTEM ---
   // Simple array of IDs to store friend connections efficiently
@@ -83,12 +86,13 @@ model Valente {
 
 model Attributes {
   id           String  @id @default(uuid())
-  forca        Int     @default(0)
-  destreza     Int     @default(0)
-  constituicao Int     @default(0)
-  inteligencia Int     @default(0)
-  sabedoria    Int     @default(0)
-  carisma      Int     @default(0)
+  // UPDATED: Baseline changed from 0 to 1 for Radar Chart visibility
+  forca        Int     @default(1)
+  destreza     Int     @default(1)
+  constituicao Int     @default(1)
+  inteligencia Int     @default(1)
+  sabedoria    Int     @default(1)
+  carisma      Int     @default(1)
 
   // One-to-One relationship with Valente
   valenteId    String  @unique
@@ -120,6 +124,19 @@ model HolyPower {
   valente   Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
 }
 
+// NEW: FASTING CHAMBER LOGIC
+model FastingLog {
+  id          String   @id @default(uuid())
+  valenteId   String
+  valente     Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
+  type        String   // EX: "Jejum Total", "Jejum de Daniel", "Parcial"
+  duration    Int      // Duration in hours
+  date        DateTime @default(now())
+  notes       String?  @db.Text // Optional field for spiritual reflections during the fast
+  
+  @@index([valenteId])
+}
+
 // -----------------------------------------------------------------------------
 // GAMEPLAY MECHANICS (Relics, Achievements & Progression)
 // -----------------------------------------------------------------------------
@@ -132,8 +149,8 @@ model Reliquia {
   rarity      String         // e.g., "COMMON", "RARE", "LEGENDARY"
   
   // DYNAMIC RULES ENGINE
-  triggerType String         // e.g., "XP_MILESTONE", "HABIT_STREAK", "MISSION_COUNT", "MANUAL"
-  ruleParams  Json           // JSON box holding the exact criteria (e.g., {"habit": "Jejum", "streak": 21})
+  triggerType String         // e.g., "XP_MILESTONE", "HABIT_STREAK", "ATTRIBUTE_LEVEL", "MISSION_COUNT", "MANUAL"
+  ruleParams  Json           // JSON box holding the exact criteria (e.g., {"attribute": "forca", "target": 25})
   
   createdAt   DateTime       @default(now())
 
@@ -153,15 +170,19 @@ model ValenteReliquia {
 }
 
 model Mission {
-  id          String           @id @default(uuid())
-  title       String
-  description String           @db.Text
-  xpReward    Int
-  type        String           // Mission categorization (HABIT, EVENT, TASK)
-  createdAt   DateTime         @default(now())
-
-  // Many-to-Many relationship through the join table
-  valentes    ValenteMission[]
+  id               String           @id @default(uuid())
+  title            String
+  description      String           @db.Text
+  xpReward         Int
+  type             String           
+  
+  // UNIFIED REWARD ENGINE (Attribute Progression)
+  rewardAttribute  String?          // First attribute (e.g., "sabedoria")
+  rewardAttribute2 String?          // Second attribute (e.g., "carisma")
+  rewardAttrValue  Int              @default(0)
+  
+  createdAt        DateTime         @default(now())
+  valentes         ValenteMission[]
 }
 
 model ValenteMission {

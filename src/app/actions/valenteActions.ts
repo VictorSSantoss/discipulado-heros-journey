@@ -2,7 +2,88 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { GET_XP_MULTIPLIER } from "@/constants/gameConfig";
+import { GET_XP_MULTIPLIER, STRUCTURE_BONUS } from "@/constants/gameConfig";
+
+/**
+ * ⚔️ NEW: MISSION COMPLETION ENGINE
+ * Connects a Valente to a Mission, grants XP, and boosts Radar Chart attributes.
+ */
+export async function completeMission(valenteId: string, missionId: string) {
+  try {
+    // 1. Fetch Mission Details
+    const mission = await prisma.mission.findUnique({
+      where: { id: missionId }
+    });
+
+    if (!mission) throw new Error("Missão não encontrada.");
+
+    // 2. Calculate Rewards with Multipliers
+    const multiplier = GET_XP_MULTIPLIER();
+    const finalXp = Math.floor(mission.xpReward * multiplier.factor);
+
+    // 3. DATABASE TRANSACTION (Atomicity: Everything works or nothing works)
+    const updatedValente = await prisma.$transaction(async (tx) => {
+      
+      // A. Register/Update the Mission Status
+      await tx.valenteMission.upsert({
+        where: {
+          valenteId_missionId: { valenteId, missionId }
+        },
+        update: {
+          status: "COMPLETED",
+          completedAt: new Date()
+        },
+        create: {
+          valenteId,
+          missionId,
+          status: "COMPLETED",
+          completedAt: new Date()
+        }
+      });
+
+      // B. Determine Attribute Boost
+      const attributeUpdate = mission.rewardAttribute 
+        ? { [mission.rewardAttribute]: { increment: mission.rewardAttrValue } }
+        : {};
+
+      // C. Update Valente Stats & Log XP
+      return await tx.valente.update({
+        where: { id: valenteId },
+        data: {
+          totalXP: { increment: finalXp },
+          xpLogs: {
+            create: {
+              amount: finalXp,
+              reason: `Missão: ${mission.title}`
+            }
+          },
+          // ⚔️ This pushes the vertex on the Radar Chart!
+          attributes: {
+            update: attributeUpdate
+          }
+        },
+        include: { attributes: true }
+      });
+    });
+
+    // 4. SYNC UI
+    revalidatePath(`/admin/valentes/${valenteId}`);
+    revalidatePath("/admin/valentes");
+    revalidatePath("/admin/missoes");
+
+    return { 
+      success: true, 
+      xpGained: finalXp,
+      attributeBoosted: mission.rewardAttribute,
+      newTotalXp: updatedValente.totalXP
+    };
+  } catch (error) {
+    console.error("Critical Failure in Mission Completion:", error);
+    return { success: false, message: "Erro ao processar recompensas." };
+  }
+}
+
+// --- EXISTING FUNCTIONS BELOW (Maintained for consistency) ---
 
 export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
@@ -56,15 +137,14 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
       }
     });
 
-    // CRITICAL FIX: Tell Next.js to refresh the data
     revalidatePath(`/admin/valentes/${valenteId}`);
     revalidatePath("/admin/valentes");
 
     return { 
       success: true, 
       newTotalXP: updated.totalXP, 
-      newMedals: newlyEarned, // Renamed to match Client expectations
-      newLogs: updated.xpLogs   // Added for instant log update
+      newMedals: newlyEarned, 
+      newLogs: updated.xpLogs   
     };
   } catch (error) {
     console.error("XP Update Error:", error);
@@ -72,9 +152,6 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
   }
 }
 
-/**
- * Retrieves the top 5 Valentes based on total XP for the leaderboard.
- */
 export async function getGlobalRanking() {
   try {
     return await prisma.valente.findMany({
@@ -94,17 +171,12 @@ export async function getGlobalRanking() {
   }
 }
 
-/**
- * Determines the rank of a specific individual relative to the total population.
- */
 export async function getPersonalRank(currentXp: number) {
   try {
     const higherRankedCount = await prisma.valente.count({
       where: { totalXP: { gt: currentXp } },
     });
-
     const totalValentes = await prisma.valente.count();
-
     return { rank: higherRankedCount + 1, total: totalValentes };
   } catch (error) {
     console.error("Personal rank calculation failure:", error);
@@ -112,9 +184,6 @@ export async function getPersonalRank(currentXp: number) {
   }
 }
 
-/**
- * Updates the Valente profile in the database.
- */
 export async function updateValenteProfile(valenteId: string, data: any) {
   try {
     await prisma.$transaction(async (tx) => {
@@ -124,17 +193,18 @@ export async function updateValenteProfile(valenteId: string, data: any) {
           name: data.name,
           structure: data.structure,
           description: data.description,
-          attributes: {
-            update: {
-              forca: data.attributes.forca,
-              destreza: data.attributes.destreza,
-              constituicao: data.attributes.constituicao,
-              inteligencia: data.attributes.inteligencia,
-              sabedoria: data.attributes.sabedoria,
-              carisma: data.attributes.carisma,
+          ...(data.attributes && {
+            attributes: {
+              update: {
+                forca: data.attributes.forca,
+                destreza: data.attributes.destreza,
+                constituicao: data.attributes.constituicao,
+                inteligencia: data.attributes.inteligencia,
+                sabedoria: data.attributes.sabedoria,
+                carisma: data.attributes.carisma,
+              }
             }
-          },
-          // Keeping loveLanguages logic as requested
+          }),
           loveLanguages: {
             update: {
               palavras: data.loveLanguages.palavras,
@@ -152,32 +222,20 @@ export async function updateValenteProfile(valenteId: string, data: any) {
           const existingPower = await tx.holyPower.findFirst({
             where: { valenteId, name: power.name }
           });
-
           if (existingPower) {
             await tx.holyPower.update({
               where: { id: existingPower.id },
-              data: {
-                current: power.current,
-                goal: power.goal,
-                streak: power.streak
-              }
+              data: { current: power.current, goal: power.goal, streak: power.streak }
             });
           } else {
             await tx.holyPower.create({
-              data: {
-                valenteId,
-                name: power.name,
-                current: power.current,
-                goal: power.goal,
-                streak: power.streak
-              }
+              data: { valenteId, name: power.name, current: power.current, goal: power.goal, streak: power.streak }
             });
           }
         }
       }
     });
 
-    // Solve the "Ghost image" issue by revalidating the layout
     revalidatePath(`/admin/valentes/${valenteId}`, 'layout');
     revalidatePath("/admin/valentes");
     return { success: true };
@@ -187,13 +245,20 @@ export async function updateValenteProfile(valenteId: string, data: any) {
   }
 }
 
-/**
- * Forges a new Valente profile in the database.
- */
 export async function createValente(data: any) {
   try {
     const defaultUser = await prisma.user.findFirst();
-    if (!defaultUser) throw new Error("Nenhum Discipulador encontrado no sistema.");
+    if (!defaultUser) throw new Error("Nenhum Discipulador encontrado.");
+
+    let startingAttributes: any = {
+      forca: 1, destreza: 1, constituicao: 1, 
+      inteligencia: 1, sabedoria: 1, carisma: 1
+    };
+
+    const bonus = STRUCTURE_BONUS[data.structure?.toUpperCase()];
+    if (bonus) {
+      startingAttributes[bonus.attribute] = bonus.value;
+    }
 
     const newValente = await prisma.$transaction(async (tx) => {
       return await tx.valente.create({
@@ -202,16 +267,7 @@ export async function createValente(data: any) {
           structure: data.structure,
           description: data.description,
           userId: defaultUser.id,
-          attributes: {
-            create: {
-              forca: data.attributes.forca,
-              destreza: data.attributes.destreza,
-              constituicao: data.attributes.constituicao,
-              inteligencia: data.attributes.inteligencia,
-              sabedoria: data.attributes.sabedoria,
-              carisma: data.attributes.carisma,
-            }
-          },
+          attributes: { create: startingAttributes },
           loveLanguages: {
             create: {
               palavras: data.loveLanguages.palavras,
@@ -241,34 +297,22 @@ export async function createValente(data: any) {
   }
 } 
 
-/**
- * Permanently deletes a Valente and all their associated records.
- */
 export async function deleteValente(valenteId: string) {
   try {
-    await prisma.valente.delete({
-      where: { id: valenteId },
-    });
-
+    await prisma.valente.delete({ where: { id: valenteId } });
     revalidatePath("/admin/valentes");
-    revalidatePath("/admin");
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete profile:", error);
+    console.error("Deletion failed:", error);
     return { success: false };
   }
 }
 
-/**
- * Retrieves the complete catalog of Relíquias available in the Kingdom.
- */
 export async function getAllReliquias() {
   try {
-    return await prisma.reliquia.findMany({
-      orderBy: { createdAt: 'desc' } 
-    });
+    return await prisma.reliquia.findMany({ orderBy: { createdAt: 'desc' } });
   } catch (error) {
-    console.error("Failed to fetch reliquia catalog:", error);
+    console.error("Relic fetch failed:", error);
     return [];
   }
 }

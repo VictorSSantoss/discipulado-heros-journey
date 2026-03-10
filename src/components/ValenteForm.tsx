@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 /* CONFIGURATION IMPORTS */
-import { ESTRUTURAS, BASE_ATTRIBUTES, LOVE_LANGUAGES, ICONS } from "@/constants/gameConfig";
+// ⚔️ Synced: BASE_ATTRIBUTES removed to favor the automated Class System
+import { ESTRUTURAS, LOVE_LANGUAGES, ICONS } from "@/constants/gameConfig";
 import { updateValenteProfile, createValente, deleteValente } from "@/app/actions/valenteActions";
 import AvatarUploader from "@/components/game/AvatarUploader";
 import { uploadValenteImage } from "@/app/actions/uploadActions";
@@ -21,35 +22,20 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  const ministrySkills = ["Liderança", "Trabalho em Equipe", "Evangelismo", "Servo", "Mestre", "Profeta"];
-
-  const rpgToMinistryMap: Record<string, string> = {
-    forca: "Liderança",
-    constituicao: "Trabalho em Equipe",
-    carisma: "Evangelismo",
-    destreza: "Servo",
-    inteligencia: "Mestre",
-    sabedoria: "Profeta"
-  };
-
+  // CORE IDENTITY STATE
   const [name, setName] = useState(initialData?.name || "");
   const [structure, setStructure] = useState(initialData?.structure || ESTRUTURAS.GAD.label);
   const [description, setDescription] = useState(initialData?.description || "");
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image || null);
 
-  const defaultSkills = ministrySkills.reduce((acc, skill) => {
-    const rpgKey = Object.keys(rpgToMinistryMap).find(key => rpgToMinistryMap[key] === skill);
-    acc[skill] = initialData?.attributes?.[rpgKey as string] ?? 5;
-    return acc;
-  }, {} as Record<string, number>);
-  const [skills, setSkills] = useState(defaultSkills);
-
+  // --- LOVE LANGUAGES LOGIC ---
   const defaultLoveLanguages = LOVE_LANGUAGES.reduce((acc, lang) => {
     acc[lang.key] = initialData?.loveLanguages?.[lang.key] ?? 0;
     return acc;
   }, {} as Record<string, number>);
   const [loveLanguages, setLoveLanguages] = useState(defaultLoveLanguages);
 
+  // --- HOLY POWER LOGIC ---
   const formatInitialHolyPower = () => {
     const defaultHp = { 
       Oração: { current: 0, goal: 7, streak: 0, unit: 'dias' },
@@ -72,7 +58,6 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   };
   const [holyPower, setHolyPower] = useState(formatInitialHolyPower());
 
-  // PREVENT NEXT.JS CACHE BUGS: Keep image in sync if server data changes
   useEffect(() => {
     if (initialData?.image && initialData.image !== imagePreview) {
       setImagePreview(initialData.image);
@@ -93,22 +78,16 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) return alert("O Valente precisa de um nome de guerra.");
+    
     setIsSubmitting(true);
 
-    const rpgAttributes = {
-      forca: skills["Liderança"],
-      constituicao: skills["Trabalho em Equipe"],
-      carisma: skills["Evangelismo"],
-      destreza: skills["Servo"],
-      inteligencia: skills["Mestre"],
-      sabedoria: skills["Profeta"]
-    };
-
+    // ⚔️ PAYLOAD: Attributes are intentionally omitted. 
+    // They are handled by createValente (baseline) and Mission completions.
     const payload = {
       name,
       structure,
       description,
-      attributes: rpgAttributes,
       loveLanguages,
       holyPower: Object.entries(holyPower).map(([name, data]: [string, any]) => ({
         name,
@@ -119,28 +98,24 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     };
 
     if (mode === "edit" && initialData?.id) {
-      // EDIT MODE: (Remains unchanged)
       const result = await updateValenteProfile(initialData.id, payload);
       if (result.success) {
         router.push(`/admin/valentes/${initialData.id}`);
         router.refresh();
       } else {
-        alert("Falha ao salvar alterações.");
+        alert("Falha ao atualizar registro.");
         setIsSubmitting(false);
       }
     } else {
-      // CREATE MODE: The Two-Step Process
       const result = await createValente(payload);
       
       if (result.success && result.id) {
-        // STEP 2: Now that the hero exists, upload the image if one was selected!
         const file = fileInputRef.current?.files?.[0];
         if (file) {
           const formData = new FormData();
           formData.append("image", file);
           await uploadValenteImage(result.id, formData);
         }
-
         router.push(`/admin/valentes/${result.id}`);
         router.refresh();
       } else {
@@ -152,7 +127,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
 
   const handleDelete = async () => {
     if (!initialData?.id) return;
-    const confirmed = window.confirm(`ATENÇÃO: Deseja realmente excluir o registro de ${name}? Esta ação não pode ser desfeita.`);
+    const confirmed = window.confirm(`ATENÇÃO: Deseja realmente excluir ${name}? Todos os registros de XP e Relíquias serão perdidos.`);
     if (!confirmed) return;
 
     setIsDeleting(true);
@@ -161,72 +136,71 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
       router.push("/admin/valentes");
       router.refresh();
     } else {
-      alert("Erro ao excluir. O banco de dados bloqueou a operação.");
+      alert("Erro na operação de exclusão.");
       setIsDeleting(false);
     }
   };
 
   return (
-    <div className="space-y-12 pb-32">
+    <div className="space-y-12 pb-32 animate-in fade-in duration-700">
       {/* 1. CINEMATIC_HEADER */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-white/5 pb-8">
         <div>
-          <Link href={mode === "edit" ? `/admin/valentes/${initialData?.id}` : "/admin/valentes"} className="hud-label-tactical text-brand text-xs hover:brightness-125 transition-all flex items-center gap-2 mb-4 italic-none">
-            ← CANCELAR OPERAÇÃO
+          <Link href={mode === "edit" ? `/admin/valentes/${initialData?.id}` : "/admin/valentes"} className="hud-label-tactical text-brand text-xs hover:pl-2 transition-all flex items-center gap-2 mb-4 italic-none group">
+            <span className="group-hover:translate-x-[-4px] transition-transform">←</span> CANCELAR OPERAÇÃO
           </Link>
-          <h1 className="hud-title-lg text-6xl text-white m-0 drop-shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+          <h1 className="hud-title-lg text-6xl text-white m-0 drop-shadow-[0_0_30px_rgba(6,182,212,0.2)] uppercase tracking-tighter">
             {mode === "create" ? "FORJAR VALENTE" : "EDITAR FICHA"}
           </h1>
-          <p className="hud-label-tactical text-gray-400 mt-2 italic-none uppercase tracking-widest">
-            Configuração de Perfil de Combate
-          </p>
+          <div className="flex gap-4 mt-2">
+            <span className="hud-label-tactical text-gray-500 text-[10px] italic-none border border-white/10 px-2 py-0.5 rounded">ID: {initialData?.id?.slice(0,8) || "NEW_UNIT"}</span>
+            <span className="hud-label-tactical text-brand text-[10px] italic-none border border-brand/20 px-2 py-0.5 rounded uppercase">Protocolo heroi-v3</span>
+          </div>
         </div>
         
-        <div className="flex gap-4 w-full md:w-auto mt-4 md:mt-0">
+        <div className="flex gap-4 w-full md:w-auto">
           {mode === "edit" && (
             <button 
-              type="button"
-              onClick={handleDelete}
-              disabled={isSubmitting || isDeleting}
-              className="bg-red-950/40 border border-red-500/30 text-red-500 hud-title-md text-xl md:text-2xl px-8 py-4 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-600 hover:text-white transition-all disabled:opacity-50"
+              type="button" onClick={handleDelete} disabled={isSubmitting || isDeleting}
+              className="bg-red-950/20 border border-red-500/30 text-red-500 hud-label-tactical text-sm px-6 py-4 rounded-xl hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
             >
-              {isDeleting ? "EXCLUINDO..." : "EXCLUIR"}
+              {isDeleting ? "DELETANDO..." : "EXCLUIR REGISTRO"}
             </button>
           )}
           <button 
-            onClick={handleSave}
-            disabled={isSubmitting || isDeleting}
-            className="flex-1 md:flex-none bg-brand text-white hud-title-md text-2xl md:text-3xl px-12 py-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:brightness-110 transition-all disabled:opacity-50"
+            onClick={handleSave} disabled={isSubmitting || isDeleting}
+            className="flex-1 md:flex-none bg-brand text-white hud-title-md text-2xl px-12 py-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
           >
-            {isSubmitting ? "PROCESSANDO..." : (mode === "create" ? "RECRUTAR" : "SALVAR")}
+            {isSubmitting ? "PROCESSANDO..." : (mode === "create" ? "RECRUTAR" : "SALVAR ALTERAÇÕES")}
           </button>
         </div>
       </header>
 
       {/* 2. IDENTITY_SECTION (#01) */}
-      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative overflow-hidden shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand to-transparent"></div>
-        <h2 className="hud-title-md text-4xl text-white mb-8">
-          <span className="text-brand">#01</span> IDENTIDADE
+      <section className="bg-dark-bg/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 relative overflow-hidden shadow-2xl group">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand to-transparent opacity-50"></div>
+        <h2 className="hud-title-md text-4xl text-white mb-8 flex items-center gap-4">
+          <span className="text-brand text-2xl font-mono">#01</span> 
+          IDENTIDADE <div className="h-px flex-1 bg-white/5"></div>
         </h2>
         
         <div className="flex flex-col lg:flex-row gap-12">
           <div className="flex-1 space-y-8">
             <div className="space-y-3">
-              <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">Nome de Guerra</label>
+              <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-[0.2em]">Nome de Guerra</label>
               <input 
                 type="text" value={name} onChange={(e) => setName(e.target.value)} 
-                className="w-full bg-black/40 border border-white/20 p-4 text-white hud-title-md text-3xl rounded-xl focus:border-brand outline-none transition-all shadow-inner" 
-                placeholder="EX: CADU" 
+                className="w-full bg-black/40 border border-white/10 p-5 text-white hud-title-md text-3xl rounded-xl focus:border-brand/60 focus:bg-black/60 outline-none transition-all shadow-inner" 
+                placeholder="NOME DO HERÓI" 
               />
             </div>
             
-            <div className="space-y-3 relative">
-              <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">Estrutura (Fração)</label>
+            <div className="space-y-3">
+              <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-[0.2em]">Estrutura (Fração de Combate)</label>
               <div className="relative">
                 <select 
                   value={structure} onChange={(e) => setStructure(e.target.value)} 
-                  className="w-full bg-black/40 border border-white/20 p-4 text-white hud-label-tactical font-bold text-sm rounded-xl focus:border-brand outline-none transition-all appearance-none cursor-pointer pr-12 shadow-inner"
+                  className="w-full bg-black/40 border border-white/10 p-5 text-white hud-label-tactical font-bold text-sm rounded-xl focus:border-brand/60 outline-none transition-all appearance-none cursor-pointer pr-12"
                 >
                   {Object.values(ESTRUTURAS).map((est) => (
                     <option key={est.label} value={est.label} className="bg-dark-surface text-white">
@@ -234,56 +208,52 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-brand">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="opacity-100">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-brand/60">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </div>
               </div>
             </div>
 
             <div className="space-y-3">
-              <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">Crônicas do Valente (Lore)</label>
+              <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-[0.2em]">Crônicas do Valente (Lore)</label>
               <textarea 
                 value={description} onChange={(e) => setDescription(e.target.value)} rows={4} 
-                className="w-full bg-black/40 border border-white/20 p-4 text-gray-200 font-barlow text-sm rounded-xl focus:border-brand outline-none transition-all resize-none shadow-inner" 
+                className="w-full bg-black/40 border border-white/10 p-5 text-gray-300 font-barlow text-sm rounded-xl focus:border-brand/60 outline-none transition-all resize-none" 
                 placeholder="A história de origem deste herói..." 
               />
             </div>
           </div>
 
-          <div className="w-full lg:w-[260px] space-y-4">
-            <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">Retrato do Herói</label>
+          <div className="w-full lg:w-[280px] space-y-4">
+            <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-[0.2em]">Bio-Scan (Retrato)</label>
             
-            {/* CONDITIONAL UPLOADER: Native for Create, Vercel Blob for Edit */}
             {mode === "edit" ? (
-              <div className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/20 hover:border-brand/60 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden group shadow-2xl">
+              <div className="w-full aspect-[3/4] bg-black/60 border border-white/10 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden group shadow-2xl">
                  <AvatarUploader 
                     valenteId={initialData.id} 
                     currentImage={imagePreview}
                     onImageUpdated={(newUrl) => setImagePreview(newUrl)} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     alt={`Foto de ${name}`}
                   />
-                  <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-brand pointer-events-none z-20"></div>
-                  <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-brand pointer-events-none z-20"></div>
+                  <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-brand/40 pointer-events-none"></div>
+                  <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-brand/40 pointer-events-none"></div>
               </div>
             ) : (
               <div 
                 onClick={() => fileInputRef.current?.click()} 
-                className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/20 hover:border-brand/60 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
+                className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/10 hover:border-brand/40 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
               >
                 {imagePreview ? (
-                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 ) : (
-                  <div className="text-center opacity-40 group-hover:opacity-100 transition-all">
-                    <span className="text-6xl block mb-2">📷</span>
-                    <span className="hud-label-tactical text-xs italic-none uppercase tracking-widest">Upload Bio-Scan</span>
-                    <span className="text-[9px] text-gray-500 block mt-2 leading-tight">Disponível após<br/>recrutamento</span>
+                  <div className="text-center opacity-30 group-hover:opacity-60 transition-all">
+                    <span className="text-5xl block mb-2">📸</span>
+                    <span className="hud-label-tactical text-[10px] italic-none uppercase tracking-widest">Upload Inicial</span>
                   </div>
                 )}
-                <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-brand"></div>
-                <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-brand"></div>
+                <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-brand/40"></div>
+                <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-brand/40"></div>
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
               </div>
             )}
@@ -292,85 +262,65 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
       </section>
 
       {/* 3. SPIRITUAL_PROGRESS (#02) */}
-      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission to-transparent"></div>
-        <div className="flex justify-between items-end mb-10">
-          <h2 className="hud-title-md text-4xl text-white m-0">
-            <span className="text-mission">#02</span> PODER SANTO
-          </h2>
-          <span className="hud-label-tactical text-mission font-bold text-xs italic-none uppercase tracking-widest">Disciplinas Espirituais</span>
-        </div>
+      <section className="bg-dark-bg/40 border border-white/10 rounded-2xl p-8 relative shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission to-transparent opacity-50"></div>
+        <h2 className="hud-title-md text-4xl text-white mb-10 flex items-center gap-4">
+          <span className="text-mission text-2xl font-mono">#02</span> PODER SANTO
+          <div className="h-px flex-1 bg-white/5"></div>
+        </h2>
         
         <div className="space-y-6">
           {Object.entries(holyPower).map(([key, data]: [string, any]) => (
-            <div key={key} className="bg-black/20 p-8 border border-white/10 rounded-2xl group hover:border-mission transition-all shadow-xl">
+            <div key={key} className="bg-black/20 p-8 border border-white/5 rounded-2xl group hover:border-mission/30 transition-all">
               <div className="flex items-center gap-4 mb-8">
                 <img 
                   src={key === 'Oração' ? ICONS.oracao : key === 'Leitura' ? ICONS.leitura : ICONS.jejum}
                   alt={key}
-                  className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(16,185,129,0.6)]"
+                  className="w-8 h-8 object-contain brightness-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]"
                 />
-                <h3 className="hud-title-md text-3xl text-white">{key}</h3>
+                <h3 className="hud-title-md text-2xl text-white uppercase tracking-tight">{key}</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                
-                {/* PROG. ATUAL with tactical arrows */}
                 <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">Prog. Atual</label>
+                  <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-widest">Prog. Atual</label>
                   <div className="relative flex items-center">
                     <input 
                       type="number" value={data.current} 
                       onChange={(e) => handleHolyPowerChange(key, 'current', e.target.value)} 
-                      className="w-full bg-black/40 border border-white/20 p-4 pr-16 text-white hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]" 
+                      className="w-full bg-black/40 border border-white/10 p-4 pr-12 text-white hud-value text-3xl rounded-xl focus:border-mission outline-none shadow-inner [&::-webkit-inner-spin-button]:appearance-none" 
                     />
-                    <div className="absolute top-0 right-0 h-full w-12 flex flex-col border-l border-white/10">
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Number(data.current) + 1)} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-tr-xl border-b border-white/10 transition-colors text-[10px]">▲</button>
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Math.max(0, Number(data.current) - 1))} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-br-xl transition-colors text-[10px]">▼</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* META SEMANAL with tactical arrows */}
-                <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-500 italic-none uppercase tracking-widest">Meta Semanal</label>
-                  <div className="relative flex items-center">
-                    <input 
-                      type="number" value={data.goal} 
-                      onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
-                      className="w-full bg-black/40 border border-white/20 p-4 pr-16 text-gray-400 hud-value text-4xl rounded-xl focus:border-mission outline-none shadow-inner [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]" 
-                    />
-                    <div className="absolute top-0 right-0 h-full w-12 flex flex-col border-l border-white/10">
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'goal', Number(data.goal) + 1)} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-tr-xl border-b border-white/10 transition-colors text-[10px]">▲</button>
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'goal', Math.max(0, Number(data.goal) - 1))} className="flex-1 text-mission hover:bg-mission hover:text-white w-full flex items-center justify-center rounded-br-xl transition-colors text-[10px]">▼</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* STREAK with tactical arrows (XP Color Theme) */}
-                <div className="space-y-3">
-                  <label className="hud-label-tactical text-xp italic-none flex items-center gap-2 uppercase tracking-widest">
-                    STREAK <img src={ICONS.xp} className="w-4 h-4" alt="xp" />
-                  </label>
-                  <div className="relative flex items-center">
-                    <input 
-                      type="number" value={data.streak} 
-                      onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
-                      className="w-full bg-black/40 border border-xp/40 p-4 pr-16 text-xp hud-value text-4xl rounded-xl focus:border-xp outline-none shadow-[0_0_15px_rgba(234,88,12,0.15)] [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]" 
-                    />
-                    <div className="absolute top-0 right-0 h-full w-12 flex flex-col border-l border-xp/20">
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'streak', Number(data.streak) + 1)} className="flex-1 text-xp hover:bg-xp hover:text-white w-full flex items-center justify-center rounded-tr-xl border-b border-xp/20 transition-colors text-[10px]">▲</button>
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'streak', Math.max(0, Number(data.streak) - 1))} className="flex-1 text-xp hover:bg-xp hover:text-white w-full flex items-center justify-center rounded-br-xl transition-colors text-[10px]">▼</button>
+                    <div className="absolute right-2 flex flex-col gap-1">
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Number(data.current) + 1)} className="text-mission text-xs hover:brightness-150 transition-all px-1">▲</button>
+                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Math.max(0, Number(data.current) - 1))} className="text-mission text-xs hover:brightness-150 transition-all px-1">▼</button>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-500 italic-none uppercase tracking-widest">UNIDADE</label>
+                  <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-widest">Meta Semanal</label>
+                  <input 
+                    type="number" value={data.goal} 
+                    onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
+                    className="w-full bg-black/40 border border-white/10 p-4 text-gray-400 hud-value text-3xl rounded-xl focus:border-mission outline-none [&::-webkit-inner-spin-button]:appearance-none" 
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="hud-label-tactical text-xp text-[10px] italic-none flex items-center gap-2 uppercase tracking-widest">Streak Atual</label>
+                  <input 
+                    type="number" value={data.streak} 
+                    onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
+                    className="w-full bg-black/40 border border-xp/20 p-4 text-xp hud-value text-3xl rounded-xl focus:border-xp outline-none [&::-webkit-inner-spin-button]:appearance-none" 
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-widest">Unidade</label>
                   <input 
                     type="text" value={data.unit} 
                     onChange={(e) => handleHolyPowerChange(key, 'unit', e.target.value)} 
-                    className="w-full bg-black/40 border border-white/20 p-4 text-gray-400 hud-label-tactical text-sm rounded-xl focus:border-mission outline-none shadow-inner" 
+                    className="w-full bg-black/40 border border-white/10 p-4 text-gray-400 hud-label-tactical text-xs rounded-xl focus:border-mission outline-none" 
                   />
                 </div>
               </div>
@@ -379,56 +329,26 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         </div>
       </section>
 
-      {/* 4. ATTRIBUTES (#03) */}
-      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-xp to-transparent"></div>
-        <h2 className="hud-title-md text-4xl text-white mb-8">
-          <span className="text-xp">#03</span> ATRIBUTOS BASE
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {ministrySkills.map((skill) => (
-            <div key={skill} className="bg-black/20 p-6 border border-white/10 rounded-xl group hover:border-xp transition-all shadow-xl">
-              <div className="flex justify-between items-center mb-6">
-                <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">{skill}</label>
-                <span className="hud-value text-4xl text-xp drop-shadow-[0_0_15px_rgba(234,88,12,0.7)]">{skills[skill]}</span>
-              </div>
-              <input 
-                type="range" min="0" max="10" value={skills[skill]} 
-                onChange={(e) => setSkills({...skills, [skill]: parseInt(e.target.value)})} 
-                className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-xp" 
-              />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 5. LOVE_LANGUAGES (#04) */}
-      <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 relative shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
-        <h2 className="hud-title-md text-4xl text-white mb-8">
-          <span className="text-gray-400">#04</span> LINGUAGENS DE AMOR
+      {/* 4. LOVE_LANGUAGES (#03) */}
+      <section className="bg-dark-bg/40 border border-white/10 rounded-2xl p-8 relative shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+        <h2 className="hud-title-md text-4xl text-white mb-10 flex items-center gap-4">
+          <span className="text-gray-400 text-2xl font-mono">#03</span> LINGUAGENS DE AMOR
+          <div className="h-px flex-1 bg-white/5"></div>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {LOVE_LANGUAGES.map((lang) => {
             const val = loveLanguages[lang.key] || 0;
             return (
-              <div key={lang.key} className="bg-black/20 p-6 border border-white/10 rounded-xl group hover:border-white/40 transition-all shadow-xl">
+              <div key={lang.key} className="bg-black/20 p-6 border border-white/5 rounded-xl hover:border-white/20 transition-all">
                 <div className="flex justify-between items-center mb-6">
-                  <label className="hud-label-tactical text-gray-400 italic-none uppercase tracking-widest">{lang.name}</label>
-                  <span 
-                    className="hud-value text-4xl leading-none" 
-                    style={{ 
-                        color: lang.colors[0],
-                        filter: `drop-shadow(0 0 15px ${lang.colors[0]}88)` 
-                    }}
-                  >
-                    {val}
-                  </span>
+                  <label className="hud-label-tactical text-gray-400 text-[10px] italic-none uppercase tracking-widest">{lang.name}</label>
+                  <span className="hud-value text-4xl leading-none" style={{ color: lang.colors[0], filter: `drop-shadow(0 0 10px ${lang.colors[0]}44)` }}>{val}</span>
                 </div>
                 <input 
                   type="range" min="0" max="12" value={val} 
                   onChange={(e) => setLoveLanguages({...loveLanguages, [lang.key]: parseInt(e.target.value)})} 
-                  className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer" 
+                  className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-current" 
                   style={{ accentColor: lang.colors[0] }}
                 />
               </div>

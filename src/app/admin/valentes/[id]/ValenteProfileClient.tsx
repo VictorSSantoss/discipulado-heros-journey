@@ -2,18 +2,17 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Added for ranking sync
+import { useRouter } from "next/navigation"; 
 import { motion, AnimatePresence } from "framer-motion";
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
-import { updateValenteXp } from "@/app/actions/valenteActions";
 import { addCompanheiro } from "@/app/actions/companheiroActions";
-import { completeMission } from "@/app/actions/missionActions"; 
+import { completeMission } from "@/app/actions/valenteActions"; // ⚔️ Ensure this points to the new action location
 
 import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
 import HolyPowerBars from "@/components/HolyPowerBars";
 import BestFriendsList from "@/components/BestFriendsList";
-import GrantXpModal from "@/components/GrantXpModal";
+import RewardModal from "@/components/admin/RewardModal"; // ⚔️ New Import
 import TavernaPreview from "@/components/TavernaPreview";
 import MedalRack from "@/components/MedalRack"; 
 import MissionLog from "@/components/MissionLog";
@@ -46,17 +45,16 @@ export default function ValenteProfileClient({
   personalRank: { rank: number, total: number },
   medalCatalog: any[]
 }) {
-  const router = useRouter(); // Hook initialized
+  const router = useRouter(); 
   const [mounted, setMounted] = useState(false);
   const [xpWidth, setXpWidth] = useState(0); 
-  const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false); // ⚔️ Replaced GrantModal
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [valente, setValente] = useState(initialValente);
   const [companheiros, setCompanheiros] = useState(initialCompanheiros);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Holds medals to be displayed one after another
   const [medalQueue, setMedalQueue] = useState<Medal[]>([]);
 
   const currentLevelInfo = valente 
@@ -69,7 +67,6 @@ export default function ValenteProfileClient({
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Detects new medals even if awarded via Missions/Server background
   const prevMedalsRef = useRef(initialValente?.medals || []);
 
   useEffect(() => {
@@ -107,20 +104,17 @@ export default function ValenteProfileClient({
 
   /**
    * CONSOLIDATED REFRESH LOGIC
-   * Maps database 'reliquias' to the UI format and updates local state.
    */
   const refreshValenteData = (result: any) => {
-    if (result.newTotalXP !== undefined) {
-      const newXp = result.newTotalXP;
+    if (result.newTotalXp !== undefined || result.newTotalXP !== undefined) {
+      const newXp = result.newTotalXp ?? result.newTotalXP;
       
-      // Check for Level Up
       const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
       if (newLevel.name !== prevLevel) {
         setShowLevelUp(true);
         setPrevLevel(newLevel.name);
       }
 
-      // Handle new medals/relics in the queue
       if (result.newMedals && result.newMedals.length > 0) {
         setMedalQueue((prev: Medal[]) => {
           const existingIds = new Set(prev.map((m: Medal) => m.id));
@@ -129,12 +123,10 @@ export default function ValenteProfileClient({
         });
       }
 
-      // Update the local valente object
       setValente((prev: any) => ({ 
         ...prev, 
         totalXP: newXp,
         xpLogs: result.newLogs || prev.xpLogs,
-        // Map reliquias to the "medals" format the UI expects
         medals: result.newMedals 
           ? [...prev.medals, ...result.newMedals.map((m: any) => ({ reliquia: m, awardedAt: new Date() }))] 
           : prev.medals
@@ -143,43 +135,23 @@ export default function ValenteProfileClient({
   };
 
   /**
-   * 🛡️ MANUAL XP GRANT
-   * Triggers the server action and forces a router refresh for ranking sync.
+   * ⚔️ UNIFIED MISSION COMPLETION (Used by Modal & Grid)
    */
-  const handleGrantManualXp = async (xpAmount: number, reason: string) => {
+  const handleCompleteMission = async (missionId: string) => {
     setIsProcessing(true);
-    try {
-      if (valente) { 
-        const result = await updateValenteXp(valente.id, xpAmount, reason);
-        if (result.success) {
-          // 1. Update local state for instant feedback
-          refreshValenteData(result);
-          
-          // 2. Force Next.js to re-fetch server props (like Ranking)
-          router.refresh(); 
-        }
-      }
-    } catch (err) {
-      console.error("Failed to grant XP:", err);
-    } finally {
-      setIsProcessing(false);
-      setIsGrantModalOpen(false);
-    }
-  };
-
-  /**
-   * ⚔️ MISSION COMPLETION
-   */
-  const handleCompleteMission = async (mission: any) => {
-    setIsProcessing(true);
-    const result = await completeMission(valente.id, mission.id, mission.xpReward, mission.title);
+    
+    // Calls the unified server action (Awards XP & Attributes automatically)
+    const result = await completeMission(valente.id, missionId);
     
     if (result.success) {
-      const xpToAdd = mission.xpReward === 9999 ? 0 : mission.xpReward;
-      setValente((prev: any) => ({ ...prev, totalXP: prev.totalXP + xpToAdd }));
-      router.refresh(); // Sync potential ranking changes
+      refreshValenteData({ newTotalXp: result.newTotalXp });
+      router.refresh(); // Sync potential ranking & attribute changes visually
+    } else {
+      alert("Falha ao registrar conclusão da missão.");
     }
+    
     setIsProcessing(false);
+    setIsRewardModalOpen(false);
   };
 
   const handleAddFriend = async (friendId: string) => {
@@ -221,22 +193,14 @@ export default function ValenteProfileClient({
                       hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] 
                       duration-500 overflow-hidden"
           >
-            {/* THE ICON - Scaled down for the capsule */}
             <img 
               src={ICONS.voltar} 
               alt="" 
               className="w-10 h-10 object-contain relative z-10 border-style: none; transition-transform duration-500 group-hover:-translate-x-1 opacity-80 group-hover:opacity-100" 
             />
-            
-            {/* THE TEXT - Minimalist and sharp */}
-            <span className="
-              hud-label-tactical text-[11px] text-mission/80 group-hover:text-mission 
-              tracking-[0.15em] relative z-10 font-bold uppercase transition-colors
-            ">
+            <span className="hud-label-tactical text-[11px] text-mission/80 group-hover:text-mission tracking-[0.15em] relative z-10 font-bold uppercase transition-colors">
               Voltar
             </span>
-
-            {/* INTERNAL SCAN-LINE (Subtle detail) */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-mission/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
           </Link>
 
@@ -245,17 +209,17 @@ export default function ValenteProfileClient({
               EDITAR FICHA
             </Link>
             <button 
-              onClick={() => setIsGrantModalOpen(true)} 
-              className="text-white hud-btn-text px-8 py-2 rounded-2xl hover:brightness-110 transition-all shadow-lg"
-              style={{ backgroundColor: theme.hex }}
+              onClick={() => setIsRewardModalOpen(true)} 
+              className="text-white hud-btn-text px-8 py-2 rounded-2xl hover:brightness-110 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] bg-mission"
             >
-              + CONCEDER XP
+              + CONCEDER RECOMPENSA
             </button>
           </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
+          {/* Identity Column */}
           <div className="flex flex-col gap-8">
             <div className="flex flex-col items-center bg-dark-bg/40 backdrop-blur-xl p-10 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
@@ -395,7 +359,7 @@ export default function ValenteProfileClient({
           </div>
         </div>
 
-        {/* Missions Section */}
+        {/* Missions Section (Mural) */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
           <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
             <span className="text-gray-700 text-2xl">⚔️</span>
@@ -417,13 +381,13 @@ export default function ValenteProfileClient({
                 <div className="flex justify-between items-start mb-6">
                   <span className="bg-white/5 text-gray-500 border border-white/5 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest">{mission.type}</span>
                   <span className="hud-value text-mission text-3xl">
-                    {mission.xpReward === 9999 ? 'LVL UP' : `+${mission.xpReward} XP`}
+                    +{mission.xpReward} XP
                   </span>
                 </div>
                 <h3 className="hud-title-md text-white mb-3 uppercase tracking-wider">{mission.title}</h3>
                 <p className="font-barlow text-gray-500 text-sm mb-8 flex-1 leading-relaxed line-clamp-2">{mission.description}</p>
                 <button 
-                  onClick={() => handleCompleteMission(mission)}
+                  onClick={() => handleCompleteMission(mission.id)}
                   disabled={isProcessing}
                   className="w-full bg-mission/10 border border-mission/20 hover:bg-mission hover:text-white text-mission hud-btn-text py-3 rounded-2xl transition-all uppercase tracking-widest disabled:opacity-50"
                 >
@@ -435,12 +399,16 @@ export default function ValenteProfileClient({
         </section>
       </main>
 
-      <GrantXpModal 
-        isOpen={isGrantModalOpen} 
-        onClose={() => setIsGrantModalOpen(false)} 
-        onGrant={handleGrantManualXp} 
-        valenteName={valente.name} 
-      />
+      {/* ⚔️ NEW REWARD MODAL */}
+      {isRewardModalOpen && (
+        <RewardModal 
+          valente={valente}
+          missions={availableMissions}
+          onClose={() => setIsRewardModalOpen(false)}
+          onConfirm={handleCompleteMission}
+          isProcessing={isProcessing}
+        />
+      )}
 
       <AddCompanionModal 
         isOpen={isAddFriendOpen} 
