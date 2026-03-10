@@ -12,14 +12,14 @@ import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
 import HolyPowerBars from "@/components/HolyPowerBars";
 import BestFriendsList from "@/components/BestFriendsList";
-import RewardModal from "@/components/admin/RewardModal"; // ⚔️ New Import
+import RewardModal from "@/components/admin/RewardModal"; 
 import TavernaPreview from "@/components/TavernaPreview";
 import MedalRack from "@/components/MedalRack"; 
 import MissionLog from "@/components/MissionLog";
 import LevelUpNotification from "@/components/LevelUpNotification";
-import AchievementToast from "@/components/AchievementToast";
 import AddCompanionModal from "@/components/profile/AddCompanionModal";
 import AvatarUploader from "@/components/game/AvatarUploader";
+import RelicDiscoveryOverlay from "@/components/RelicDiscoveryOverlay";
 
 interface Medal {
   id: string;
@@ -48,7 +48,7 @@ export default function ValenteProfileClient({
   const router = useRouter(); 
   const [mounted, setMounted] = useState(false);
   const [xpWidth, setXpWidth] = useState(0); 
-  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false); // ⚔️ Replaced GrantModal
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [valente, setValente] = useState(initialValente);
   const [companheiros, setCompanheiros] = useState(initialCompanheiros);
@@ -103,7 +103,7 @@ export default function ValenteProfileClient({
   }, [mounted, valente, nextLevelInfo]);
 
   /**
-   * CONSOLIDATED REFRESH LOGIC
+   * ⚔️ CONSOLIDATED REFRESH LOGIC (Fixed to handle Relics!)
    */
   const refreshValenteData = (result: any) => {
     if (result.newTotalXp !== undefined || result.newTotalXP !== undefined) {
@@ -115,10 +115,13 @@ export default function ValenteProfileClient({
         setPrevLevel(newLevel.name);
       }
 
-      if (result.newMedals && result.newMedals.length > 0) {
+      // ⚔️ Catch the relics sent from completeMission
+      const unlockedRelics = result.newRelics || [];
+
+      if (unlockedRelics.length > 0) {
         setMedalQueue((prev: Medal[]) => {
           const existingIds = new Set(prev.map((m: Medal) => m.id));
-          const uniqueNew = result.newMedals.filter((m: any) => !existingIds.has(m.id));
+          const uniqueNew = unlockedRelics.filter((m: any) => !existingIds.has(m.id));
           return [...prev, ...uniqueNew];
         });
       }
@@ -127,25 +130,26 @@ export default function ValenteProfileClient({
         ...prev, 
         totalXP: newXp,
         xpLogs: result.newLogs || prev.xpLogs,
-        medals: result.newMedals 
-          ? [...prev.medals, ...result.newMedals.map((m: any) => ({ reliquia: m, awardedAt: new Date() }))] 
+        // ⚔️ Map new relics so the MedalRack updates instantly
+        medals: unlockedRelics.length > 0
+          ? [...prev.medals, ...unlockedRelics.map((r: any) => ({ medal: r, awardedAt: new Date() }))] 
           : prev.medals
       })); 
     }
   };
 
   /**
-   * ⚔️ UNIFIED MISSION COMPLETION (Used by Modal & Grid)
+   * ⚔️ UNIFIED MISSION COMPLETION (Fixed to pass full result!)
    */
   const handleCompleteMission = async (missionId: string) => {
     setIsProcessing(true);
     
-    // Calls the unified server action (Awards XP & Attributes automatically)
     const result = await completeMission(valente.id, missionId);
     
     if (result.success) {
-      refreshValenteData({ newTotalXp: result.newTotalXp });
-      router.refresh(); // Sync potential ranking & attribute changes visually
+      // ⚔️ Pass the ENTIRE result object to refresh logic
+      refreshValenteData(result);
+      router.refresh(); 
     } else {
       alert("Falha ao registrar conclusão da missão.");
     }
@@ -430,11 +434,10 @@ export default function ValenteProfileClient({
 
       <AnimatePresence>
         {medalQueue.length > 0 && (
-          <AchievementToast 
+          <RelicDiscoveryOverlay 
             key={medalQueue[0].id}
-            medal={medalQueue[0]} 
-            themeColor={theme.hex} 
-            onClose={() => setMedalQueue(prev => prev.slice(1))} 
+            relic={medalQueue[0]} 
+            onComplete={() => setMedalQueue(prev => prev.slice(1))} 
           />
         )}
       </AnimatePresence>

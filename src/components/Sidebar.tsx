@@ -6,37 +6,25 @@ import { usePathname } from 'next/navigation';
 /* GLOBAL_CONFIG_IMPORTS */
 import { SIDEBAR_MENU, ICONS } from '@/constants/gameConfig';
 
-/**
- * Sidebar Component
- * Persistent navigation terminal for the Hero's Journey administration.
- * Features a scroll-reactive mobile trigger that fades out on down-scroll.
- */
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   
-  // SCROLL-REACTIVE STATES
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // Close sidebar on route change
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
 
-  // SCROLL OBSERVER LOGIC
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-
-      // Logic: Show if scrolling up OR at the very top (buffer of 10px)
-      // Hide if scrolling down AND past 50px (to avoid jitter at the top)
       if (currentScrollY > lastScrollY && currentScrollY > 50) {
-        setIsVisible(false); // Scrolling Down
+        setIsVisible(false); 
       } else {
-        setIsVisible(true); // Scrolling Up
+        setIsVisible(true); 
       }
-      
       setLastScrollY(currentScrollY);
     };
 
@@ -46,7 +34,7 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* 1. MOBILE TRIGGER (Hamburger Button with Dynamic Visibility) */}
+      {/* 1. MOBILE TRIGGER */}
       <button 
         onClick={() => setIsOpen(true)}
         className={`
@@ -63,7 +51,7 @@ export default function Sidebar() {
         </div>
       </button>
 
-      {/* 2. BACKDROP OVERLAY (Mobile only) */}
+      {/* 2. BACKDROP OVERLAY */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
@@ -91,13 +79,13 @@ export default function Sidebar() {
                 HERO'S JOURNEY
               </h2>
             </div>
-            {/* CLOSE BUTTON (Mobile only) */}
             <button onClick={() => setIsOpen(false)} className="lg:hidden text-gray-500 hover:text-white">
                ✕
             </button>
           </div>
         </div>
 
+        {/* NAVIGATION - Automatically includes "Relíquias" if added to SIDEBAR_MENU */}
         <nav className="flex-1 px-4 py-8 space-y-3 overflow-y-auto custom-scrollbar">
           {SIDEBAR_MENU.map((item) => {
             const isActive = pathname === item.path || (pathname.startsWith(item.path) && item.path !== '/admin');
@@ -139,10 +127,17 @@ export default function Sidebar() {
           </Link>
         </div>
         
-        {/* USER_IDENT_DOSSIER */}
+        {/* USER_IDENT_DOSSIER - Integrated with Profile Logic */}
         <div className="p-6 border-t border-white/5 bg-white/[0.03] flex items-center gap-4">
           <div className="w-10 h-10 bg-black/20 backdrop-blur-sm border border-brand/20 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden shadow-inner">
-            <img src="/images/man-silhouette.svg" alt="" className="w-full h-full object-contain p-1" />
+            <img 
+              src="/images/admin-avatar.png" // Replace with your admin image source if available
+              alt="João" 
+              className="w-full h-full object-cover" 
+              onError={(e) => {
+                e.currentTarget.src = "/images/man-silhouette.svg";
+              }}
+            />
           </div>
           <div className="min-w-0">
             <p className="hud-title-md text-lg text-white m-0 truncate">João</p>

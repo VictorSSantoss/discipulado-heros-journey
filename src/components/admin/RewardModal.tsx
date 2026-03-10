@@ -57,8 +57,16 @@ export default function RewardModal({
         {/* HEADER */}
         <div className="p-6 border-b border-white/5 bg-black/40 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-mission/20 border border-mission/40 overflow-hidden">
-              <img src={valente.image || "/images/placeholder.png"} alt="Hero" className="w-full h-full object-cover" />
+            <div className="w-12 h-12 rounded-full bg-mission/20 border border-mission/40 overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+              <img 
+                src={valente?.image && valente.image !== "" ? valente.image : "/images/placeholder.png"} 
+                alt={valente?.name || "Hero"} 
+                className="w-full h-full object-cover transition-all duration-500 hover:scale-110 brightness-[1.1] contrast-[1.1]" 
+                onError={(e) => {
+                  // Emergency fallback if the URL is broken/invalid
+                  e.currentTarget.src = "/images/man-silhouette.svg";
+                }}
+              />
             </div>
             <div>
               <h2 className="hud-title-md text-2xl text-white m-0 tracking-widest">DIRECIONAR MISSÃO</h2>

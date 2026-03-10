@@ -4,27 +4,27 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { GET_XP_MULTIPLIER, STRUCTURE_BONUS } from "@/constants/gameConfig";
 
+// ⚔️ ARQUIVO DE SILHUETAS: Adicione os caminhos das suas imagens aleatórias aqui
+const PLACEHOLDERS = [
+  "/images/man-silhouette.svg",
+  "/images/man-silhouette-2.svg" 
+];
+
 /**
- * ⚔️ NEW: MISSION COMPLETION ENGINE
- * Connects a Valente to a Mission, grants XP, and boosts Radar Chart attributes.
+ * ⚔️ MISSION COMPLETION ENGINE
  */
 export async function completeMission(valenteId: string, missionId: string) {
   try {
-    // 1. Fetch Mission Details
     const mission = await prisma.mission.findUnique({
       where: { id: missionId }
     });
 
     if (!mission) throw new Error("Missão não encontrada.");
 
-    // 2. Calculate Rewards with Multipliers
     const multiplier = GET_XP_MULTIPLIER();
     const finalXp = Math.floor(mission.xpReward * multiplier.factor);
 
-    // 3. DATABASE TRANSACTION (Atomicity: Everything works or nothing works)
     const updatedValente = await prisma.$transaction(async (tx) => {
-      
-      // A. Register/Update the Mission Status
       await tx.valenteMission.upsert({
         where: {
           valenteId_missionId: { valenteId, missionId }
@@ -41,12 +41,10 @@ export async function completeMission(valenteId: string, missionId: string) {
         }
       });
 
-      // B. Determine Attribute Boost
       const attributeUpdate = mission.rewardAttribute 
         ? { [mission.rewardAttribute]: { increment: mission.rewardAttrValue } }
         : {};
 
-      // C. Update Valente Stats & Log XP
       return await tx.valente.update({
         where: { id: valenteId },
         data: {
@@ -57,7 +55,6 @@ export async function completeMission(valenteId: string, missionId: string) {
               reason: `Missão: ${mission.title}`
             }
           },
-          // ⚔️ This pushes the vertex on the Radar Chart!
           attributes: {
             update: attributeUpdate
           }
@@ -66,7 +63,6 @@ export async function completeMission(valenteId: string, missionId: string) {
       });
     });
 
-    // 4. SYNC UI
     revalidatePath(`/admin/valentes/${valenteId}`);
     revalidatePath("/admin/valentes");
     revalidatePath("/admin/missoes");
@@ -83,8 +79,9 @@ export async function completeMission(valenteId: string, missionId: string) {
   }
 }
 
-// --- EXISTING FUNCTIONS BELOW (Maintained for consistency) ---
-
+/**
+ * ⚔️ XP UPDATE & RELIC TRIGGERING
+ */
 export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
     const multiplier = GET_XP_MULTIPLIER();
@@ -152,6 +149,9 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
   }
 }
 
+/**
+ * ⚔️ RANKING SYSTEM
+ */
 export async function getGlobalRanking() {
   try {
     return await prisma.valente.findMany({
@@ -184,6 +184,9 @@ export async function getPersonalRank(currentXp: number) {
   }
 }
 
+/**
+ * ⚔️ PROFILE MANAGEMENT
+ */
 export async function updateValenteProfile(valenteId: string, data: any) {
   try {
     await prisma.$transaction(async (tx) => {
@@ -245,10 +248,20 @@ export async function updateValenteProfile(valenteId: string, data: any) {
   }
 }
 
+/**
+ * ⚔️ RECRUITMENT ENGINE (MODIFIED)
+ */
 export async function createValente(data: any) {
   try {
     const defaultUser = await prisma.user.findFirst();
     if (!defaultUser) throw new Error("Nenhum Discipulador encontrado.");
+
+    // Lógica de Silhueta Aleatória:
+    let finalImage = data.image;
+    if (!finalImage || finalImage.trim() === "") {
+      const randomIndex = Math.floor(Math.random() * PLACEHOLDERS.length);
+      finalImage = PLACEHOLDERS[randomIndex];
+    }
 
     let startingAttributes: any = {
       forca: 1, destreza: 1, constituicao: 1, 
@@ -264,6 +277,7 @@ export async function createValente(data: any) {
       return await tx.valente.create({
         data: {
           name: data.name,
+          image: finalImage,
           structure: data.structure,
           description: data.description,
           userId: defaultUser.id,
@@ -297,6 +311,9 @@ export async function createValente(data: any) {
   }
 } 
 
+/**
+ * ⚔️ DELETION & UTILITIES
+ */
 export async function deleteValente(valenteId: string) {
   try {
     await prisma.valente.delete({ where: { id: valenteId } });
@@ -309,10 +326,18 @@ export async function deleteValente(valenteId: string) {
 }
 
 export async function getAllReliquias() {
-  try {
-    return await prisma.reliquia.findMany({ orderBy: { createdAt: 'desc' } });
-  } catch (error) {
-    console.error("Relic fetch failed:", error);
-    return [];
-  }
+  const relics = await prisma.reliquia.findMany({
+    orderBy: { createdAt: 'asc' }
+  });
+  
+  return relics.map(relic => {
+    const rule = typeof relic.ruleParams === 'string' 
+      ? JSON.parse(relic.ruleParams) 
+      : relic.ruleParams;
+    
+    return {
+      ...relic,
+      requirement: rule?.target || 0
+    };
+  });
 }

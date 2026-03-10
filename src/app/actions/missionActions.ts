@@ -2,10 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { GET_XP_MULTIPLIER } from "@/constants/gameConfig"; // ⚔️ Added for Sunday Bonus!
+import { GET_XP_MULTIPLIER } from "@/constants/gameConfig"; // Added for Sunday Bonus!
 
 /**
- * ⚔️ THE UNIFIED ENGINE: Completes a mission, gives XP (with multiplier), and boosts Dual Attributes.
+ * THE UNIFIED ENGINE: Completes a mission, gives XP (with multiplier), boosts Dual Attributes,
+ * AND auto-grants XP-based Reliquias if thresholds are met.
  */
 export async function completeMission(valenteId: string, missionId: string) {
   try {
@@ -34,7 +35,7 @@ export async function completeMission(valenteId: string, missionId: string) {
     }
 
     // 4. Execute everything safely inside a transaction
-    const updatedValente = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Mark mission as completed
       await tx.valenteMission.upsert({
         where: { valenteId_missionId: { valenteId, missionId } },
@@ -63,7 +64,33 @@ export async function completeMission(valenteId: string, missionId: string) {
         }
       });
 
-      return valente;
+      // -----------------------------------------------------------------------
+      // AUTO-GRANT RELICS LOGIC
+      // -----------------------------------------------------------------------
+      const earnedRelics = await tx.valenteReliquia.findMany({ where: { valenteId } });
+      const earnedIds = new Set(earnedRelics.map(e => e.reliquiaId));
+      
+      // ⚔️ FETCH MISSING RELICS (Restored this line!)
+      const allXpRelics = await tx.reliquia.findMany({
+        where: { triggerType: "XP_MILESTONE" }
+      });
+
+      // ⚔️ NEW LOGIC: Return the FULL relic object
+      const newlyUnlockedRelics = []; 
+
+      for (const relic of allXpRelics) {
+        if (!earnedIds.has(relic.id)) {
+          const rule = typeof relic.ruleParams === 'string' ? JSON.parse(relic.ruleParams) : relic.ruleParams as any;
+          const targetXp = rule?.target || 999999; 
+
+          if (valente.totalXP >= targetXp) {
+            newlyUnlockedRelics.push(relic); // <-- Save the FULL OBJECT
+            await tx.valenteReliquia.create({ data: { valenteId, reliquiaId: relic.id } });
+          }
+        }
+      }
+
+      return { valente, newlyUnlockedRelics }; // Return the new array
     });
 
     // Refresh UI
@@ -73,8 +100,10 @@ export async function completeMission(valenteId: string, missionId: string) {
     
     return { 
       success: true, 
-      newTotalXp: updatedValente.totalXP 
+      newTotalXp: result.valente.totalXP,
+      newRelics: result.newlyUnlockedRelics // ⚔️ Now the frontend gets the full icon, name, etc!
     };
+
   } catch (error) {
     console.error("Erro ao conceder XP da missão:", error);
     return { success: false };
@@ -122,9 +151,6 @@ export async function createMission(data: {
   }
 }
 
-/**
- * ⚔️ FIXED: Added the Dual Attribute fields so TypeScript is happy!
- */
 export async function updateMission(id: string, data: { 
   title: string; 
   description: string; 

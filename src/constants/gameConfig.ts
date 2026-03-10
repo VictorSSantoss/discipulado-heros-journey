@@ -15,6 +15,7 @@ export const ICONS = {
   search: '/images/search-icon.svg',
   codex: '/images/codex-icon.svg',
   voltar: "/images/back-arrow.svg",
+  relics: "/images/relic-icon.svg",
 } as const;
 
 export const SIDEBAR_MENU = [
@@ -22,6 +23,7 @@ export const SIDEBAR_MENU = [
   { name: 'Valentes', path: '/admin/valentes', iconPath: ICONS.valentes },
   { name: 'Missões', path: '/admin/missoes', iconPath: ICONS.missoes },
   { name: 'Patentes', path: '/admin/patentes', iconPath: ICONS.patentes },
+  { name: "Relíquias", path: "/admin/reliquias", iconPath: ICONS.relics },
 ] as const;
 
 /**
@@ -90,7 +92,7 @@ export const MEDAL_RARITY_COLORS: Record<string, string> = {
  * THE CLASS SYSTEM (Synced with ESTRUTURAS)
  */
 export const STRUCTURE_BONUS: Record<string, { attribute: string; value: number }> = {
-  GAD: { attribute: "sabedoria", value: 50 },       
+  GAD: { attribute: "sabedoria", value: 5 },       
   IMS: { attribute: "forca", value: 5 },           
   LOUVOR: { attribute: "carisma", value: 5 },      
   KIDS: { attribute: "destreza", value: 5 },       

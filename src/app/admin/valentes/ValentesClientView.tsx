@@ -100,13 +100,8 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                     e.currentTarget.onerror = null; 
                     e.currentTarget.src = '/images/man-silhouette.svg'; 
                   }}
-                  // Changed: Removed p-4, switched to object-cover and object-top for better face framing
-                  className={`w-full h-full transition-transform duration-700 group-hover:scale-110 
-                    ${valente.image ? 'object-cover object-top' : 'object-contain p-8 opacity-40'}`} 
+                  className="w-full h-full transition-transform duration-700 group-hover:scale-110 object-cover object-top" 
                 />
-
-                {/* GRADIENT OVERLAY: Makes the name easier to read and adds depth */}
-                <div className="absolute inset-0 bg-gradient-to-t from-dark-surface via-transparent to-transparent opacity-60" />
                 
                 {/* HUD BADGES OVERLAY */}
                 <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
