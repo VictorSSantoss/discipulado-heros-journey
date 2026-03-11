@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
 import { addCompanheiro } from "@/app/actions/companheiroActions";
-import { completeMission } from "@/app/actions/valenteActions"; // ⚔️ Ensure this points to the new action location
+import { completeMission, grantManualRelic } from "@/app/actions/valenteActions";
 
 import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
 import HolyPowerBars from "@/components/HolyPowerBars";
 import BestFriendsList from "@/components/BestFriendsList";
 import RewardModal from "@/components/admin/RewardModal"; 
+import GrantRelicModal from "@/components/admin/GrantRelicModal"; 
 import TavernaPreview from "@/components/TavernaPreview";
 import MedalRack from "@/components/MedalRack"; 
 import MissionLog from "@/components/MissionLog";
@@ -49,6 +50,7 @@ export default function ValenteProfileClient({
   const [mounted, setMounted] = useState(false);
   const [xpWidth, setXpWidth] = useState(0); 
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [isGrantRelicModalOpen, setIsGrantRelicModalOpen] = useState(false); // ⚔️ Added State
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   const [valente, setValente] = useState(initialValente);
   const [companheiros, setCompanheiros] = useState(initialCompanheiros);
@@ -103,7 +105,7 @@ export default function ValenteProfileClient({
   }, [mounted, valente, nextLevelInfo]);
 
   /**
-   * ⚔️ CONSOLIDATED REFRESH LOGIC (Fixed to handle Relics!)
+   * ⚔️ CONSOLIDATED REFRESH LOGIC
    */
   const refreshValenteData = (result: any) => {
     if (result.newTotalXp !== undefined || result.newTotalXP !== undefined) {
@@ -115,7 +117,6 @@ export default function ValenteProfileClient({
         setPrevLevel(newLevel.name);
       }
 
-      // ⚔️ Catch the relics sent from completeMission
       const unlockedRelics = result.newRelics || [];
 
       if (unlockedRelics.length > 0) {
@@ -130,16 +131,29 @@ export default function ValenteProfileClient({
         ...prev, 
         totalXP: newXp,
         xpLogs: result.newLogs || prev.xpLogs,
-        // ⚔️ Map new relics so the MedalRack updates instantly
         medals: unlockedRelics.length > 0
           ? [...prev.medals, ...unlockedRelics.map((r: any) => ({ medal: r, awardedAt: new Date() }))] 
           : prev.medals
       })); 
+    } else if (result.relic) {
+      // ⚔️ Handle manual relic grant without XP change
+      setMedalQueue((prev: Medal[]) => {
+        const existingIds = new Set(prev.map((m: Medal) => m.id));
+        if (!existingIds.has(result.relic.id)) {
+          return [...prev, result.relic];
+        }
+        return prev;
+      });
+
+      setValente((prev: any) => ({
+        ...prev,
+        medals: [...prev.medals, { medal: result.relic, awardedAt: new Date() }]
+      }));
     }
   };
 
   /**
-   * ⚔️ UNIFIED MISSION COMPLETION (Fixed to pass full result!)
+   * ⚔️ UNIFIED MISSION COMPLETION
    */
   const handleCompleteMission = async (missionId: string) => {
     setIsProcessing(true);
@@ -147,7 +161,6 @@ export default function ValenteProfileClient({
     const result = await completeMission(valente.id, missionId);
     
     if (result.success) {
-      // ⚔️ Pass the ENTIRE result object to refresh logic
       refreshValenteData(result);
       router.refresh(); 
     } else {
@@ -156,6 +169,25 @@ export default function ValenteProfileClient({
     
     setIsProcessing(false);
     setIsRewardModalOpen(false);
+  };
+
+  /**
+   * ⚔️ MANUAL RELIC GRANT
+   */
+  const handleGrantRelic = async (relicId: string) => {
+    setIsProcessing(true);
+    
+    const result = await grantManualRelic(valente.id, relicId);
+    
+    if (result.success) {
+      refreshValenteData({ relic: result.relic }); // Triggers overlay & updates rack instantly
+      router.refresh(); 
+    } else {
+      alert("Falha ao conceder relíquia.");
+    }
+    
+    setIsProcessing(false);
+    setIsGrantRelicModalOpen(false);
   };
 
   const handleAddFriend = async (friendId: string) => {
@@ -208,10 +240,17 @@ export default function ValenteProfileClient({
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-mission/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
           </Link>
 
+          {/* ⚔️ ADDED THE NEW GRANT RELIC BUTTON */}
           <div className="flex gap-4">
             <Link href={`/admin/valentes/${valente.id}/edit`} className="bg-white/5 border border-white/10 text-white hover:border-brand/50 hud-btn-text px-8 py-2 rounded-2xl transition-all">
               EDITAR FICHA
             </Link>
+            <button 
+              onClick={() => setIsGrantRelicModalOpen(true)} 
+              className="text-brand border border-brand/30 hud-btn-text px-8 py-2 rounded-2xl hover:bg-brand hover:text-white transition-all shadow-[0_0_15px_rgba(17,194,199,0.1)] bg-brand/10"
+            >
+              + CONCEDER RELÍQUIA
+            </button>
             <button 
               onClick={() => setIsRewardModalOpen(true)} 
               className="text-white hud-btn-text px-8 py-2 rounded-2xl hover:brightness-110 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] bg-mission"
@@ -403,13 +442,25 @@ export default function ValenteProfileClient({
         </section>
       </main>
 
-      {/* ⚔️ NEW REWARD MODAL */}
+      {/* ⚔️ REWARD MODAL */}
       {isRewardModalOpen && (
         <RewardModal 
           valente={valente}
           missions={availableMissions}
           onClose={() => setIsRewardModalOpen(false)}
           onConfirm={handleCompleteMission}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {/* ⚔️ NEW GRANT RELIC MODAL */}
+      {isGrantRelicModalOpen && (
+        <GrantRelicModal 
+          valente={valente}
+          catalog={medalCatalog}
+          earnedMedals={valente.medals || []}
+          onClose={() => setIsGrantRelicModalOpen(false)}
+          onConfirm={handleGrantRelic}
           isProcessing={isProcessing}
         />
       )}

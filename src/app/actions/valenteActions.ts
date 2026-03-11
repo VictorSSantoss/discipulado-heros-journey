@@ -341,3 +341,23 @@ export async function getAllReliquias() {
     };
   });
 }
+
+
+export async function grantManualRelic(valenteId: string, relicId: string) {
+  try {
+    const newLink = await prisma.valenteReliquia.create({
+      data: {
+        valenteId: valenteId,
+        reliquiaId: relicId,
+      },
+      include: {
+        reliquia: true
+      }
+    });
+
+    return { success: true, relic: newLink.reliquia };
+  } catch (error) {
+    console.error("Error granting manual relic:", error);
+    return { success: false, error: "Database error" };
+  }
+}

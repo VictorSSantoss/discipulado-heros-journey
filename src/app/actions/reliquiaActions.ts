@@ -5,12 +5,34 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 /**
- * Retrieves the complete catalog of Relíquias from the Forge.
+ * ⚔️ CATALOG RETRIEVAL
+ * Fetches all Relíquias and parses their JSON rules for the UI.
  */
 export async function getAllReliquias() {
   try {
-    return await prisma.reliquia.findMany({
+    const relics = await prisma.reliquia.findMany({
       orderBy: { createdAt: 'desc' }
+    });
+
+    // Parse the JSON rules so the frontend can display quick requirements
+    return relics.map(relic => {
+      // Prisma usually returns JSON as an object/array natively, but we ensure safe extraction
+      const rules = typeof relic.ruleParams === 'string' 
+        ? JSON.parse(relic.ruleParams) 
+        : relic.ruleParams;
+      
+      // If it's a MULTI_ROUTE, try to find an XP requirement to show on the card
+      let requirement = 0;
+      if (Array.isArray(rules)) {
+        const xpRoute = rules.find((r: any) => r.type === "XP");
+        if (xpRoute) requirement = Number(xpRoute.value);
+      }
+
+      return {
+        ...relic,
+        alternatives: Array.isArray(rules) ? rules : [], // Pass full routes to the frontend
+        requirement // Used for the quick-view on the card
+      };
     });
   } catch (error) {
     console.error("Failed to fetch Relíquias catalog:", error);
@@ -19,15 +41,15 @@ export async function getAllReliquias() {
 }
 
 /**
- * Forges a new Relíquia with dynamic JSON rules.
+ * ⚔️ THE FORGE: CREATE
+ * Takes the form data and the dynamic alternatives array and packs them into the DB.
  */
 export async function createReliquia(data: {
   name: string;
   description: string;
   icon: string;
   rarity: string;
-  triggerType: string;
-  ruleParams: any; // This is the magic JSON box!
+  alternatives: Array<{ id?: number, type: string, value: string }>;
 }) {
   try {
     await prisma.reliquia.create({
@@ -36,8 +58,10 @@ export async function createReliquia(data: {
         description: data.description,
         icon: data.icon,
         rarity: data.rarity,
-        triggerType: data.triggerType,
-        ruleParams: data.ruleParams, 
+        // We tag this as a MULTI_ROUTE so the engine knows how to read the JSON
+        triggerType: "MULTI_ROUTE", 
+        // The magic JSON box absorbs the entire array of conditions!
+        ruleParams: data.alternatives, 
       }
     });
 
@@ -50,7 +74,45 @@ export async function createReliquia(data: {
 }
 
 /**
- * Destroys a Relíquia from existence.
+ * ⚔️ THE FORGE: UPDATE
+ * Modifies an existing artifact without losing player progress (IDs stay the same).
+ */
+export async function updateReliquia(
+  reliquiaId: string, 
+  data: {
+    name: string;
+    description: string;
+    icon: string;
+    rarity: string;
+    alternatives: Array<{ id?: number, type: string, value: string }>;
+  }
+) {
+  try {
+    await prisma.reliquia.update({
+      where: { id: reliquiaId },
+      data: {
+        name: data.name,
+        description: data.description,
+        icon: data.icon,
+        rarity: data.rarity,
+        triggerType: "MULTI_ROUTE",
+        ruleParams: data.alternatives, 
+      }
+    });
+
+    revalidatePath("/admin/reliquias");
+    revalidatePath(`/admin/reliquias/${reliquiaId}/edit`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update Relíquia:", error);
+    return { success: false, error: "Database transaction failed." };
+  }
+}
+
+/**
+ * ⚔️ DESTROY ARTIFACT
+ * Removes a Relíquia from existence. 
+ * Note: Because of `onDelete: Cascade` in your schema, this will also safely remove it from any Valente who owns it.
  */
 export async function deleteReliquia(reliquiaId: string) {
   try {
@@ -63,5 +125,29 @@ export async function deleteReliquia(reliquiaId: string) {
   } catch (error) {
     console.error("Failed to delete Relíquia:", error);
     return { success: false };
+  }
+}
+
+
+export async function getReliquiaById(id: string) {
+  try {
+    const relic = await prisma.reliquia.findUnique({
+      where: { id }
+    });
+    
+    if (!relic) return null;
+
+    // Parse the JSON rules back into an array for the frontend
+    const alternatives = typeof relic.ruleParams === 'string' 
+      ? JSON.parse(relic.ruleParams) 
+      : relic.ruleParams;
+
+    return {
+      ...relic,
+      alternatives: Array.isArray(alternatives) ? alternatives : []
+    };
+  } catch (error) {
+    console.error("Failed to fetch Relíquia:", error);
+    return null;
   }
 }

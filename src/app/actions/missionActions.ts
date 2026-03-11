@@ -180,3 +180,23 @@ export async function updateMission(id: string, data: {
     return { success: false };
   }
 }
+
+
+export async function getAllMissions() {
+  try {
+    const missions = await prisma.mission.findMany({
+      select: { 
+        id: true, 
+        title: true, 
+        description: true, 
+        xpReward: true, 
+        type: true // This serves as the category
+      },
+      orderBy: { title: 'asc' }
+    });
+    return missions;
+  } catch (error) {
+    console.error("Failed to fetch missions:", error);
+    return [];
+  }
+}

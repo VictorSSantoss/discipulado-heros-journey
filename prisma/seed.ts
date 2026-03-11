@@ -105,7 +105,7 @@ async function main() {
     { name: 'Nathan', totalXP: 2500, structure: 'Louvor', description: 'Guerreiro da harmonia.' },
     { name: 'Cadu', totalXP: 4800, structure: 'GAD', description: 'Estrategista de grupo.' },
     { name: 'Siclano', totalXP: 550, structure: 'IMS', description: 'Operações furtivas.' },
-    { name: 'Beltrano', totalXP: 1200, structure: 'Mídia', description: 'Comunicação do reino.' }
+    { name: 'Beltrano', totalXP: 1200, structure: 'Mídia', description: 'E aí! Meu nome é Beltrano. Eu gosto muito de jogar videogame, jogar bola e assistir vídeos no YouTube. Mas, para mim, a coisa mais importante de todas é a minha fé. Eu amo Deus de todo o meu coração, mesmo sabendo que seguir Jesus não é o caminho mais fácil.' }
   ]
 
   for (const v of valentes) {

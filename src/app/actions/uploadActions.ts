@@ -29,3 +29,20 @@ export async function uploadValenteImage(valenteId: string, formData: FormData) 
     return { success: false };
   }
 }
+
+export async function uploadRelicIcon(formData: FormData) {
+  try {
+    const file = formData.get("file") as File;
+    if (!file) throw new Error("No file provided");
+
+    const blob = await put(`relics/${file.name}`, file, {
+      access: "public",
+      addRandomSuffix: true,
+    });
+
+    return { success: true, url: blob.url };
+  } catch (error) {
+    console.error("Relic upload failed:", error);
+    return { success: false, url: "" };
+  }
+}

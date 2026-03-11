@@ -94,7 +94,6 @@ export default function RelicCodexModal({ catalog, earnedMedals, currentXp = 0, 
                            <img 
                              src={rayImageSrc}
                              alt=""
-                             // ⚔️ The Ray flares outwards and brightens on row hover
                              className="w-full h-full object-contain mix-blend-screen scale-[2.0] opacity-80 group-hover:opacity-100 group-hover:scale-[2.4] transition-all duration-700"
                              onError={(e) => e.currentTarget.style.display = 'none'}
                            />
@@ -120,30 +119,27 @@ export default function RelicCodexModal({ catalog, earnedMedals, currentXp = 0, 
                       <div className="flex justify-between items-start">
                         <h3 className="hud-title-md text-white text-xl transition-colors group-hover:text-brand">{medal.name}</h3>
                         
-                        {/* ⚔️ UPGRADED SUPERCHARGED GLOWING RARITY TAG */}
-                        <div 
-                          className={`relative overflow-hidden flex items-center justify-center px-4 py-1.5 rounded-md backdrop-blur-md transition-all ${
-                            !isEarned ? 'border border-gray-700 text-gray-500 bg-gradient-to-r from-black to-gray-900' : ''
-                          }`}
-                          style={isEarned ? {
-                            color: '#ffffff', // Pure white text
-                            textShadow: `0 0 8px rgb(${baseColor}), 0 0 15px rgb(${baseColor})`, // Intense double glow
-                            border: `1px solid rgba(${baseColor}, 0.8)`,
-                            background: `linear-gradient(135deg, rgba(${baseColor}, 0.4) 0%, rgba(${baseColor}, 0.1) 100%)`,
-                            boxShadow: `0 0 20px rgba(${baseColor}, 0.4), inset 0 0 15px rgba(${baseColor}, 0.3)`
-                          } : undefined}
-                        >
-                          {/* Thicker reflective highlight line */}
-                          {isEarned && (
-                            <div 
-                              className="absolute top-0 left-0 w-full h-[2px] opacity-100"
-                              style={{ background: `linear-gradient(90deg, transparent, rgb(${baseColor}), transparent)` }}
-                            />
-                          )}
-                          <span className="hud-label-tactical text-[11px] tracking-widest uppercase relative z-10 font-bold">
-                            {medal.rarity}
-                          </span>
-                        </div>
+                        {/* ⚔️ UNIFIED GLOWING RARITY PILL */}
+                        {isEarned ? (
+                          <div className="relative z-10 flex items-center justify-center px-6 py-1.5 rounded-full backdrop-blur-xl overflow-hidden shrink-0"
+                            style={{ 
+                              background: `linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(${baseColor}, 0.2) 100%)`,
+                              boxShadow: `inset 0 0 12px rgba(${baseColor}, 0.2), 0 4px 15px rgba(0, 0, 0, 0.5)`
+                            }}>
+                            <div className="absolute top-0 left-0 w-full h-[1px] opacity-40" style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 1), transparent)` }} />
+                            <span className="hud-label-tactical text-[11px] font-black tracking-[0.3em] text-white uppercase relative z-10"
+                              style={{ textShadow: `0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(${baseColor}, 1)` }}>
+                              {normalizedRarity === "LEGENDARY" ? "LENDÁRIA" : normalizedRarity === "RARE" ? "RARA" : "COMUM"}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="relative z-10 flex items-center justify-center px-6 py-1.5 rounded-full backdrop-blur-xl overflow-hidden shrink-0 bg-black/50 border border-white/5">
+                            <span className="hud-label-tactical text-[11px] font-black tracking-[0.3em] text-gray-600 uppercase relative z-10">
+                              {normalizedRarity === "LEGENDARY" ? "LENDÁRIA" : normalizedRarity === "RARE" ? "RARA" : "COMUM"}
+                            </span>
+                          </div>
+                        )}
+
                       </div>
                       
                       <p className="font-barlow text-sm text-gray-400 mb-2">{medal.description}</p>

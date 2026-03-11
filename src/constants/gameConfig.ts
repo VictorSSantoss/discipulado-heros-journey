@@ -15,7 +15,10 @@ export const ICONS = {
   search: '/images/search-icon.svg',
   codex: '/images/codex-icon.svg',
   voltar: "/images/back-arrow.svg",
+  folder: "/images/folder-icon.svg",
   relics: "/images/relic-icon.svg",
+  picture: "/images/picture-icon.svg",
+  locker: "/images/locker-icon.svg",
 } as const;
 
 export const SIDEBAR_MENU = [
