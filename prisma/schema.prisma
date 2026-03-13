@@ -26,6 +26,9 @@ model User {
   password     String   // Stores the hashed password
   role         Role     @default(DISCIPULADOR)
 
+  // Stores the public name of the group managed by this user
+  guildaName   String?
+
   // HIERARCHY: Self-referencing relationship
   // One-to-Many relationship. A Gerente manages multiple Discipuladores.
   reportsToId  String?
@@ -62,7 +65,7 @@ model Valente {
   // One-to-Many relationship for tracking spiritual habits and streaks
   holyPower     HolyPower[]
   
-  // NEW: Historical log of all fasts completed by the hero
+  // Historical log of all fasts completed by the hero
   fastingLogs   FastingLog[]
 
   // --- COMPANHEIROS SYSTEM ---
@@ -70,7 +73,7 @@ model Valente {
   friendIds   String[] @default([]) 
 
   // Many-to-Many Relations
-  reliquias   ValenteReliquia[] // REPLACED: medals
+  reliquias   ValenteReliquia[] 
   missions    ValenteMission[]
   
   // Audit Trail (One-to-Many)
@@ -86,7 +89,6 @@ model Valente {
 
 model Attributes {
   id           String  @id @default(uuid())
-  // UPDATED: Baseline changed from 0 to 1 for Radar Chart visibility
   forca        Int     @default(1)
   destreza     Int     @default(1)
   constituicao Int     @default(1)
@@ -124,7 +126,7 @@ model HolyPower {
   valente   Valente @relation(fields: [valenteId], references: [id], onDelete: Cascade)
 }
 
-// NEW: FASTING CHAMBER LOGIC
+// FASTING CHAMBER LOGIC
 model FastingLog {
   id          String   @id @default(uuid())
   valenteId   String
@@ -176,6 +178,12 @@ model Mission {
   xpReward         Int
   type             String           
   
+  // Defines the condition required to complete the mission
+  triggerType      String           @default("MANUAL")
+  
+  // Defines the numerical target for the trigger
+  targetValue      Int              @default(0)
+
   // UNIFIED REWARD ENGINE (Attribute Progression)
   rewardAttribute  String?          // First attribute (e.g., "sabedoria")
   rewardAttribute2 String?          // Second attribute (e.g., "carisma")

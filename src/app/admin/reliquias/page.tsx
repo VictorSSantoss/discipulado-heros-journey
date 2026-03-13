@@ -1,6 +1,6 @@
 // src/app/admin/reliquias/page.tsx
 import { getAllReliquias } from "@/app/actions/reliquiaActions";
-import ReliquiaClient from "./ReliquiaClient";
+import ReliquiaClient from "./RelicClient";
 import { ICONS } from "@/constants/gameConfig";
 import Link from "next/link";
 
@@ -21,17 +21,12 @@ export default async function ReliquiasArchivePage() { // Renamed for clarity
             Arquivo Central de Honrarias e Artefatos do Reino
           </p>
         </div>
-
-        {/* ⚔️ ADD A LINK TO THE ACTUAL FORGE HERE */}
-        <Link 
-          href="/admin/reliquias/create"
-          className="bg-brand text-white hud-label-tactical text-[11px] px-8 py-4 rounded-xl shadow-[0_0_20px_rgba(17,194,199,0.3)] hover:brightness-125 transition-all"
-        >
-          + FORJAR NOVA RELÍQUIA
-        </Link>
       </header>
 
-      <ReliquiaClient initialCatalog={catalog} />
+      <ReliquiaClient 
+        initialCatalog={catalog} 
+        permissions={{ canForge: true, canEdit: true }} 
+      />
     </div>
   );
 }

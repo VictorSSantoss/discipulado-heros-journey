@@ -7,7 +7,7 @@ import ValenteProfileClient from "./ValenteProfileClient";
 export default async function ValenteProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // 1. Initial Fetch
+  // Fetches the Valente data including the managing user's guildaName and name
   let rawValente = await prisma.valente.findUnique({
     where: { id },
     include: {
@@ -15,7 +15,8 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
       holyPower: true,
       loveLanguages: true,
       reliquias: { include: { reliquia: true } },
-      xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 }
+      xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 },
+      managedBy: { select: { guildaName: true, name: true } }
     }
   });
 
@@ -29,30 +30,25 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
     getAllReliquias() 
   ]);
 
-  // ---------------------------------------------------------------------------
-  // ⚔️ THE SELF-HEALING ENGINE (Retroactive Auto-Grant)
-  // ---------------------------------------------------------------------------
+  // Evaluates if the Valente meets XP requirements for relics they do not currently own
   const earnedIds = new Set(rawValente.reliquias.map(vr => vr.reliquiaId));
   const missingRelics = [];
 
   for (const relic of rawMedalCatalog) {
-    // We safely use the requirement mapped by getAllReliquias
     const targetXp = relic.requirement || 999999;
 
-    // If Valente has enough XP but DOES NOT have the relic relation in the DB
     if (rawValente.totalXP >= targetXp && !earnedIds.has(relic.id) && targetXp > 0) {
       missingRelics.push({ valenteId: id, reliquiaId: relic.id });
     }
   }
 
-  // If we found missing relics, insert them and REFETCH the Valente!
+  // Inserts missing relics into the database and refetches the profile data to ensure state consistency
   if (missingRelics.length > 0) {
     await prisma.valenteReliquia.createMany({
       data: missingRelics,
       skipDuplicates: true
     });
 
-    // Refetch to get the updated, corrected list of relics
     rawValente = await prisma.valente.findUnique({
       where: { id },
       include: {
@@ -60,11 +56,11 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
         holyPower: true,
         loveLanguages: true,
         reliquias: { include: { reliquia: true } },
-        xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 }
+        xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 },
+        managedBy: { select: { guildaName: true, name: true } }
       }
     });
   }
-  // ---------------------------------------------------------------------------
 
   const safeValente = JSON.parse(JSON.stringify(rawValente));
   const safeRanking = JSON.parse(JSON.stringify(globalRanking));
@@ -72,7 +68,7 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
   const safeMissions = JSON.parse(JSON.stringify(rawMissions));
   const safeMedalCatalog = JSON.parse(JSON.stringify(rawMedalCatalog));
 
-  // Map reliquias to the "medals" format the client component expects
+  // Transforms the database relation array into the specific shape expected by the UI component
   const valenteWithMappedMedals = {
     ...safeValente,
     medals: safeValente.reliquias.map((vr: any) => ({

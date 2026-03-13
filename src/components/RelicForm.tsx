@@ -15,15 +15,10 @@ const GAME_ATTRIBUTES = [
 ];
 
 const MISSION_CATEGORIES = [
-  "TODAS", 
-  "Hábitos Espirituais", 
-  "Evangelismo e Liderança", 
-  "Conhecimento", 
-  "Estrutura e Participação", 
-  "Eventos e Especiais"
+  "TODAS", "Hábitos Espirituais", "Evangelismo e Liderança", 
+  "Conhecimento", "Estrutura e Participação", "Eventos e Especiais"
 ];
 
-// --- REUSED HUD SELECT ---
 function HUDSelect({ label, options, value, onChange, className = "", textStyle = {} }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -105,34 +100,42 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
     return matchesSearch && matchesCategory;
   });
 
+  const handleSubmit = async () => {
+    setIsSaving(true);
+    await onSave({ ...formData, alternatives, selectedFile });
+    setIsSaving(false);
+  };
+
   const baseColor = rarityColorMap[formData.rarity] || "255, 255, 255";
 
   return (
     <main className="min-h-screen px-4 py-8 max-w-7xl mx-auto flex flex-col text-white pb-20 font-barlow relative">
-      <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-white/10 pb-6">
-        <div>
-          <h1 className="hud-title-lg text-5xl uppercase tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] font-normal">
-            {isEdit ? "Recalibrar Artefato" : "Forja de Relíquias"}
+      
+      {/* ⚔️ HEADER */}
+      <header className="mb-14 flex flex-col md:flex-row justify-between items-center gap-8 border-b border-white/10 pb-10">
+        <div className="text-center md:text-left">
+          <h1 className="hud-title-lg text-5xl md:text-6xl uppercase tracking-tighter font-normal leading-none m-0">
+            {isEdit ? "Reforjar Artefato" : "Forja de Relíquias"}
           </h1>
-          <p className="hud-label-tactical text-brand mt-2 text-[11px] tracking-[0.3em]">CONTROLE DE ARTEFATOS DO REINO</p>
+          <p className="hud-label-tactical text-brand mt-3 text-[11px] tracking-[0.4em] uppercase">
+            {isEdit ? (
+              <>MODIFICANDO: <span className="text-white font-bold">{formData.name || "..."}</span></>
+            ) : (
+              "SISTEMA DE CONTROLE DE ARTEFATOS DO REINO"
+            )}
+          </p>
         </div>
+        
         <div className="flex gap-4">
-          {isEdit && onDelete && (
-            <button onClick={onDelete} className="hud-label-tactical text-red-500 text-[11px] px-6 py-3 border border-red-500/20 rounded-lg hover:bg-red-500 hover:text-white transition-all font-normal">DESTRUIR</button>
-          )}
-          <Link href="/admin/reliquias" className="hud-label-tactical text-[11px] px-6 py-3 border border-white/20 rounded-lg hover:bg-white/5 transition-all font-normal">CANCELAR</Link>
-          <button 
-            onClick={async () => { setIsSaving(true); await onSave({ ...formData, alternatives, selectedFile }); setIsSaving(false); }}
-            disabled={isSaving}
-            className="bg-brand text-white hud-label-tactical text-[11px] px-10 py-3 rounded-lg shadow-[0_0_20px_rgba(17,194,199,0.4)] disabled:opacity-50 font-normal"
-          >
-            {isSaving ? "PROCESSANDO..." : "SALVAR ARTEFATO"}
-          </button>
+          <Link href="/admin/reliquias" className="hud-label-tactical text-[11px] px-8 py-3.5 border border-white/20 rounded-lg hover:bg-white/5 transition-all font-normal tracking-widest">
+            VOLTAR AO ACERVO
+          </Link>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-8 space-y-8">
+          
           <section className="bg-dark-surface border border-white/5 rounded-2xl p-8 backdrop-blur-md">
             <h2 className="hud-title-md text-2xl mb-6 border-b border-white/10 pb-4 uppercase tracking-widest font-normal"><span className="text-brand mr-2">●</span> Dados</h2>
             <div className="space-y-6">
@@ -152,15 +155,10 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                 <label className="hud-label-tactical text-[10px] text-gray-400 uppercase tracking-widest font-normal">Ícone</label>
                 <div className="flex items-center gap-4">
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                  <button 
-                    type="button" 
-                    onClick={() => fileInputRef.current?.click()} 
-                    className="bg-white/5 border border-white/10 hover:border-brand/50 text-white px-6 py-4 rounded-xl flex items-center gap-3 transition-all group hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(17,194,199,0.1)] active:scale-95"
-                  >
-                    <img src={ICONS.picture} alt="" className="w-8 h-8 object-contain opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-white/5 border border-white/10 hover:border-brand/50 text-white px-6 py-4 rounded-xl flex items-center gap-3 transition-all group hover:-translate-y-1">
+                    <img src={ICONS.picture} alt="" className="w-8 h-8 object-contain transition-all group-hover:scale-110" />
                     <span className="hud-label-tactical text-[10px] text-brand uppercase font-normal">Escolher Imagem</span>
                   </button>
-                  <span className="text-[10px] text-gray-500 italic">{selectedFile ? 'Arquivo pronto ✓' : 'Nenhum arquivo'}</span>
                 </div>
               </div>
 
@@ -186,8 +184,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                   
                   <div className="flex flex-col sm:flex-row gap-4 items-end">
                     <HUDSelect 
-                      className="w-full sm:w-1/3"
-                      value={alt.type}
+                      className="w-full sm:w-1/3" value={alt.type}
                       onChange={(val: any) => updateAlt(alt.id, { type: val, value: "", attr: "FOR" })}
                       options={[{ label: "Total de XP", value: "XP" }, { label: "Missão", value: "MISSION" }, { label: "Atributo", value: "ATTRIBUTE" }, { label: "Manual", value: "MANUAL" }]}
                     />
@@ -200,6 +197,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                         </div>
                       )}
 
+                      {/* ⚔️ RESTORED PERFECT MISSION BUTTON */}
                       {alt.type === "MISSION" && (
                         <button 
                           type="button"
@@ -217,22 +215,11 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
 
                       {alt.type === "ATTRIBUTE" && (
                         <div className="flex gap-2 w-full">
-                          <HUDSelect 
-                            className="flex-[4]" 
-                            value={alt.attr || "FOR"}
-                            onChange={(val: any) => updateAlt(alt.id, { attr: val })}
-                            options={GAME_ATTRIBUTES}
-                          />
-                          <input 
-                            type="number" 
-                            value={alt.value} 
-                            onChange={(e) => updateAlt(alt.id, { value: e.target.value })} 
-                            className="w-[100px] shrink-0 bg-dark-bg border border-white/10 rounded-lg p-3 text-sm outline-none focus:border-brand h-[50px] font-barlow text-center" 
-                            placeholder="VALOR" 
-                          />
+                          <HUDSelect className="flex-[4]" value={alt.attr || "FOR"} onChange={(val: any) => updateAlt(alt.id, { attr: val })} options={GAME_ATTRIBUTES} />
+                          <input type="number" value={alt.value} onChange={(e) => updateAlt(alt.id, { value: e.target.value })} className="w-[100px] bg-dark-bg border border-white/10 rounded-lg p-3 text-sm outline-none focus:border-brand h-[50px] text-center" placeholder="VALOR" />
                         </div>
                       )}
-
+                      
                       {alt.type === "MANUAL" && (
                         <div className="bg-white/10 border border-white/5 rounded-lg p-3 text-gray-500 text-[10px] tracking-widest uppercase italic flex items-center justify-center h-[50px] cursor-not-allowed font-normal">
                           BLOQUEADO: CONCESSÃO MANUAL
@@ -244,6 +231,40 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
               ))}
             </div>
           </section>
+
+          {/* ⚔️ BOTTOM ACTIONS */}
+          <div className="flex flex-col sm:flex-row justify-between items-center pt-20 border-t border-white/5 mt-20 gap-10">
+            <div className="w-full sm:w-auto">
+              {isEdit && onDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="hud-label-tactical text-[11px] text-red-500 hover:text-white hover:bg-red-500 transition-all uppercase tracking-[0.3em] border border-red-500/20 px-10 py-5 rounded-xl font-normal w-full"
+                >
+                  DESTRUIR ARTEFATO
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto items-center">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="hud-label-tactical text-xs text-gray-500 hover:text-white px-10 py-5 transition-colors uppercase font-normal tracking-widest"
+              >
+                CANCELAR
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSaving}
+                className="bg-brand/10 border border-brand/50 text-brand hover:bg-brand hover:text-white hud-title-md text-2xl px-24 py-6 rounded-xl transition-all shadow-[0_0_30px_rgba(17,194,199,0.2)] font-normal whitespace-nowrap min-w-[320px] uppercase tracking-wider"
+              >
+                {isSaving ? "PROCESSANDO..." : isEdit ? "REFORJAR ARTEFATO" : "FORJAR ARTEFATO"}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* PREVIEW COLUMN */}
@@ -251,10 +272,10 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
           <div className="sticky top-8 bg-black/80 border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden group">
               <div className="w-full aspect-square relative flex items-center justify-center mb-6">
                 <div className="absolute inset-0">
-                  <img src={rarityRayMap[formData.rarity]} className="w-full h-full object-contain mix-blend-screen scale-[1.8] opacity-80" alt="" />
+                  <img src={rarityRayMap[formData.rarity]} className="w-full h-full object-contain mix-blend-screen scale-[1.8]" alt="" />
                 </div>
                 <div className="relative w-[70%] h-[70%] z-10 transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-2">
-                  <Image src={formData.icon} alt="Preview" fill className="object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]" />
+                  <Image src={formData.icon} alt="Preview" fill className="object-contain" />
                 </div>
               </div>
 
@@ -264,13 +285,13 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                     background: `linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(${baseColor}, 0.2) 100%)`,
                     boxShadow: `inset 0 0 12px rgba(${baseColor}, 0.2), 0 4px 15px rgba(0, 0, 0, 0.5)`
                   }}>
-                  <div className="absolute top-0 left-0 w-full h-[1px] opacity-40" style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 1), transparent)` }} />
+                  <div className="absolute top-0 left-0 w-full h-[1px]" style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 1), transparent)` }} />
                   <span className="hud-label-tactical text-[11px] font-black tracking-[0.3em] text-white uppercase relative z-10"
                     style={{ textShadow: `0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(${baseColor}, 1)` }}>
                     {formData.rarity === "LEGENDARY" ? "LENDÁRIA" : formData.rarity === "RARE" ? "RARA" : "COMUM"}
                   </span>
                 </div>
-                <h3 className="hud-title-md text-xo text-2xl mb-2 uppercase tracking-tight font-normal">{formData.name || "ARTEFATO"}</h3>
+                <h3 className="hud-title-md text-2xl mb-2 uppercase tracking-tight font-normal">{formData.name || "ARTEFATO"}</h3>
                 <p className="font-barlow text-sm text-gray-400 leading-relaxed line-clamp-3 italic-none px-4">
                   {formData.description || "Descrição do artefato..."}
                 </p>
@@ -279,10 +300,9 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
         </div>
       </div>
 
-      {/* ⚔️ MISSION SELECTION MODAL */}
+      {/* ⚔️ RESTORED PERFECT MISSIONS MODAL */}
       {isMissionModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-          {/* Changed overflow-hidden to overflow-visible to let glow bleed */}
           <div className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] relative animate-in fade-in zoom-in duration-200 overflow-visible">
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent"></div>
 
@@ -302,7 +322,6 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
 
             <div className="p-8 border-b border-white/5 space-y-6 overflow-visible">
               <div className="relative group">
-                {/* Added drop-shadow for the neon effect */}
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                     <Image 
                     src={ICONS.search} 
@@ -318,8 +337,8 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                     placeholder="BUSCAR NO MURAL DE MISSÕES..." 
                     value={missionSearch}
                     onChange={(e) => setMissionSearch(e.target.value)}
-                    style={{ paddingLeft: '90px' }} // This FORCES the text to the right
-                    className="w-full bg-brand/20 border border-white/10 p-5 rounded-xl text-white hud-label-tactical text-xs outline-none focus:border-brand/60 transition-all placeholder:opacity-50 font-normal shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]"
+                    style={{ paddingLeft: '90px' }} 
+                    className="w-full bg-brand/20 border border-white/10 p-5 rounded-xl text-white hud-label-tactical text-xs outline-none focus:border-brand/60 transition-all font-normal shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]"
                 />
                 </div>
               
@@ -371,20 +390,10 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
         </div>
       )}
 
-      {/* CUSTOM SCROLLBAR STYLING FOR THE SLIDER */}
       <style jsx global>{`
-        .custom-category-scroll::-webkit-scrollbar {
-          height: 8px;
-        }
-        .custom-category-scroll::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          margin: 0 40px;
-        }
-        .custom-category-scroll::-webkit-scrollbar-thumb {
-          background: #11c2c7;
-          box-shadow: 0 0 10px rgba(17,194,199,0.5);
-          border-radius: 10px;
-        }
+        .custom-category-scroll::-webkit-scrollbar { height: 8px; }
+        .custom-category-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); margin: 0 40px; }
+        .custom-category-scroll::-webkit-scrollbar-thumb { background: #11c2c7; border-radius: 10px; }
       `}</style>
     </main>
   );

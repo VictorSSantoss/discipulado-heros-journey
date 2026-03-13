@@ -4,15 +4,13 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { GET_XP_MULTIPLIER, STRUCTURE_BONUS } from "@/constants/gameConfig";
 
-// ⚔️ ARQUIVO DE SILHUETAS: Adicione os caminhos das suas imagens aleatórias aqui
+// Array containing the paths for default silhouette avatars used during recruitment
 const PLACEHOLDERS = [
   "/images/man-silhouette.svg",
   "/images/man-silhouette-2.svg" 
 ];
 
-/**
- * ⚔️ MISSION COMPLETION ENGINE
- */
+// Handles the logic for completing a mission, distributing XP, and applying attribute increments
 export async function completeMission(valenteId: string, missionId: string) {
   try {
     const mission = await prisma.mission.findUnique({
@@ -79,9 +77,7 @@ export async function completeMission(valenteId: string, missionId: string) {
   }
 }
 
-/**
- * ⚔️ XP UPDATE & RELIC TRIGGERING
- */
+// Processes direct XP additions and evaluates if any milestone-based relics should be awarded
 export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
     const multiplier = GET_XP_MULTIPLIER();
@@ -149,9 +145,7 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
   }
 }
 
-/**
- * ⚔️ RANKING SYSTEM
- */
+// Retrieves the top 5 players globally and includes the managing user's Guilda Name
 export async function getGlobalRanking() {
   try {
     return await prisma.valente.findMany({
@@ -163,6 +157,11 @@ export async function getGlobalRanking() {
         totalXP: true,
         structure: true,
         image: true,
+        managedBy: {
+          select: {
+            guildaName: true
+          }
+        }
       },
     });
   } catch (error) {
@@ -171,6 +170,7 @@ export async function getGlobalRanking() {
   }
 }
 
+// Calculates the precise leaderboard position of a specific player based on their total XP
 export async function getPersonalRank(currentXp: number) {
   try {
     const higherRankedCount = await prisma.valente.count({
@@ -184,9 +184,7 @@ export async function getPersonalRank(currentXp: number) {
   }
 }
 
-/**
- * ⚔️ PROFILE MANAGEMENT
- */
+// Commits changes made to a Valente's attributes, languages, and habits from the profile edit form
 export async function updateValenteProfile(valenteId: string, data: any) {
   try {
     await prisma.$transaction(async (tx) => {
@@ -248,15 +246,12 @@ export async function updateValenteProfile(valenteId: string, data: any) {
   }
 }
 
-/**
- * ⚔️ RECRUITMENT ENGINE (MODIFIED)
- */
+// Registers a new Valente in the database, applying structure bonuses and assigning a default avatar if none is provided
 export async function createValente(data: any) {
   try {
     const defaultUser = await prisma.user.findFirst();
     if (!defaultUser) throw new Error("Nenhum Discipulador encontrado.");
 
-    // Lógica de Silhueta Aleatória:
     let finalImage = data.image;
     if (!finalImage || finalImage.trim() === "") {
       const randomIndex = Math.floor(Math.random() * PLACEHOLDERS.length);
@@ -311,9 +306,7 @@ export async function createValente(data: any) {
   }
 } 
 
-/**
- * ⚔️ DELETION & UTILITIES
- */
+// Removes a specific Valente from the database permanently
 export async function deleteValente(valenteId: string) {
   try {
     await prisma.valente.delete({ where: { id: valenteId } });
@@ -325,6 +318,7 @@ export async function deleteValente(valenteId: string) {
   }
 }
 
+// Fetches the entire relic catalog and maps the requirement parameter for easy access
 export async function getAllReliquias() {
   const relics = await prisma.reliquia.findMany({
     orderBy: { createdAt: 'asc' }
@@ -342,7 +336,7 @@ export async function getAllReliquias() {
   });
 }
 
-
+// Creates a direct relationship between a Valente and a Relic bypassing automated triggers
 export async function grantManualRelic(valenteId: string, relicId: string) {
   try {
     const newLink = await prisma.valenteReliquia.create({

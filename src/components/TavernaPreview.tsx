@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link"; // Added Link
+import Link from "next/link"; 
 import { ESTRUTURAS } from "@/constants/gameConfig";
 
 export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
+  // Renders a loading state if the ranking data array is empty or undefined
   if (!ranking || ranking.length === 0) {
     return (
       <div className="p-8 text-center hud-label-tactical opacity-30 animate-pulse">
@@ -12,6 +13,7 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
     );
   }
 
+  // Determines the visual icon or numeric rank to display based on the player's index in the array
   const getRankDisplay = (index: number) => {
     switch (index) {
       case 0: 
@@ -37,7 +39,7 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
         }
       `}} />
 
-      {/* HEADER: Now with Navigation Button */}
+      {/* Renders the header section containing the title and the navigation link to the full Taverna page */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="hud-label-tactical text-gray-400 tracking-widest flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-brand animate-ping" />
@@ -54,6 +56,7 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
 
       <div className="space-y-4">
         {ranking.map((player, index) => {
+          // Retrieves the color and label configuration for the player's specific structure
           const structureData = Object.values(ESTRUTURAS).find(
             s => s.label === player.structure
           ) || ESTRUTURAS.GAD;
@@ -69,7 +72,7 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
                 ${isTop3 && !isChampion ? 'bg-white/[0.02]' : ''}`}
             >
               
-              {/* Champion Pulsing Glow Layer */}
+              {/* Renders the glowing background layers for the top-ranked player */}
               {isChampion && (
                 <>
                   <div 
@@ -83,6 +86,7 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
                 </>
               )}
 
+              {/* Renders a hover-activated glow effect for players ranked in the top 3 */}
               {isTop3 && !isChampion && (
                 <div 
                   className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity blur-xl rounded-xl z-0"
@@ -109,6 +113,8 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
                     ${isChampion ? 'text-brand drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]' : isTop3 ? 'text-white' : 'text-gray-400'}`}>
                     {player.name}
                   </span>
+                  
+                  {/* Renders the player's structure and their associated Guild name if available */}
                   <div className="flex items-center gap-2">
                     <span 
                       className="hud-label-tactical text-[9px] uppercase tracking-tighter" 
@@ -116,6 +122,13 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
                     >
                       {player.structure}
                     </span>
+                    
+                    {player.managedBy?.guildaName && (
+                      <span className="hud-label-tactical text-[8px] text-white/20 uppercase tracking-tighter flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-white/10" />
+                        {player.managedBy.guildaName}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

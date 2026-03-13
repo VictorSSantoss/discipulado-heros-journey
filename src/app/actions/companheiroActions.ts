@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { completeMission } from "./missionActions";
 
 /**
  * Searches for Valentes by name to recruit as companions.
@@ -61,7 +62,61 @@ export async function getCompanheirosDetails(friendIds: string[]) {
 }
 
 /**
- * Establishes a mutual bond and records the event in the Mission Log.
+ * Evaluates friend-count requirements and completes eligible missions.
+ * Returns an array of missions that were successfully processed.
+ */
+async function checkAutomatedSocialMissions(valenteId: string) {
+  try {
+    const valente = await prisma.valente.findUnique({
+      where: { id: valenteId },
+      select: { friendIds: true }
+    });
+
+    if (!valente) return [];
+
+    const friendCount = valente.friendIds.length;
+
+    const qualifiedMissions = await prisma.mission.findMany({
+      where: {
+        triggerType: "FRIEND_COUNT",
+        targetValue: { lte: friendCount }
+      }
+    });
+
+    const completedMissions = await prisma.valenteMission.findMany({
+      where: {
+        valenteId,
+        status: "COMPLETED",
+        missionId: { in: qualifiedMissions.map(m => m.id) }
+      },
+      select: { missionId: true }
+    });
+
+    const completedIds = new Set(completedMissions.map(cm => cm.missionId));
+    const newlyCompleted = [];
+
+    for (const mission of qualifiedMissions) {
+      if (!completedIds.has(mission.id)) {
+        const result = await completeMission(valenteId, mission.id);
+        if (result.success) {
+          newlyCompleted.push({
+            id: mission.id,
+            title: mission.title,
+            xpReward: mission.xpReward,
+            newRelics: result.newRelics // Collects relics awarded by the mission XP
+          });
+        }
+      }
+    }
+    return newlyCompleted;
+  } catch (error) {
+    console.error("Erro ao verificar missões sociais automatizadas:", error);
+    return [];
+  }
+}
+
+/**
+ * Establishes a mutual bond and returns any automated mission results.
  */
 export async function addCompanheiro(valenteId: string, newFriendId: string) {
   try {
@@ -97,10 +152,19 @@ export async function addCompanheiro(valenteId: string, newFriendId: string) {
       })
     ]);
 
+    // Collects mission results for the primary user to show in the UI
+    const triggeredMissions = await checkAutomatedSocialMissions(valenteId);
+    
+    // Silently processes missions for the added friend without UI feedback
+    await checkAutomatedSocialMissions(newFriendId);
+
     revalidatePath(`/admin/valentes/${valenteId}`);
     revalidatePath(`/admin/valentes/${newFriendId}`);
 
-    return { success: true };
+    return { 
+      success: true, 
+      automatedMissions: triggeredMissions 
+    };
   } catch (error) {
     console.error("Erro ao forjar vínculo:", error);
     return { success: false, error: "Falha ao estabelecer conexão." };

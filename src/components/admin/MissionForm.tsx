@@ -8,23 +8,27 @@ import { createMission } from "@/app/actions/missionActions";
 interface MissionFormData {
   title: string;
   description: string;
-  xpReward: number | string; // ⚔️ Allowed string for 'LVL UP DIRETO'
+  xpReward: number | string; 
   type: string;
+  triggerType: string;      // Added to define manual vs automated
+  targetValue: number;      // Added to define the friends count requirement
   rewardAttribute: string;
-  rewardAttribute2: string; // ⚔️ Added Secondary Attribute
+  rewardAttribute2: string; 
   rewardAttrValue: number;
 }
 
 export default function MissionForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSecondary, setShowSecondary] = useState(false); // ⚔️ Toggle State
+  const [showSecondary, setShowSecondary] = useState(false); 
 
   const [formData, setFormData] = useState<MissionFormData>({
     title: "",
     description: "",
     xpReward: 50,
     type: MISSION_CATEGORIES[0],
+    triggerType: "MANUAL",   // Default state
+    targetValue: 0,          // Initial count
     rewardAttribute: "",
     rewardAttribute2: "",
     rewardAttrValue: 0,
@@ -41,8 +45,9 @@ export default function MissionForm() {
     const result = await createMission({
         ...formData,
         xpReward: finalXpReward,
+        triggerType: formData.triggerType,
+        targetValue: Number(formData.targetValue),
         rewardAttribute: formData.rewardAttribute || null,
-        // ⚔️ Only send the second attribute if the panel is open and an option is selected
         rewardAttribute2: (showSecondary && formData.rewardAttribute2) ? formData.rewardAttribute2 : null,
     });
     
@@ -98,6 +103,34 @@ export default function MissionForm() {
               className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-gray-300 outline-none focus:border-mission/60 h-32 resize-none transition-all font-barlow"
               placeholder="Descreva as instruções e o contexto desta missão..."
             />
+          </div>
+
+          {/* New Trigger Logic Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+            <div className="space-y-2">
+              <label className="hud-label-tactical text-[10px] text-gray-400 uppercase">Mecânica de Conclusão</label>
+              <select 
+                value={formData.triggerType}
+                onChange={(e) => setFormData({...formData, triggerType: e.target.value})}
+                className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white outline-none appearance-none cursor-pointer h-[58px]"
+              >
+                <option value="MANUAL">MANUAL (Avaliado pelo Líder)</option>
+                <option value="FRIEND_COUNT">AUTOMÁTICO (Meta de Companheiros)</option>
+              </select>
+            </div>
+
+            {formData.triggerType === "FRIEND_COUNT" && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="hud-label-tactical text-[10px] text-mission uppercase">Quantidade de Amigos</label>
+                <input 
+                  type="number" min="1"
+                  value={formData.targetValue}
+                  onChange={(e) => setFormData({...formData, targetValue: parseInt(e.target.value) || 0})}
+                  className="w-full bg-black/40 border border-mission/30 p-4 rounded-xl text-white outline-none focus:border-mission/60 transition-all h-[58px]"
+                  placeholder="Ex: 5"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -166,7 +199,7 @@ export default function MissionForm() {
             </div>
           </div>
 
-          {/* ⚔️ DUAL ATTRIBUTE SECTION */}
+          {/* DUAL ATTRIBUTE SECTION */}
           {formData.rewardAttribute && (
             <div className="pt-6 mt-4 border-t border-mission/20 relative z-10">
               {!showSecondary ? (
@@ -189,7 +222,7 @@ export default function MissionForm() {
                     >
                       <option value="">SELECIONE UM ATRIBUTO...</option>
                       {Object.entries(ATTRIBUTE_MAP)
-                        .filter(([key]) => key !== formData.rewardAttribute) // Prevent selecting the same attribute
+                        .filter(([key]) => key !== formData.rewardAttribute) 
                         .map(([key, label]) => <option key={key} value={key}>{label.toUpperCase()}</option>)}
                     </select>
                   </div>
@@ -224,9 +257,18 @@ export default function MissionForm() {
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/60 to-transparent"></div>
           
           <div className="flex justify-between items-start mb-6">
-            <span className="bg-white/5 text-gray-400 border border-white/10 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest">
-              {formData.type}
-            </span>
+            <div className="flex flex-col gap-2">
+              <span className="bg-white/5 text-gray-400 border border-white/10 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest w-fit">
+                {formData.type}
+              </span>
+              
+              {/* Added Mission Trigger Preview Badge */}
+              {formData.triggerType === "FRIEND_COUNT" && formData.targetValue > 0 && (
+                <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest w-fit">
+                  REQUISITO: {formData.targetValue} AMIGOS
+                </span>
+              )}
+            </div>
             <span className="hud-value text-mission text-3xl drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]">
               {formData.xpReward === 'LVL UP DIRETO' ? 'LVL UP' : `+${formData.xpReward} XP`}
             </span>
@@ -240,7 +282,7 @@ export default function MissionForm() {
             {formData.description || "A descrição e os detalhes estratégicos da missão aparecerão aqui para guiar o Valente..."}
           </p>
           
-          {/* ⚔️ LIVE PREVIEW: Dual Attributes */}
+          {/* LIVE PREVIEW: Dual Attributes */}
           {formData.rewardAttribute && formData.rewardAttrValue > 0 && (
             <div className="mt-auto pt-4 border-t border-white/5 flex flex-wrap gap-3 animate-in slide-in-from-bottom-2 duration-500">
               <div className="w-full">

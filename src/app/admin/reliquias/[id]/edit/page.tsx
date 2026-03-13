@@ -1,7 +1,7 @@
 import { getReliquiaById } from "@/app/actions/reliquiaActions";
 import { getAllMissions } from "@/app/actions/missionActions";
 import { notFound } from "next/navigation";
-import ReliquiaEditClient from "./ReliquiaEditClient";
+import ReliquiaEditClient from "./RelicEditClient";
 
 export const dynamic = 'force-dynamic';
 
