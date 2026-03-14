@@ -145,7 +145,7 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
   }
 }
 
-// Retrieves the top 5 players globally and includes the managing user's Guilda Name
+// Retrieves the top 5 players globally and includes the managing user's Guilda Name and Icon
 export async function getGlobalRanking() {
   try {
     return await prisma.valente.findMany({
@@ -159,7 +159,8 @@ export async function getGlobalRanking() {
         image: true,
         managedBy: {
           select: {
-            guildaName: true
+            guildaName: true,
+            guildaIcon: true
           }
         }
       },

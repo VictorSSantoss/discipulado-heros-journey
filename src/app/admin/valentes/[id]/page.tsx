@@ -7,7 +7,7 @@ import ValenteProfileClient from "./ValenteProfileClient";
 export default async function ValenteProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // Fetches the Valente data including the managing user's guildaName and name
+  // Fetches the Valente data including the managing user's guildaName, guildaIcon, and name
   let rawValente = await prisma.valente.findUnique({
     where: { id },
     include: {
@@ -16,7 +16,13 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
       loveLanguages: true,
       reliquias: { include: { reliquia: true } },
       xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 },
-      managedBy: { select: { guildaName: true, name: true } }
+      managedBy: { 
+        select: { 
+          guildaName: true, 
+          guildaIcon: true, // <-- Added this line
+          name: true 
+        } 
+      }
     }
   });
 
@@ -57,7 +63,13 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
         loveLanguages: true,
         reliquias: { include: { reliquia: true } },
         xpLogs: { orderBy: { createdAt: 'desc' }, take: 10 },
-        managedBy: { select: { guildaName: true, name: true } }
+        managedBy: { 
+          select: { 
+            guildaName: true, 
+            guildaIcon: true, // <-- Added this line here too
+            name: true 
+          } 
+        }
       }
     });
   }

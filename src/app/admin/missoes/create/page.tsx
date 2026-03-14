@@ -2,24 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MISSION_CATEGORIES, ATTRIBUTE_MAP } from "@/constants/gameConfig";
+import Link from "next/link";
 import { createMission } from "@/app/actions/missionActions";
+import { MISSION_CATEGORIES, ATTRIBUTE_MAP } from "@/constants/gameConfig";
 
-export default function MissionForm() {
+export default function CreateMissionPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FORM STATE
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<string>(MISSION_CATEGORIES[0] || "Hábitos Espirituais");
-  const [xpReward, setXpReward] = useState<number | string>(100);
   const [description, setDescription] = useState("");
-  const [rewardAttribute, setRewardAttribute] = useState<string>("");
-  const [rewardAttrValue, setRewardAttrValue] = useState<number>(0);
+  const [xpReward, setXpReward] = useState("50");
+  
+  // ⚔️ FIXED: Added <string> type to allow any category from the array
+  const [type, setType] = useState<string>(MISSION_CATEGORIES[0]);
+  
+  const [triggerType, setTriggerType] = useState("MANUAL");
+  const [targetValue, setTargetValue] = useState(0);
+
+  const [rewardAttribute, setRewardAttribute] = useState("");
+  const [rewardAttribute2, setRewardAttribute2] = useState(""); 
+  const [rewardAttrValue, setRewardAttrValue] = useState(0);
+  const [showSecondary, setShowSecondary] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return;
+    if (!title) return alert("O título é obrigatório.");
+    
     setIsSubmitting(true);
 
     const finalXpReward = xpReward === 'LVL UP DIRETO' ? 9999 : Number(xpReward);
@@ -28,123 +37,114 @@ export default function MissionForm() {
       title,
       description,
       xpReward: finalXpReward,
-      type: category,
+      type,
+      triggerType,
+      targetValue: Number(targetValue),
       rewardAttribute: rewardAttribute || null,
-      rewardAttrValue: rewardAttribute ? Number(rewardAttrValue) : 0,
+      rewardAttribute2: (showSecondary && rewardAttribute2) ? rewardAttribute2 : null,
+      rewardAttrValue: Number(rewardAttrValue),
     });
 
     if (result.success) {
-      router.push('/admin/missoes');
+      router.push("/admin/missoes");
       router.refresh();
     } else {
-      alert("Falha ao forjar missão.");
+      alert("Erro ao criar missão.");
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* THE FORGE (FORM) */}
-      <form onSubmit={handleSubmit} className="lg:col-span-2 bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-6 md:p-10 rounded-2xl shadow-2xl space-y-10 relative overflow-hidden">
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="flex flex-col">
-            <label className="hud-label-tactical mb-3 uppercase">Título da Quest</label>
+    <main className="min-h-screen p-6 max-w-5xl mx-auto text-white font-barlow">
+       <header className="mb-8 flex items-center justify-between">
+          <Link href="/admin/missoes" className="hud-label-tactical text-[10px] text-gray-500 hover:text-white transition-all uppercase">
+            ← Voltar ao Mural
+          </Link>
+          <h1 className="hud-title-md text-brand uppercase tracking-widest">Publicar Novo Decreto</h1>
+       </header>
+
+       <form onSubmit={handleSubmit} className="space-y-6 bg-dark-bg/40 backdrop-blur-md border border-white/10 p-8 rounded-2xl shadow-2xl">
+          <div className="space-y-4">
+            <label className="hud-label-tactical text-[10px] text-gray-400 uppercase">Dados Principais</label>
             <input 
-              required type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-              className="bg-dark-bg/80 border border-white/10 p-4 rounded-xl text-white hud-title-md outline-none focus:border-mission/50 shadow-inner"
-              placeholder="EX: LER O LIVRO DE NEEMIAS"
+              required className="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none focus:border-brand/40 uppercase"
+              placeholder="Título da Operação" value={title} onChange={(e) => setTitle(e.target.value)} 
+            />
+            <textarea 
+              required className="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none h-32 resize-none focus:border-brand/40"
+              placeholder="Instruções e Lore..." value={description} onChange={(e) => setDescription(e.target.value)} 
             />
           </div>
 
-          <div className="flex flex-col">
-            <label className="hud-label-tactical mb-3 uppercase">Categoria</label>
-            <select 
-              value={category} onChange={(e) => setCategory(e.target.value)}
-              className="bg-dark-bg/80 border border-white/10 p-4 rounded-xl text-white font-barlow font-bold uppercase tracking-widest text-sm outline-none focus:border-mission/50 h-[68px] appearance-none cursor-pointer shadow-inner"
-            >
-              {MISSION_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-white/5 border border-white/5 rounded-xl">
+             <div className="space-y-2">
+               <label className="hud-label-tactical text-[10px] text-gray-500 uppercase">Categoria</label>
+               <select className="w-full bg-black/40 border border-white/10 p-4 rounded-xl outline-none" value={type} onChange={(e) => setType(e.target.value)}>
+                  {MISSION_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat.toUpperCase()}</option>)}
+               </select>
+             </div>
+             <div className="space-y-2">
+               <label className="hud-label-tactical text-[10px] text-brand uppercase">Mecânica de Conclusão</label>
+               <select className="w-full bg-black/40 border border-brand/20 p-4 rounded-xl outline-none" value={triggerType} onChange={(e) => setTriggerType(e.target.value)}>
+                 <option value="MANUAL">MANUAL (Líder)</option>
+                 <option value="FRIEND_COUNT">AUTOMÁTICO (Meta de Amigos)</option>
+               </select>
+             </div>
           </div>
-        </div>
 
-        <div className="bg-mission/5 border border-mission/10 p-8 rounded-2xl space-y-8 relative overflow-hidden">
-          <h3 className="hud-label-tactical text-mission text-xs italic-none tracking-[0.3em] uppercase">Recompensa</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* XP */}
-            <div className="flex flex-col">
-              <label className="hud-label-tactical mb-3 text-xp uppercase">XP Base</label>
-              <div className="flex gap-2 items-center bg-dark-bg/60 p-2 rounded-xl border border-white/5 shadow-inner">
-                <input 
-                  type="number" value={xpReward === 'LVL UP DIRETO' ? '' : xpReward}
-                  onChange={(e) => setXpReward(parseInt(e.target.value) || 0)}
-                  disabled={xpReward === 'LVL UP DIRETO'}
-                  className="bg-dark-bg/80 border border-white/10 p-2 rounded-lg text-xp hud-value w-full outline-none"
-                />
-                <button 
-                  type="button" onClick={() => setXpReward(xpReward === 'LVL UP DIRETO' ? 100 : 'LVL UP DIRETO')}
-                  className={`px-3 py-2 border rounded-lg hud-label-tactical text-[9px] ${xpReward === 'LVL UP DIRETO' ? "bg-brand border-brand text-dark-bg" : "bg-dark-bg/80 border-white/10 text-gray-500"}`}
-                >
-                  MAX
-                </button>
-              </div>
-            </div>
-
-            {/* ATTR SELECT */}
-            <div className="flex flex-col">
-              <label className="hud-label-tactical mb-3 uppercase">Atributo</label>
-              <select 
-                value={rewardAttribute} onChange={(e) => setRewardAttribute(e.target.value)}
-                className="bg-dark-bg/80 border border-white/10 p-4 rounded-xl text-white font-barlow text-sm outline-none shadow-inner h-[58px] appearance-none cursor-pointer"
-              >
-                <option value="">NENHUM</option>
-                {Object.entries(ATTRIBUTE_MAP).map(([key, label]) => <option key={key} value={key}>{label.toUpperCase()}</option>)}
-              </select>
-            </div>
-
-            {/* ATTR POINTS */}
-            <div className={`flex flex-col ${!rewardAttribute ? 'opacity-20' : 'opacity-100'}`}>
-              <label className="hud-label-tactical mb-3 uppercase">Pontos</label>
+          {triggerType === "FRIEND_COUNT" && (
+            <div className="p-4 bg-brand/10 border border-brand/20 rounded-xl animate-in zoom-in-95">
+              <label className="hud-label-tactical text-[10px] text-brand uppercase">Meta de Companheiros Requerida</label>
               <input 
-                type="number" disabled={!rewardAttribute} value={rewardAttrValue}
-                onChange={(e) => setRewardAttrValue(parseInt(e.target.value) || 0)}
-                className="bg-dark-bg/80 border border-white/10 p-3.5 rounded-xl text-white hud-value text-3xl outline-none"
+                type="number" min="1" className="w-full bg-transparent p-2 text-2xl hud-value text-white outline-none"
+                value={targetValue} onChange={(e) => setTargetValue(Number(e.target.value))}
               />
             </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-white/5">
+             <div className="space-y-2">
+                <label className="hud-label-tactical text-[10px] text-xp uppercase">XP Recompensa</label>
+                <input type="number" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-xp hud-value text-2xl" value={xpReward} onChange={(e) => setXpReward(e.target.value)} />
+             </div>
+             <div className="space-y-2">
+                <label className="hud-label-tactical text-[10px] text-gray-500 uppercase">Atributo Primário</label>
+                <select className="w-full bg-black/40 border border-white/10 p-4 rounded-xl" value={rewardAttribute} onChange={(e) => setRewardAttribute(e.target.value)}>
+                  <option value="">NENHUM</option>
+                  {Object.entries(ATTRIBUTE_MAP).map(([key, label]) => <option key={key} value={key}>{label.toUpperCase()}</option>)}
+                </select>
+             </div>
+             <div className="space-y-2">
+                <label className="hud-label-tactical text-[10px] text-gray-500 uppercase">Pontos (+)</label>
+                <input type="number" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl" value={rewardAttrValue} onChange={(e) => setRewardAttrValue(Number(e.target.value))} />
+             </div>
           </div>
-        </div>
 
-        <div className="flex flex-col">
-          <label className="hud-label-tactical mb-3 uppercase">Instruções</label>
-          <textarea 
-            rows={4} value={description} onChange={(e) => setDescription(e.target.value)}
-            className="bg-dark-bg/80 border border-white/10 p-5 rounded-xl text-gray-300 font-barlow text-sm outline-none focus:border-mission/50 resize-none shadow-inner"
-          />
-        </div>
-
-        <button 
-          type="submit" disabled={isSubmitting}
-          className="w-full bg-brand hover:brightness-110 text-dark-bg hud-title-md text-2xl py-5 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.3)] disabled:opacity-50"
-        >
-          {isSubmitting ? "FORJANDO..." : "PUBLICAR MISSÃO"}
-        </button>
-      </form>
-
-      {/* LIVE PREVIEW (RIGHT COLUMN) */}
-      <div className="lg:col-span-1 hidden lg:block">
-        <div className="sticky top-8 bg-dark-bg/40 backdrop-blur-xl border border-mission/30 p-8 rounded-2xl shadow-2xl overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission to-transparent"></div>
-          <span className="bg-white/5 text-gray-500 border border-white/10 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase mb-6 inline-block">{category}</span>
-          <div className="hud-value text-mission text-4xl mb-4">+{xpReward === 9999 ? 'LVL UP' : xpReward} XP</div>
-          <h3 className="hud-title-md text-white text-2xl mb-4 uppercase">{title || "NOME DA MISSÃO"}</h3>
-          <p className="font-barlow text-gray-500 text-sm mb-8 line-clamp-3">{description || "Instruções aqui..."}</p>
           {rewardAttribute && (
-            <div className="border-t border-white/5 pt-4">
-              <span className="hud-label-tactical text-[10px] text-brand uppercase">Buff: +{rewardAttrValue} {ATTRIBUTE_MAP[rewardAttribute]}</span>
+            <div className="p-4 border-t border-white/5">
+              {!showSecondary ? (
+                <button type="button" onClick={() => setShowSecondary(true)} className="hud-label-tactical text-brand text-[9px] border border-brand/30 px-3 py-1 rounded-md">
+                  + ADICIONAR ATRIBUTO SECUNDÁRIO
+                </button>
+              ) : (
+                <div className="flex gap-4 items-end">
+                   <div className="flex-1 space-y-2">
+                      <label className="hud-label-tactical text-[10px] text-gray-500 uppercase">Atributo 2</label>
+                      <select className="w-full bg-black/40 border border-brand/20 p-4 rounded-xl" value={rewardAttribute2} onChange={(e) => setRewardAttribute2(e.target.value)}>
+                        <option value="">SELECIONE...</option>
+                        {Object.entries(ATTRIBUTE_MAP).filter(([k]) => k !== rewardAttribute).map(([key, label]) => <option key={key} value={key}>{label.toUpperCase()}</option>)}
+                      </select>
+                   </div>
+                   <button type="button" onClick={() => { setShowSecondary(false); setRewardAttribute2(""); }} className="p-4 text-red-500 hud-label-tactical uppercase text-[10px]">Remover</button>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+
+          <button disabled={isSubmitting} className="w-full bg-brand text-dark-bg p-5 rounded-xl hud-title-md uppercase text-xl hover:brightness-110 disabled:opacity-50 transition-all">
+            {isSubmitting ? "FORJANDO..." : "PUBLICAR DECRETO"}
+          </button>
+       </form>
+    </main>
   );
 }

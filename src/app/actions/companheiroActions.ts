@@ -7,6 +7,7 @@ import { completeMission } from "./missionActions";
 /**
  * Searches for Valentes by name to recruit as companions.
  * Excludes the current Valente from results.
+ * Retrieves both guildaName and guildaIcon for the UI display.
  */
 export async function searchValentes(query: string, excludeId: string) {
   if (!query || query.length < 2) return [];
@@ -26,7 +27,13 @@ export async function searchValentes(query: string, excludeId: string) {
         id: true,
         name: true,
         image: true,
-        structure: true
+        structure: true,
+        managedBy: {
+          select: {
+            guildaName: true,
+            guildaIcon: true
+          }
+        }
       },
       take: 5
     });
@@ -38,6 +45,7 @@ export async function searchValentes(query: string, excludeId: string) {
 
 /**
  * Retrieves full tactical data for companions based on an array of IDs.
+ * Retrieves both guildaName and guildaIcon for the UI display.
  */
 export async function getCompanheirosDetails(friendIds: string[]) {
   try {
@@ -53,6 +61,12 @@ export async function getCompanheirosDetails(friendIds: string[]) {
         image: true,
         structure: true,
         totalXP: true,
+        managedBy: {
+          select: {
+            guildaName: true,
+            guildaIcon: true
+          }
+        }
       },
     });
   } catch (error) {
@@ -103,7 +117,7 @@ async function checkAutomatedSocialMissions(valenteId: string) {
             id: mission.id,
             title: mission.title,
             xpReward: mission.xpReward,
-            newRelics: result.newRelics // Collects relics awarded by the mission XP
+            newRelics: result.newRelics
           });
         }
       }
@@ -152,10 +166,8 @@ export async function addCompanheiro(valenteId: string, newFriendId: string) {
       })
     ]);
 
-    // Collects mission results for the primary user to show in the UI
     const triggeredMissions = await checkAutomatedSocialMissions(valenteId);
     
-    // Silently processes missions for the added friend without UI feedback
     await checkAutomatedSocialMissions(newFriendId);
 
     revalidatePath(`/admin/valentes/${valenteId}`);

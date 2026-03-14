@@ -28,6 +28,8 @@ model User {
 
   // Stores the public name of the group managed by this user
   guildaName   String?
+  // Stores the selected faction symbol for the group
+  guildaIcon   String?  
 
   // HIERARCHY: Self-referencing relationship
   // One-to-Many relationship. A Gerente manages multiple Discipuladores.

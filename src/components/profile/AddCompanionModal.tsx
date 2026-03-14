@@ -54,16 +54,36 @@ export default function AddCompanionModal({
               <button 
                 key={res.id}
                 onClick={() => { onAdd(res.id); onClose(); }}
-                className="w-full flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-transparent hover:border-brand/30 hover:bg-brand/5 transition-all group"
+                className="w-full flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-transparent hover:border-brand/30 hover:bg-brand/5 transition-all group"
               >
-                <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden">
+                <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden shrink-0">
                   <img src={res.image || '/images/man-silhouette.svg'} className="object-cover w-full h-full" alt="" />
                 </div>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium text-white">{res.name}</span>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-widest">{res.structure}</span>
+                <div className="flex flex-col items-start overflow-visible"> {/* Changed to overflow-visible */}
+                  
+                  {/* Guilda badge with improved spacing to prevent clipping on hover */}
+                  {res.managedBy?.guildaName && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 mb-1.5 rounded-md bg-gradient-to-r from-mission/20 to-transparent border border-mission/30 backdrop-blur-sm shadow-[0_0_10px_rgba(16,185,129,0.1)] w-fit transition-all duration-500 group-hover:border-mission/50 group-hover:shadow-[0_0_15px_rgba(16,185,129,0.2)] group-hover:scale-[1.05] origin-left">
+                      <span className="hud-label-tactical text-[8px] text-mission uppercase tracking-widest font-bold">
+                        {res.managedBy.guildaName}
+                      </span>
+                      {res.managedBy.guildaIcon && (
+                        <img 
+                          src={res.managedBy.guildaIcon} 
+                          alt="" 
+                          className="w-3 h-3 object-contain brightness-110 transition-all duration-500 group-hover:brightness-125" 
+                        />
+                      )}
+                    </div>
+                  )}
+                  
+                  <span className="text-sm font-medium text-white truncate max-w-[180px] transition-colors group-hover:text-brand">{res.name}</span>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-widest">{res.structure}</span>
+                  </div>
                 </div>
-                <span className="ml-auto opacity-0 group-hover:opacity-100 text-brand text-xs">VINCULAR +</span>
+                <span className="ml-auto opacity-0 group-hover:opacity-100 text-brand text-xs font-bold whitespace-nowrap">VINCULAR +</span>
               </button>
             ))
           )}

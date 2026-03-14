@@ -43,7 +43,18 @@ export async function getKingdomOverview() {
       take: 6,
       orderBy: { createdAt: "desc" },
       include: {
-        valente: { select: { name: true, image: true } },
+        valente: { 
+          select: { 
+            name: true, 
+            image: true,
+            managedBy: {
+              select: {
+                guildaName: true,
+                guildaIcon: true
+              }
+            }
+          } 
+        },
       },
     });
 

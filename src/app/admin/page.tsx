@@ -1,21 +1,25 @@
 import Link from "next/link";
+import prisma from "@/lib/prisma"; 
 import { ICONS } from "@/constants/gameConfig";
 import { getKingdomOverview } from "@/app/actions/dashboardActions";
+import GuildaManagement from "@/components/admin/GuildaManagement"; 
 
 /**
  * AdminDashboard Component (Server Component)
  * Fetches live kingdom analytics and renders the strategic overview.
  */
 export default async function AdminDashboard() {
+  // Retrieves metrics and analytics for the overview dashboard
   const overview = await getKingdomOverview();
   const metrics = overview.data;
 
+  // Retrieves the current master user to populate the Guilda configuration
+  const adminUser = await prisma.user.findFirst();
+
   return (
     <main className="p-6 max-w-7xl mx-auto min-h-screen flex flex-col pb-20 text-white font-barlow">
-      {/* CONTAINER 1: DASHBOARD_MASTER_WRAPPER */}
       
       <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        {/* CONTAINER 2: STRATEGIC_HEADER_BLOCK */}
         <div>
           <h1 className="hud-title-lg text-white m-0 flex items-center gap-4 text-5xl">
             <img 
@@ -31,10 +35,18 @@ export default async function AdminDashboard() {
         </div>
       </header>
 
+      {/* Renders the Guilda management block with the required icon property */}
+      {adminUser && (
+        <section className="mb-10 max-w-2xl animate-in fade-in slide-in-from-left-4 duration-700">
+          <GuildaManagement 
+            userId={adminUser.id} 
+            currentName={adminUser.guildaName || ""} 
+            currentIcon={adminUser.guildaIcon || ""}
+          />
+        </section>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        {/* CONTAINER 3: CORE_METRICS_GRID */}
-        
-        {/* METRIC_CARD: TOTAL_VALENTES */}
         <div className="relative group bg-dark-bg/60 backdrop-blur-xl border border-white/5 border-t-brand/50 p-6 rounded-2xl shadow-2xl overflow-hidden hover:bg-brand/5 hover:border-brand/30 hover:border-t-brand transition-all">
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand/50 to-transparent"></div>
           <div className="flex justify-between items-start mb-4 relative z-10">
@@ -49,7 +61,6 @@ export default async function AdminDashboard() {
           </p>
         </div>
         
-        {/* METRIC_CARD: WEEKLY_XP_FLOW */}
         <div className="relative group bg-dark-bg/60 backdrop-blur-xl border border-white/5 border-t-xp/50 p-6 rounded-2xl shadow-2xl overflow-hidden hover:bg-xp/5 hover:border-xp/30 hover:border-t-xp transition-all">
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-xp/50 to-transparent"></div>
           <div className="flex justify-between items-start mb-4 relative z-10">
@@ -64,9 +75,8 @@ export default async function AdminDashboard() {
           </p>
         </div>
 
-        {/* METRIC_CARD: ENGAJAMENTO_SEMANAL */}
         <div className="relative group bg-dark-bg/60 backdrop-blur-xl border border-white/5 border-t-mission/50 p-6 rounded-2xl shadow-2xl overflow-hidden hover:bg-mission/5 hover:border-mission/30 hover:border-t-mission transition-all">
-          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/50 to-transparent"></div>
+          <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/5 to-transparent"></div>
           <div className="flex justify-between items-start mb-4 relative z-10">
             <h3 className="hud-label-tactical text-gray-400 uppercase tracking-widest">Engajamento Semanal</h3>
             <img src={ICONS.missoes} alt="Missões" className="w-8 h-8 object-contain opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
@@ -81,12 +91,9 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* CONTAINER 4: OPERATIONAL_DATA_GRID */}
-        
         <section className="lg:col-span-2 bg-dark-bg/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-2xl overflow-hidden flex flex-col relative">
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
           
-          {/* COMBAT_LOG_VIEWPORT */}
           <div className="p-8 border-b border-white/5">
             <h2 className="hud-title-md text-3xl text-white m-0 flex items-center gap-3">
               REGISTRO DE COMBATE
@@ -129,7 +136,6 @@ export default async function AdminDashboard() {
         <section className="bg-dark-bg/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-2xl overflow-hidden flex flex-col relative">
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
           
-          {/* QUICK_ACTION_COMMAND_CENTER */}
           <div className="p-8 border-b border-white/5">
             <h2 className="hud-title-md text-3xl text-white m-0">
               AÇÕES RÁPIDAS

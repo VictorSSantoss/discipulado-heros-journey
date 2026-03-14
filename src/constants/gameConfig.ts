@@ -19,6 +19,8 @@ export const ICONS = {
   relics: "/images/relic-icon.svg",
   picture: "/images/picture-icon.svg",
   locker: "/images/locker-icon.svg",
+  edit: "/images/edit-icon.svg",
+  guilda: "/images/guilda-icon.svg",
 } as const;
 
 export const SIDEBAR_MENU = [
