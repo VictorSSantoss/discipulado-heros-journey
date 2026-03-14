@@ -10,23 +10,28 @@ export default function EditMissionClient({ mission }: { mission: any }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /* HYDRATE FORM STATES FROM DATABASE RECORD */
+  // Hydrates form states from the existing database record
   const [title, setTitle] = useState(mission.title);
   const [category, setCategory] = useState<string>(mission.type || MISSION_CATEGORIES[0]);
   const [description, setDescription] = useState(mission.description || "");
+  
+  // Defines the trigger logic and target count for automated completions
+  const [triggerType, setTriggerType] = useState(mission.triggerType || "MANUAL");
+  const [targetValue, setTargetValue] = useState(mission.targetValue || 0);
   
   const isInitialLvlUp = mission.xpReward === 9999;
   const [isLvlUp, setIsLvlUp] = useState(isInitialLvlUp);
   const [xpReward, setXpReward] = useState(isInitialLvlUp ? "" : String(mission.xpReward));
 
-  /* HYDRATE ATTRIBUTE REWARDS */
+  // Hydrates attribute rewards from the existing database record
   const [rewardAttribute, setRewardAttribute] = useState<string>(mission.rewardAttribute || "");
   const [rewardAttribute2, setRewardAttribute2] = useState<string>(mission.rewardAttribute2 || "");
   const [rewardAttrValue, setRewardAttrValue] = useState<number>(mission.rewardAttrValue || 0);
   
-  // Toggle for the UI
+  // Controls the visibility of the secondary attribute selection in the UI
   const [showSecondary, setShowSecondary] = useState(!!mission.rewardAttribute2);
 
+  // Processes the form submission and updates the mission record via server action
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return alert("O título é obrigatório.");
@@ -40,7 +45,8 @@ export default function EditMissionClient({ mission }: { mission: any }) {
       type: category,
       xpReward: finalXpReward,
       description,
-      // ⚔️ Include Dual Attributes
+      triggerType,
+      targetValue: Number(targetValue),
       rewardAttribute: rewardAttribute || null,
       rewardAttribute2: (showSecondary && rewardAttribute2) ? rewardAttribute2 : null,
       rewardAttrValue: rewardAttribute ? Number(rewardAttrValue) : 0,
@@ -109,6 +115,34 @@ export default function EditMissionClient({ mission }: { mission: any }) {
                 className="bg-black/40 border border-white/10 p-4 text-gray-300 font-barlow rounded-xl focus:border-brand/50 outline-none transition-all w-full resize-none"
               />
             </div>
+
+            {/* Configures the automation rules for the mission completion trigger */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-white/5">
+              <div className="flex flex-col gap-2">
+                <label className="hud-label-tactical text-gray-400 uppercase">Mecânica de Conclusão</label>
+                <select 
+                  value={triggerType}
+                  onChange={(e) => setTriggerType(e.target.value)}
+                  className="bg-black/40 border border-white/10 p-4 text-white font-barlow text-sm rounded-xl outline-none appearance-none cursor-pointer h-[58px]"
+                >
+                  <option value="MANUAL">MANUAL (Avaliado pelo Líder)</option>
+                  <option value="FRIEND_COUNT">AUTOMÁTICO (Meta de Companheiros)</option>
+                </select>
+              </div>
+
+              {triggerType === "FRIEND_COUNT" && (
+                <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="hud-label-tactical text-brand uppercase">Quantidade de Amigos</label>
+                  <input 
+                    type="number" min="1"
+                    value={targetValue}
+                    onChange={(e) => setTargetValue(parseInt(e.target.value) || 0)}
+                    className="bg-black/40 border border-brand/30 p-4 text-white rounded-xl focus:border-brand outline-none transition-all h-[58px]"
+                    placeholder="Ex: 5"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <hr className="border-white/5" />
@@ -167,7 +201,7 @@ export default function EditMissionClient({ mission }: { mission: any }) {
               </div>
             </div>
 
-            {/* ⚔️ DUAL ATTRIBUTE TOGGLE */}
+            {/* DUAL ATTRIBUTE TOGGLE */}
             {rewardAttribute && (
               <div className="pt-6 mt-4 border-t border-brand/20 relative z-10">
                 {!showSecondary ? (
@@ -224,9 +258,18 @@ export default function EditMissionClient({ mission }: { mission: any }) {
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent"></div>
             
             <div className="flex justify-between items-start mb-6">
-              <span className="bg-white/5 text-gray-400 border border-white/10 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest">
-                {category}
-              </span>
+              <div className="flex flex-col gap-2">
+                <span className="bg-white/5 text-gray-400 border border-white/10 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest w-fit">
+                  {category}
+                </span>
+                
+                {/* Visual indicator for the automated requirement in the live preview */}
+                {triggerType === "FRIEND_COUNT" && targetValue > 0 && (
+                  <span className="bg-brand/10 text-brand border border-brand/20 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest w-fit">
+                    META: {targetValue} AMIGOS
+                  </span>
+                )}
+              </div>
               <span className="hud-value text-brand text-3xl drop-shadow-[0_0_10px_rgba(17,194,199,0.4)]">
                 {isLvlUp ? 'LVL UP' : `+${xpReward || 0} XP`}
               </span>
@@ -240,7 +283,7 @@ export default function EditMissionClient({ mission }: { mission: any }) {
               {description || "A descrição e os detalhes estratégicos da missão aparecerão aqui para guiar o Valente..."}
             </p>
             
-            {/* ⚔️ LIVE PREVIEW: Dual Attributes */}
+            {/* LIVE PREVIEW: Dual Attributes */}
             {rewardAttribute && rewardAttrValue > 0 && (
               <div className="mt-auto pt-4 border-t border-white/5 flex flex-wrap gap-3 animate-in slide-in-from-bottom-2 duration-500">
                 <div className="w-full">
