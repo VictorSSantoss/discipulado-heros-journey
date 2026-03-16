@@ -33,7 +33,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
       <header className="mb-14 flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-white/10 pb-8">
         <div>
           <h1 className="hud-title-lg text-6xl text-white m-0 flex items-center gap-5 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-            <img src={ICONS.valentes} alt="" className="w-16 h-16 object-contain" />
+            <img src={ICONS.valentes} alt="" className="w-20 h-20 object-contain" />
             QUARTEL
           </h1>
           <p className="hud-label-tactical text-brand mt-2 italic-none text-[11px] tracking-[0.3em]">
@@ -113,8 +113,8 @@ export default function ValentesClientView({ initialValentes }: { initialValente
 
                   <div className="flex flex-col items-end gap-2">
                     <div className="px-3 h-8 flex items-center justify-center gap-2 rounded-full backdrop-blur-md transition-all bg-black/40 border border-white/10">
-                      <img src={lvlInfo.icon} alt="" className="w-4 h-4 object-contain" />
-                      <span className="hud-label-tactical text-white text-[10px] font-bold uppercase opacity-90">
+                      <img src={lvlInfo.icon} alt="" className="w-6 h-6 object-contain" />
+                      <span className="hud-label-tactical text-white text-[15px] font-bold uppercase opacity-90">
                         {lvlInfo.name.split(' ').pop()}
                       </span>
                     </div>
@@ -139,7 +139,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                         <img 
                           src={valente.managedBy.guildaIcon} 
                           alt="" 
-                          className="w-4 h-4 object-contain brightness-110 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)] transition-all duration-500 group-hover:brightness-150 group-hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" 
+                          className="w-6 h-6 object-contain brightness-110 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)] transition-all duration-500 group-hover:brightness-150 group-hover:drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]" 
                         />
                       )}
                     </div>

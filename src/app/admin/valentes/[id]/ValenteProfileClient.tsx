@@ -311,7 +311,7 @@ export default function ValenteProfileClient({
                       <img 
                         src={valente.managedBy.guildaIcon} 
                         alt="" 
-                        className="w-5 h-5 object-contain ml-1 relative z-10 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" 
+                        className="w-8 h-8 object-contain ml-1 relative z-10 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" 
                       />
                     )}
                   </div>

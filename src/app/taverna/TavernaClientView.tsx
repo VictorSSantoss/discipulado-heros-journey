@@ -41,7 +41,6 @@ const rarityColorMap: Record<number, string> = {
 
 /**
  * Card component representing the top three ranking monoliths.
- * Vertical spacing is adjusted to move the name and guilda badge lower within the data section.
  */
 function MonolithCard({ valente, rank, isFirst = false }: { valente: any; rank: number; isFirst?: boolean }) {
   const heightClass = isFirst ? "h-[580px]" : "h-[540px]";
@@ -56,9 +55,10 @@ function MonolithCard({ valente, rank, isFirst = false }: { valente: any; rank: 
         <span className="hud-label-tactical text-[10px] text-white font-black uppercase tracking-widest leading-none">{lvlInfo.name}</span>
       </div>
 
-      <div className="relative w-full h-[50%] flex items-center justify-center bg-black/40 overflow-hidden shrink-0">
+      <div className="relative w-full h-[50%] flex items-center justify-center bg-dark-bg/80 overflow-hidden shrink-0">
         <img src={rayImageSrc} alt="" className="absolute inset-0 w-full h-full object-cover mix-blend-screen scale-150 z-0 opacity-100 transform-gpu" />
         <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#0c0d0e] via-transparent to-transparent" />
+        
         <img src={valente.image || '/images/man-silhouette.svg'} alt="" className="w-full h-full object-contain p-2 relative z-10 drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)]" />
       </div>
 
@@ -69,7 +69,6 @@ function MonolithCard({ valente, rank, isFirst = false }: { valente: any; rank: 
         
         <div className="flex flex-col items-center gap-8 flex-1 w-full mt-2">
           
-          {/* Player Name container with increased top margin to lower its position */}
           <div className="flex items-center gap-3 w-full justify-center px-2 -mt-4">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-white/40 max-w-[40px]" />
             <h3 
@@ -84,24 +83,18 @@ function MonolithCard({ valente, rank, isFirst = false }: { valente: any; rank: 
             <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/20 to-white/40 max-w-[40px]" />
           </div>
 
-          {/* Guilda badge with specific top margin to distance it from the name */}
           {valente.managedBy?.guildaName && (
-            <div className="relative flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-mission/20 to-mission/5 border border-mission/50 shadow-[inset_0_0_10px_rgba(16,185,129,0.1)] overflow-hidden group/badge shrink-0 mt-2">
+            <div className="relative flex items-center gap-2 px-5 -my-1 rounded-3xl bg-gradient-to-r from-mission/20 to-mission/5 border border-mission/50 shadow-[inset_0_0_10px_rgba(16,185,129,0.1)] overflow-hidden group/badge shrink-0 mt-2">
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                   <div className="w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-glow-sweep-slow" />
               </div>
-              <span className="hud-label-tactical text-[10px] text-mission uppercase font-black tracking-widest leading-none mt-[2px] relative z-10">{valente.managedBy.guildaName}</span>
-              {valente.managedBy.guildaIcon && <img src={valente.managedBy.guildaIcon} alt="" className="w-3.5 h-3.5 object-contain relative z-10" />}
+              <span className="hud-label-tactical text-[13px] text-mission uppercase font-black tracking-widest leading-none mt-[2px] relative z-10">{valente.managedBy.guildaName}</span>
+              {valente.managedBy.guildaIcon && <img src={valente.managedBy.guildaIcon} alt="" className="w-9 h-9 object-contain relative z-10" />}
             </div>
           )}
           
-          {/* XP Footer utilizing flare-main.png background with increased scale and adjusted opacity */}
           <div className="mt-auto w-full relative flex flex-col items-center justify-center py-6 h-20">
-             <img 
-               src="/images/flare-main.png" 
-               alt="" 
-               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] h-full object-contain mix-blend-screen opacity-60 pointer-events-none scale-110" 
-             />
+             <img src="/images/flare-main.png" alt="" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] h-full object-contain mix-blend-screen opacity-60 pointer-events-none scale-110" />
              <div className="flex items-baseline justify-center gap-2 relative z-10">
                 <span className="hud-value text-4xl leading-none" style={{ color: `rgb(${rgbColor})`, textShadow: `0 0 12px rgba(${rgbColor}, 0.4)` }}>
                    {valente.totalXP.toLocaleString('pt-BR')}
@@ -134,8 +127,8 @@ function TavernaHeroCard({ valente, rank }: { valente: any; rank: number }) {
               </div>
             )}
             <div className="flex items-center gap-1 opacity-60 leading-none">
-               <img src={lvlInfo.icon} alt="" className="w-4 h-4 object-contain" />
-               <span className="hud-label-tactical text-[7px] text-gray-400 uppercase tracking-widest">{lvlInfo.name.split(' ').pop()}</span>
+               <img src={lvlInfo.icon} alt="" className="w-8 h-8 object-contain" />
+               <span className="hud-label-tactical text-[15px] text-gray-400 uppercase tracking-widest">{lvlInfo.name.split(' ').pop()}</span>
             </div>
           </div>
           <h4 className="hud-title-md text-2xl text-white m-0 truncate leading-none group-hover:text-mission transition-colors uppercase">{valente.name}</h4>
@@ -196,15 +189,30 @@ export default function TavernaClientView({
 
   return (
     <div className="relative" onMouseMove={handleMouseMove}>
+      
+      {/* 🚀 GLOW FIX: 
+          Increased outline and boxShadow to 300px to ensure the browser provides a massive 
+          texture area for the blur, preventing left-side clipping. 
+      */}
       <motion.div 
-        style={{ y: light1Y }}
+        style={{ 
+          y: light1Y, 
+          willChange: "transform, filter", 
+          outline: "300px solid transparent", 
+          boxShadow: "0 0 0 300px transparent" 
+        }}
         animate={{ backgroundColor: viewMode === "GLOBAL" ? "rgba(17, 194, 199, 0.05)" : "rgba(16, 185, 129, 0.08)" }}
-        className="fixed top-[-100px] left-1/4 w-[40%] h-[600px] blur-[120px] rounded-full pointer-events-none z-0 transition-colors duration-1000 transform-gpu gpu-blur" 
+        className="fixed top-[-100px] left-1/4 w-[40%] h-[600px] blur-[120px] rounded-full pointer-events-none z-0 transition-colors duration-1000 transform-gpu" 
       />
       <motion.div 
-        style={{ y: light2Y }}
+        style={{ 
+          y: light2Y, 
+          willChange: "transform, filter", 
+          outline: "300px solid transparent", 
+          boxShadow: "0 0 0 300px transparent" 
+        }}
         animate={{ backgroundColor: viewMode === "GLOBAL" ? "rgba(16, 185, 129, 0.05)" : "rgba(16, 185, 129, 0.12)" }}
-        className="fixed top-[200px] right-1/4 w-[35%] h-[500px] blur-[100px] rounded-full pointer-events-none z-0 transition-colors duration-1000 transform-gpu gpu-blur" 
+        className="fixed top-[200px] right-1/4 w-[35%] h-[500px] blur-[100px] rounded-full pointer-events-none z-0 transition-colors duration-1000 transform-gpu" 
       />
 
       <AnimatePresence>
@@ -216,7 +224,7 @@ export default function TavernaClientView({
             style={{ x: moveX, y: moveY }}
             className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden"
           >
-            <img src={userGuildaIcon || "/images/ranking-icon.svg"} alt="" className="w-[60vw] h-[60vw] object-contain grayscale brightness-200 transform-gpu" />
+            <img src={userGuildaIcon || "/images/ranking-icon.svg"} alt="" className="w-[60vw] h-[60vw] object-contain grayscale brightness-200" />
           </motion.div>
         )}
       </AnimatePresence>

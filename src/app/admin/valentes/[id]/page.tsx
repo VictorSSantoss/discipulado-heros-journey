@@ -19,7 +19,7 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
       managedBy: { 
         select: { 
           guildaName: true, 
-          guildaIcon: true, // <-- Added this line
+          guildaIcon: true,
           name: true 
         } 
       }
@@ -66,7 +66,7 @@ export default async function ValenteProfilePage({ params }: { params: Promise<{
         managedBy: { 
           select: { 
             guildaName: true, 
-            guildaIcon: true, // <-- Added this line here too
+            guildaIcon: true,
             name: true 
           } 
         }

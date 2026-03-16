@@ -128,7 +128,7 @@ export default function TavernaPreview({ ranking = [] }: { ranking?: any[] }) {
                         <img 
                           src={player.managedBy.guildaIcon} 
                           alt="" 
-                          className="w-3 h-3 object-contain brightness-110 relative z-10 transition-all duration-500 group-hover:brightness-125" 
+                          className="w-4 h-4 object-contain brightness-110 relative z-10 transition-all duration-500 group-hover:brightness-125" 
                         />
                       )}
                     </div>

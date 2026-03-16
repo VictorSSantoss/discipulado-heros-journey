@@ -5,6 +5,7 @@
 /* -------------------------------------------------------------------------- */
 /* 1. FONT REGISTRY                                                           */
 /* -------------------------------------------------------------------------- */
+/* Registers FutureEarth font family with normal weight and display strategy */
 @font-face {
   font-family: 'FutureEarth';
   src: url('/fonts/future-earth.ttf') format('truetype');
@@ -13,11 +14,13 @@
   font-display: swap;
 }
 
+/* Layer base configuration including font variable definitions and body styling */
 @layer base {
   :root {
     --family-future: 'FutureEarth', sans-serif;
   }
 
+  /* Body background color, text color, and antialiasing configuration */
   body {
     @apply bg-dark-bg text-white antialiased;
   }
@@ -26,35 +29,52 @@
 /* -------------------------------------------------------------------------- */
 /* 2. HUD TYPOGRAPHY SYSTEM (EXACT REFERENCE MATCH)                           */
 /* -------------------------------------------------------------------------- */
+/* Layer component definitions for standardized typography classes */
 @layer components {
 
   /* ROLE: MAIN PAGE HEADERS
-     Matches original: font-bebas text-5xl md:text-6xl tracking-normal drop-shadow 0.1 */
+     Standardized page titles with Bebas Neue font and white drop shadow glow */
   .hud-title-lg {
     @apply font-bebas text-5xl md:text-6xl uppercase tracking-normal leading-none drop-shadow-[0_0_15px_rgba(255,255,255,0.1)];
   }
 
   /* ROLE: SUB-HEADERS & CARD NAMES
-     Matches original: font-bebas text-2xl to 3xl tracking-normal */
+     Secondary headings for section identification and card specific titles */
   .hud-title-md {
     @apply font-bebas text-2xl md:text-3xl uppercase tracking-normal leading-none;
   }
 
   /* ROLE: METADATA & TECHNICAL LABELS
-     Matches original: font-barlow text-gray-500 font-black tracking-[0.2em] text-[9px] (No italic) */
+     Technical descriptors using Barlow font with wide letter spacing and small size */
   .hud-label-tactical {
     @apply font-barlow text-gray-500 font-black uppercase tracking-[0.2em] text-[9px];
   }
 
   /* ROLE: QUANTITATIVE DATA (NUMBERS)
-     Matches original: font-staatliches text-5xl tracking-widest */
+     Numeric data display using Staatliches font with high visibility and wide tracking */
   .hud-value {
     @apply font-staatliches text-5xl tracking-widest leading-none;
   }
+
+  /* Custom tactical scrollbar styling for dashboard panels */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(17, 194, 199, 0.2);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(17, 194, 199, 0.5);
+  }
 }
 
-
+/* Layer utilities containing animation definitions */
 @layer utilities {
+  /* Vertical scan line animation for holographic UI elements */
   @keyframes scan-hologram {
     0% { 
       top: 10%; 
@@ -72,7 +92,21 @@
     }
   }
 
+  /* Organic drift animation for background glow effects, varying scale and opacity */
+  @keyframes slow-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.15; }
+    25% { transform: translate(3%, 4%) scale(1.05); opacity: 0.2; }
+    50% { transform: translate(-2%, 3%) scale(0.98); opacity: 0.15; }
+    75% { transform: translate(4%, -2%) scale(1.02); opacity: 0.22; }
+  }
+
+  /* Applies scan line animation with 6s infinite loop */
   .animate-scan-hologram {
     animation: scan-hologram 6s ease-in-out infinite;
+  }
+
+  /* Applies slow drift animation with 20s infinite loop */
+  .animate-glow-drift {
+    animation: slow-drift 20s ease-in-out infinite;
   }
 }
