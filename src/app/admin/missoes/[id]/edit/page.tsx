@@ -1,17 +1,24 @@
 import prisma from "@/lib/prisma";
+import MissionForm from "@/components/admin/MissionForm";
 import { notFound } from "next/navigation";
-import EditMissionClient from "./EditMissionClient";
 
-export default async function EditMissionPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditMissionPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  // We MUST await params before accessing the id
   const resolvedParams = await params;
-  
-  const mission = await prisma.mission.findUnique({
-    where: { id: resolvedParams.id }
+  const { id } = resolvedParams;
+
+  const mission = await prisma.mission.findUnique({ 
+    where: { id: id } 
   });
 
   if (!mission) {
-    notFound();
+    return notFound();
   }
 
-  return <EditMissionClient mission={mission} />;
+  // Pass the mission data to our unified form
+  return <MissionForm mission={mission} isEdit={true} />;
 }
