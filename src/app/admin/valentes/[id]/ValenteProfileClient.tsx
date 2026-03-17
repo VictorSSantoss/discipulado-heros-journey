@@ -60,7 +60,6 @@ export default function ValenteProfileClient({
   const [isGrantRelicModalOpen, setIsGrantRelicModalOpen] = useState(false); 
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
 
-  // Normalizing initial database data (reliquias) to frontend format (medals)
   const normalizedInitialMedals = initialValente.reliquias 
     ? initialValente.reliquias.map((r: any) => ({
         medal: r.reliquia || r.medal, 
@@ -590,19 +589,20 @@ export default function ValenteProfileClient({
         )}
       </AnimatePresence>
 
+      {/* Priority 1: Mission Completion Overlay */}
       <AnimatePresence>
-        {showLevelUp && (
-          <LevelUpNotification 
-            levelName={currentLevelInfo.name} 
-            levelIcon={currentLevelInfo.icon}
-            themeColor={theme.hex}
-            onComplete={() => setShowLevelUp(false)}
+        {missionQueue.length > 0 && (
+          <MissionCompletionOverlay 
+            key={missionQueue[0].id}
+            mission={missionQueue[0]} 
+            onComplete={() => setMissionQueue(prev => prev.slice(1))} 
           />
         )}
       </AnimatePresence>
 
+      {/* Priority 2: Relic Discovery Overlay (Waits for missionQueue to be empty) */}
       <AnimatePresence>
-        {medalQueue.length > 0 && (
+        {medalQueue.length > 0 && missionQueue.length === 0 && (
           <RelicDiscoveryOverlay 
             key={medalQueue[0].id}
             relic={medalQueue[0]} 
@@ -611,12 +611,14 @@ export default function ValenteProfileClient({
         )}
       </AnimatePresence>
 
+      {/* Priority 3: Level Up Notification (Waits for both missionQueue and medalQueue to be empty) */}
       <AnimatePresence>
-        {missionQueue.length > 0 && (
-          <MissionCompletionOverlay 
-            key={missionQueue[0].id}
-            mission={missionQueue[0]} 
-            onComplete={() => setMissionQueue(prev => prev.slice(1))} 
+        {showLevelUp && medalQueue.length === 0 && missionQueue.length === 0 && (
+          <LevelUpNotification 
+            levelName={currentLevelInfo.name} 
+            levelIcon={currentLevelInfo.icon}
+            themeColor={theme.hex}
+            onComplete={() => setShowLevelUp(false)}
           />
         )}
       </AnimatePresence>

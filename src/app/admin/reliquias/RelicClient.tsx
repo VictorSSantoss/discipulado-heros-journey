@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ICONS, ATTRIBUTE_MAP } from "@/constants/gameConfig";
+import { useRouter } from "next/navigation";
+import { ICONS } from "@/constants/gameConfig";
 
 export interface RelicPermissions {
   canForge: boolean;
@@ -20,6 +21,21 @@ const rarityColorMap: Record<string, string> = {
   LEGENDARY: "255, 170, 0", 
   RARE: "59, 130, 246", 
   COMMON: "255, 255, 255", 
+};
+
+const fullAttributeNames: Record<string, string> = {
+  forca: "FORÇA",
+  for: "FORÇA",
+  destreza: "DESTREZA",
+  des: "DESTREZA",
+  constituicao: "CONSTITUIÇÃO",
+  con: "CONSTITUIÇÃO",
+  inteligencia: "INTELIGÊNCIA",
+  int: "INTELIGÊNCIA",
+  sabedoria: "SABEDORIA",
+  sab: "SABEDORIA",
+  carisma: "CARISMA",
+  car: "CARISMA"
 };
 
 const filterCategories = ["TODAS", "LENDÁRIAS", "RARAS", "COMUNS"];
@@ -39,6 +55,7 @@ export default function ReliquiaClient({
   unlockedIds?: string[],
   permissions?: RelicPermissions
 }) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("TODAS");
 
@@ -49,8 +66,29 @@ export default function ReliquiaClient({
   });
 
   return (
-    <div className="space-y-8 pb-20 max-w-7xl mx-auto">
+    <div className="space-y-8 pb-20 max-w-7xl mx-auto overflow-hidden">
       
+      {/* ⚔️ Inlined global scrollbar styles for manual grant description */}
+      <style jsx global>{`
+        .custom-relic-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+        .custom-relic-scroll::-webkit-scrollbar {
+          width: 3px;
+        }
+        .custom-relic-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-relic-scroll::-webkit-scrollbar-thumb {
+          background-color: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+        }
+        .custom-relic-scroll::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(17, 194, 199, 0.2);
+        }
+      `}</style>
+
       <div className="flex flex-col space-y-6 border-b border-white/5 pb-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="relative w-full max-w-xl group">
@@ -92,11 +130,10 @@ export default function ReliquiaClient({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        
         {permissions.canForge && (
           <Link 
             href="/admin/reliquias/create"
-            className="group relative h-[450px] bg-brand/5 border-2 border-dashed border-brand/20 rounded-3xl flex flex-col items-center justify-center gap-4 hover:border-brand hover:bg-brand/10 transition-all duration-500 shadow-[inset_0_0_50px_rgba(17,194,199,0.05)]"
+            className="group relative h-[480px] bg-brand/5 border-2 border-dashed border-brand/20 rounded-3xl flex flex-col items-center justify-center gap-4 hover:border-brand hover:bg-brand/10 transition-all duration-500 shadow-[inset_0_0_50px_rgba(17,194,199,0.05)]"
           >
             <div className="w-16 h-16 rounded-full border border-brand/30 flex items-center justify-center group-hover:border-brand transition-all shadow-[0_0_20px_rgba(17,194,199,0.2)] bg-brand/10">
                <span className="text-3xl text-brand group-hover:scale-125 transition-transform">+</span>
@@ -119,7 +156,7 @@ export default function ReliquiaClient({
             <CardWrapper 
               key={relic.id} 
               {...(wrapperProps as any)}
-              className={`group relative bg-[#0a0a0a] border rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-500 h-[450px] overflow-hidden ${
+              className={`group relative bg-black border rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-500 h-[480px] overflow-hidden ${
                 isUnlocked ? 'border-white/10' : 'border-white/5'
               } ${
                 permissions.canEdit ? 'cursor-pointer hover:-translate-y-2 hover:border-brand/50' : 'cursor-default'
@@ -137,16 +174,23 @@ export default function ReliquiaClient({
               )}
 
               <div className={`absolute top-10 inset-0 pointer-events-none z-0 flex items-center justify-center duration-700 transition-opacity ${isUnlocked ? 'opacity-100' : 'opacity-25'}`}>
-                <img src={rayImage} className="w-full h-full object-contain scale-[1.7] mix-blend-screen group-hover:scale-[1.9] transition-transform duration-700" alt="" />
+                <img src={rayImage} className="w-full h-full object-contain scale-[1.4] mix-blend-screen group-hover:scale-[1.6] transition-transform duration-700" alt="" />
               </div>
 
-              {/* Icon filtering: balanced brightness to prevent pure white icons */}
-              <div className={`w-36 h-36 relative mb-6 z-10 transition-all duration-500 ${isUnlocked ? 'group-hover:scale-110' : 'scale-90 grayscale brightness-[0.6] opacity-80'}`}>
+              <div className="flex items-center gap-3 mb-6 z-10 w-full justify-center mt-2">
+                <div className="h-px w-4 bg-gradient-to-r from-transparent to-white/40" />
+                <h3 className={`hud-title-md text-2xl uppercase transition-colors drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] text-white ${permissions.canEdit ? 'group-hover:text-brand' : ''}`}>
+                  {relic.name}
+                </h3>
+                <div className="h-px w-4 bg-gradient-to-l from-transparent to-white/40" />
+              </div>
+
+              <div className={`w-36 h-36 relative mb-6 z-10 transition-all duration-500 shrink-0 ${isUnlocked ? 'group-hover:scale-110' : 'scale-90 grayscale brightness-[0.6] opacity-80'}`}>
                  <Image src={relic.icon || "/images/placeholder.png"} alt={relic.name} fill className="object-contain" />
               </div>
 
               <div 
-                className={`relative z-10 flex items-center justify-center px-6 py-1.5 rounded-full backdrop-blur-xl mb-4 overflow-hidden shrink-0 transition-opacity ${isUnlocked ? 'opacity-100' : 'opacity-80'}`}
+                className={`relative z-10 flex items-center justify-center px-6 py-1.5 rounded-full backdrop-blur-xl mb-6 overflow-hidden shrink-0 transition-opacity ${isUnlocked ? 'opacity-100' : 'opacity-80'}`}
                 style={{ background: `linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(${baseColor}, 0.2) 100%)`, border: `1px solid rgba(${baseColor}, 0.2)` }}
               >
                 <div className="absolute top-0 left-0 w-full h-[1px] opacity-40" style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 1), transparent)` }} />
@@ -155,29 +199,66 @@ export default function ReliquiaClient({
                 </span>
               </div>
 
-              {/* Text Visibility: Added drop-shadow for better contrast against background rays */}
-              <h3 className={`hud-title-md text-xl uppercase z-10 transition-colors drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${permissions.canEdit ? 'group-hover:text-brand' : ''} ${isUnlocked ? 'text-white' : 'text-gray-600'}`}>
-                {relic.name}
-              </h3>
-              
-              <p className="text-gray-400 text-[11px] line-clamp-2 font-barlow mb-4 z-10 px-2 mt-2 leading-relaxed italic-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-                {isUnlocked ? relic.description : "Os segredos deste artefato permanecem ocultos nas sombras."}
-              </p>
-
               <div className="mt-auto w-full z-10">
-                <div className={`bg-black/60 backdrop-blur-md rounded-xl p-3.5 border transition-all flex flex-col items-center justify-center relative overflow-hidden ${isUnlocked ? 'border-brand/30 group-hover:border-brand/60' : 'border-white/5'}`}>
-                  {isUnlocked && <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand/40 to-transparent"></div>}
-                  <span className="hud-label-tactical text-[8px] text-gray-500 uppercase tracking-[0.2em] mb-1 font-normal">
-                    {isUnlocked ? 'ARTEFATO CONQUISTADO' : 'REQUISITO DE DESBLOQUEIO'}
+                <div className={`bg-black/20 backdrop-blur-md rounded-xl p-4 transition-all flex flex-col items-center justify-center relative min-h-[90px]`}>
+                  {isUnlocked && <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-mission/50 to-transparent"></div>}
+                  
+                  <span className="hud-label-tactical text-[9px] text-gray-400 uppercase tracking-[0.2em] mb-2 font-normal">
+                    {isUnlocked ? 'ARTEFATO CONQUISTADO VIA:' : 'REQUISITO DE DESBLOQUEIO:'}
                   </span>
-                  <span className={`text-[11px] uppercase tracking-widest font-bold ${isUnlocked ? 'text-brand' : 'text-gray-600'}`}>
-                    {isUnlocked ? 'REGISTRADO NO CODEX' : (
-                      firstReq?.type === "XP" ? `ACUMULAR ${firstReq.value} XP` : 
-                      firstReq?.type === "MISSION" ? "MISSÃO ESPECÍFICA" : 
-                      firstReq?.type === "ATTRIBUTE" ? `ALCANÇAR ${firstReq.value} ${ATTRIBUTE_MAP[firstReq.attr] || firstReq.attr}` : 
-                      "CONCESSÃO MANUAL"
-                    )}
-                  </span>
+                  
+                  {firstReq?.type === "XP" && (
+                    <div className="flex flex-col items-center">
+                      <span className={`text-[12px] uppercase tracking-widest font-bold text-center leading-tight ${isUnlocked ? 'text-mission drop-shadow-[0_0_8px_rgba(17,194,199,0.4)]' : 'text-gray-200'}`}>
+                        CONQUISTAR {firstReq.value} XP
+                      </span>
+                      <span className="text-[12px] text-white uppercase tracking-widest font-bold mt-1">
+                        NO TOTAL
+                      </span>
+                    </div>
+                  )}
+
+                  {firstReq?.type === "ATTRIBUTE" && (
+                    <div className="flex flex-col items-center">
+                      <span className={`text-[12px] uppercase tracking-widest font-bold text-center leading-tight ${isUnlocked ? 'text-mission drop-shadow-[0_0_8px_rgba(17,194,199,0.4)]' : 'text-gray-200'}`}>
+                        OBTER {fullAttributeNames[firstReq.attr?.toLowerCase()] || firstReq.attr}
+                      </span>
+                      <span className="text-[12px] text-white uppercase tracking-widest font-bold mt-1">
+                        NÍVEL {firstReq.value}
+                      </span>
+                    </div>
+                  )}
+
+                  {firstReq?.type === "MISSION" && (
+                    <div className="flex flex-col items-center gap-3 w-full">
+                      <span className={`text-[12px] uppercase tracking-widest font-bold text-center leading-relaxed ${isUnlocked ? 'text-mission drop-shadow-[0_0_8px_rgba(17,194,199,0.4)]' : 'text-gray-200'}`}>
+                        CONCLUIR MISSÃO
+                      </span>
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const basePath = "/admin/missoes"; 
+                          router.push(`${basePath}?highlight=${firstReq.value}`);
+                        }}
+                        className="bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-2 rounded-full text-[9px] text-brand uppercase tracking-widest transition-colors w-fit shadow-[0_0_10px_rgba(17,194,199,0.1)]"
+                      >
+                        VER DECRETO
+                      </button>
+                    </div>
+                  )}
+
+                  {(!firstReq || (firstReq.type !== "XP" && firstReq.type !== "ATTRIBUTE" && firstReq.type !== "MISSION")) && (
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      <span className="hud-label-tactical text-[12px] text-white uppercase tracking-widest font-bold">
+                        CONCESSÃO MANUAL
+                      </span>
+                      <div className="max-h-[40px] overflow-y-auto custom-relic-scroll w-full px-2">
+                        <span className="text-[12px] text-white font-barlow text-center leading-relaxed normal-case font-medium block">
+                          {relic.description || "Concedido diretamente pelo alto conselho."}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardWrapper>

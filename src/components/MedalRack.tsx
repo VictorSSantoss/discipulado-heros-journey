@@ -1,3 +1,5 @@
+// MURAL DE RELIQUIAS
+
 "use client";
 
 import { useRouter } from "next/navigation";
