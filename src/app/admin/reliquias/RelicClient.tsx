@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ICONS } from "@/constants/gameConfig";
+import { ICONS, ATTRIBUTE_MAP } from "@/constants/gameConfig";
 
-// ⚔️ Master Permission Interface
 export interface RelicPermissions {
   canForge: boolean;
   canEdit: boolean;
@@ -23,7 +22,6 @@ const rarityColorMap: Record<string, string> = {
   COMMON: "255, 255, 255", 
 };
 
-// Map database rarity to Filter Labels
 const filterCategories = ["TODAS", "LENDÁRIAS", "RARAS", "COMUNS"];
 
 const mapRarityToFilter = (rarity: string) => {
@@ -34,15 +32,16 @@ const mapRarityToFilter = (rarity: string) => {
 
 export default function ReliquiaClient({ 
   initialCatalog,
-  permissions = { canForge: false, canEdit: false } // Default to "Player Mode" if not provided
+  unlockedIds = [], 
+  permissions = { canForge: false, canEdit: false } 
 }: { 
   initialCatalog: any[],
+  unlockedIds?: string[],
   permissions?: RelicPermissions
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("TODAS");
 
-  // Filter Logic: Applies both Search and Category
   const filteredRelics = initialCatalog.filter(relic => {
     const matchesSearch = relic.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === "TODAS" || mapRarityToFilter(relic.rarity) === filterCategory;
@@ -52,12 +51,9 @@ export default function ReliquiaClient({
   return (
     <div className="space-y-8 pb-20 max-w-7xl mx-auto">
       
-      {/* HUD HEADER & SEARCH */}
       <div className="flex flex-col space-y-6 border-b border-white/5 pb-8">
-        
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="relative w-full max-w-xl group">
-            {/* HUD Search Icon with Neon Drop Shadow */}
             <div className="absolute left-6 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
               <Image src={ICONS.search} alt="" width={62} height={62} className="drop-shadow-[0_0_8px_rgba(17,194,199,0.5)]" />
             </div>
@@ -66,7 +62,7 @@ export default function ReliquiaClient({
               placeholder="BUSCAR NO ACERVO DE ARTEFATOS..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '90px' }} // FORCE text to the right
+              style={{ paddingLeft: '90px' }} 
               className="w-full bg-brand/20 border border-white/10 rounded-xl py-5 pr-6 text-xs font-barlow tracking-widest outline-none focus:border-brand/60 transition-all text-white placeholder:text-gray-600 uppercase shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]"
             />
           </div>
@@ -76,7 +72,6 @@ export default function ReliquiaClient({
           </div>
         </div>
 
-        {/* ⚔️ HUD CATEGORY SLIDER */}
         <div className="relative overflow-visible w-full">
           <div className="flex gap-3 overflow-x-auto px-4 py-4 pb-4 custom-category-scroll overflow-visible">
             {filterCategories.map(cat => (
@@ -94,13 +89,10 @@ export default function ReliquiaClient({
             ))}
           </div>
         </div>
-
       </div>
 
-      {/* RELICS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         
-        {/* ⚔️ CONDITIONAL FORGE BUTTON (Only Master/Admin sees this) */}
         {permissions.canForge && (
           <Link 
             href="/admin/reliquias/create"
@@ -113,15 +105,13 @@ export default function ReliquiaClient({
           </Link>
         )}
 
-        {/* MASTER CATALOG RENDERING */}
         {filteredRelics.map((relic) => {
+          const isUnlocked = permissions.canEdit || unlockedIds.includes(relic.id);
           const baseColor = rarityColorMap[relic.rarity] || "255, 255, 255";
           const rayImage = rarityRayMap[relic.rarity] || rarityRayMap.COMMON;
-          
           const alternatives = Array.isArray(relic.ruleParams) ? relic.ruleParams : [];
           const firstReq = alternatives[0];
 
-          // ⚔️ Dynamic Wrapper: Link if Admin, Div if Player
           const CardWrapper = permissions.canEdit ? Link : "div";
           const wrapperProps = permissions.canEdit ? { href: `/admin/reliquias/${relic.id}/edit` } : {};
 
@@ -129,73 +119,64 @@ export default function ReliquiaClient({
             <CardWrapper 
               key={relic.id} 
               {...(wrapperProps as any)}
-              className={`group relative bg-[#0a0a0a] border border-white/5 rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-500 h-[450px] overflow-hidden ${
-                permissions.canEdit ? 'cursor-pointer hover:-translate-y-2 hover:border-brand/50 hover:shadow-[0_15px_40px_rgba(17,194,199,0.15)]' : 'cursor-default border-white/10'
+              className={`group relative bg-[#0a0a0a] border rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-500 h-[450px] overflow-hidden ${
+                isUnlocked ? 'border-white/10' : 'border-white/5'
+              } ${
+                permissions.canEdit ? 'cursor-pointer hover:-translate-y-2 hover:border-brand/50' : 'cursor-default'
               }`}
             >
-              {/* THE BF1 RAY (Atmospheric Glow) */}
-              <div className="absolute top-10 inset-0 pointer-events-none z-0 flex items-center justify-center duration-700">
-                <img 
-                   src={rayImage} 
-                   className="w-full h-full object-contain scale-[1.7] mix-blend-screen group-hover:scale-[1.9] transition-transform duration-700" 
-                   alt="" 
-                />
+              {!isUnlocked && (
+                <div className="absolute top-6 right-6 z-30">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-red-600 blur-xl opacity-30 scale-150 animate-pulse"></div>
+                    <div className="relative">
+                      <Image src="/images/locker-icon.svg" alt="Locked" width={88} height={88} className="filter drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className={`absolute top-10 inset-0 pointer-events-none z-0 flex items-center justify-center duration-700 transition-opacity ${isUnlocked ? 'opacity-100' : 'opacity-25'}`}>
+                <img src={rayImage} className="w-full h-full object-contain scale-[1.7] mix-blend-screen group-hover:scale-[1.9] transition-transform duration-700" alt="" />
               </div>
 
-              {/* RELIC IMAGE */}
-              <div className="w-36 h-36 relative mb-6 z-10 transition-transform duration-500 group-hover:scale-110">
-                 <Image 
-                   src={relic.icon || "/images/placeholder.png"} 
-                   alt={relic.name} 
-                   fill 
-                   className="object-contain"
-                 />
+              {/* Icon filtering: balanced brightness to prevent pure white icons */}
+              <div className={`w-36 h-36 relative mb-6 z-10 transition-all duration-500 ${isUnlocked ? 'group-hover:scale-110' : 'scale-90 grayscale brightness-[0.6] opacity-80'}`}>
+                 <Image src={relic.icon || "/images/placeholder.png"} alt={relic.name} fill className="object-contain" />
               </div>
 
-              {/* HIGH-FIDELITY RARITY TAG */}
               <div 
-                className="relative z-10 flex items-center justify-center px-6 py-1.5 rounded-full backdrop-blur-xl mb-4 overflow-hidden shrink-0"
-                style={{ 
-                  background: `linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(${baseColor}, 0.2) 100%)`,
-                  boxShadow: `inset 0 0 12px rgba(${baseColor}, 0.2), 0 4px 15px rgba(0, 0, 0, 0.5)`
-                }}
+                className={`relative z-10 flex items-center justify-center px-6 py-1.5 rounded-full backdrop-blur-xl mb-4 overflow-hidden shrink-0 transition-opacity ${isUnlocked ? 'opacity-100' : 'opacity-80'}`}
+                style={{ background: `linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(${baseColor}, 0.2) 100%)`, border: `1px solid rgba(${baseColor}, 0.2)` }}
               >
-                <div 
-                  className="absolute top-0 left-0 w-full h-[1px] opacity-40" 
-                  style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 1), transparent)` }} 
-                />
-                <span 
-                  className="hud-label-tactical text-[10px] font-black tracking-[0.3em] text-white uppercase relative z-10"
-                  style={{ textShadow: `0 0 10px rgba(255, 255, 255, 0.7), 0 0 20px rgba(${baseColor}, 1)` }}
-                >
+                <div className="absolute top-0 left-0 w-full h-[1px] opacity-40" style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 1), transparent)` }} />
+                <span className="hud-label-tactical text-[10px] font-black tracking-[0.3em] text-white uppercase relative z-10">
                   {relic.rarity === "LEGENDARY" ? "LENDÁRIA" : relic.rarity === "RARE" ? "RARA" : "COMUM"}
                 </span>
               </div>
 
-              <h3 className={`hud-title-md text-xl uppercase z-10 transition-colors ${permissions.canEdit ? 'group-hover:text-brand text-white' : 'text-white'}`}>
+              {/* Text Visibility: Added drop-shadow for better contrast against background rays */}
+              <h3 className={`hud-title-md text-xl uppercase z-10 transition-colors drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${permissions.canEdit ? 'group-hover:text-brand' : ''} ${isUnlocked ? 'text-white' : 'text-gray-600'}`}>
                 {relic.name}
               </h3>
               
-              <p className="text-gray-400 text-[11px] line-clamp-2 font-barlow mb-4 z-10 px-2 mt-2 leading-relaxed italic-none">
-                {relic.description}
+              <p className="text-gray-400 text-[11px] line-clamp-2 font-barlow mb-4 z-10 px-2 mt-2 leading-relaxed italic-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                {isUnlocked ? relic.description : "Os segredos deste artefato permanecem ocultos nas sombras."}
               </p>
 
-              {/* ⚔️ ENHANCED REQUIREMENT CONTAINER */}
               <div className="mt-auto w-full z-10">
-                <div className="bg-black/60 backdrop-blur-md rounded-xl p-3.5 border border-white/10 flex flex-col items-center justify-center relative overflow-hidden group-hover:border-white/20 transition-colors">
-                  
-                  {/* Subtle top glare */}
-                  <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                  
+                <div className={`bg-black/60 backdrop-blur-md rounded-xl p-3.5 border transition-all flex flex-col items-center justify-center relative overflow-hidden ${isUnlocked ? 'border-brand/30 group-hover:border-brand/60' : 'border-white/5'}`}>
+                  {isUnlocked && <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand/40 to-transparent"></div>}
                   <span className="hud-label-tactical text-[8px] text-gray-500 uppercase tracking-[0.2em] mb-1 font-normal">
-                    CONDIÇÃO DE DESBLOQUEIO
+                    {isUnlocked ? 'ARTEFATO CONQUISTADO' : 'REQUISITO DE DESBLOQUEIO'}
                   </span>
-                  
-                  <span className="text-[11px] text-brand uppercase tracking-widest font-bold drop-shadow-[0_0_8px_rgba(17,194,199,0.4)]">
-                    {firstReq?.type === "XP" ? `ACUMULAR ${firstReq.value} XP` : 
-                     firstReq?.type === "MISSION" ? "MISSÃO ESPECÍFICA" : 
-                     firstReq?.type === "ATTRIBUTE" ? `ALCANÇAR ${firstReq.value} NO ATRIBUTO` : 
-                     "CONCESSÃO DIRETA (MANUAL)"}
+                  <span className={`text-[11px] uppercase tracking-widest font-bold ${isUnlocked ? 'text-brand' : 'text-gray-600'}`}>
+                    {isUnlocked ? 'REGISTRADO NO CODEX' : (
+                      firstReq?.type === "XP" ? `ACUMULAR ${firstReq.value} XP` : 
+                      firstReq?.type === "MISSION" ? "MISSÃO ESPECÍFICA" : 
+                      firstReq?.type === "ATTRIBUTE" ? `ALCANÇAR ${firstReq.value} ${ATTRIBUTE_MAP[firstReq.attr] || firstReq.attr}` : 
+                      "CONCESSÃO MANUAL"
+                    )}
                   </span>
                 </div>
               </div>
@@ -204,11 +185,10 @@ export default function ReliquiaClient({
         })}
       </div>
 
-      {/* 🧪 CUSTOM SCROLLBAR FOR SLIDER */}
       <style jsx global>{`
         .custom-category-scroll::-webkit-scrollbar { height: 8px; }
         .custom-category-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); margin: 0 40px; border-radius: 10px; }
-        .custom-category-scroll::-webkit-scrollbar-thumb { background: #11c2c7; box-shadow: 0 0 10px rgba(17,194,199,0.5); border-radius: 10px; }
+        .custom-category-scroll::-webkit-scrollbar-thumb { background: #11c2c7; border-radius: 10px; }
       `}</style>
     </div>
   );

@@ -59,7 +59,20 @@ export default function ValenteProfileClient({
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
   const [isGrantRelicModalOpen, setIsGrantRelicModalOpen] = useState(false); 
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
-  const [valente, setValente] = useState(initialValente);
+
+  // Normalizing initial database data (reliquias) to frontend format (medals)
+  const normalizedInitialMedals = initialValente.reliquias 
+    ? initialValente.reliquias.map((r: any) => ({
+        medal: r.reliquia || r.medal, 
+        awardedAt: r.createdAt || r.awardedAt || new Date()
+      }))
+    : (initialValente.medals || []);
+
+  const [valente, setValente] = useState({
+    ...initialValente,
+    medals: normalizedInitialMedals
+  });
+  
   const [companheiros, setCompanheiros] = useState(initialCompanheiros);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -81,15 +94,21 @@ export default function ValenteProfileClient({
 
   useEffect(() => { setMounted(true); }, []);
 
-  const prevMedalsRef = useRef(initialValente?.medals || []);
+  const prevMedalsRef = useRef(normalizedInitialMedals);
 
   useEffect(() => {
-    const currentMedals = initialValente?.medals || [];
+    const currentMedals = initialValente.reliquias 
+      ? initialValente.reliquias.map((r: any) => ({
+          medal: r.reliquia || r.medal,
+          awardedAt: r.createdAt || r.awardedAt || new Date()
+        }))
+      : (initialValente.medals || []);
+
     if (currentMedals.length > prevMedalsRef.current.length) {
-      const prevIds = new Set(prevMedalsRef.current.map((m: any) => m.medal?.id || m.reliquia?.id));
+      const prevIds = new Set(prevMedalsRef.current.map((m: any) => m.medal?.id));
       const newlyEarned = currentMedals
-        .filter((m: any) => !prevIds.has(m.medal?.id || m.reliquia?.id))
-        .map((m: any) => (m.medal || m.reliquia) as Medal);
+        .filter((m: any) => !prevIds.has(m.medal?.id))
+        .map((m: any) => m.medal as Medal);
 
       if (newlyEarned.length > 0) {
         setMedalQueue((prev: Medal[]) => {
@@ -99,8 +118,9 @@ export default function ValenteProfileClient({
         });
       }
     }
+    
     prevMedalsRef.current = currentMedals;
-    setValente(initialValente);
+    setValente({ ...initialValente, medals: currentMedals });
     setCompanheiros(initialCompanheiros);
   }, [initialValente, initialCompanheiros]);
 
@@ -233,7 +253,6 @@ export default function ValenteProfileClient({
     <>
       <main className="min-h-screen p-6 max-w-7xl mx-auto flex flex-col pb-40 text-white font-barlow">
         
-        {/* Added custom animation for the moving glow effect */}
         <style dangerouslySetInnerHTML={{ __html: `
           @keyframes glow-sweep {
             0% { transform: translateX(-150%); }
@@ -298,10 +317,8 @@ export default function ValenteProfileClient({
                   <div className="h-[1px] flex-1 max-w-[60px] opacity-60 ml-4" style={{ background: `linear-gradient(to right, ${theme.hex}, transparent)` }} />
                 </div>
                 
-                {/* LARGER BADGE WITH CONTINUOUS MOVING GLOW */}
                 {valente.managedBy?.guildaName && (
                   <div className="relative mt-4 flex items-center gap-2 px-5 py-2 rounded-2xl bg-gradient-to-r from-mission/20 to-mission/5 border border-mission/40 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.25)] w-fit mx-auto overflow-hidden">
-                    {/* The moving sweeping light effect */}
                     <div className="absolute top-0 bottom-0 left-0 w-[50%] bg-gradient-to-r from-transparent via-mission/40 to-transparent skew-x-12 animate-glow-sweep pointer-events-none z-0"></div>
                     
                     <span className="hud-label-tactical text-[11px] text-mission uppercase tracking-[0.2em] font-bold relative z-10">
@@ -407,7 +424,12 @@ export default function ValenteProfileClient({
               </p>
             </div>
 
-            <MedalRack medals={valente.medals || []} catalog={medalCatalog} currentXp={valente.totalXP} />
+            <MedalRack 
+              valenteId={valente.id}
+              medals={valente.medals} 
+              catalog={medalCatalog} 
+              currentXp={valente.totalXP} 
+            />
           </div>
 
           <div className="flex flex-col gap-8">

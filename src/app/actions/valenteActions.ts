@@ -4,39 +4,61 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { GET_XP_MULTIPLIER, STRUCTURE_BONUS } from "@/constants/gameConfig";
 
-// Array containing the paths for default silhouette avatars used during recruitment
 const PLACEHOLDERS = [
   "/images/man-silhouette.svg",
   "/images/man-silhouette-2.svg" 
 ];
 
-// Handles the logic for completing a mission, distributing XP, and applying attribute increments
+// Handles mission completion, XP distribution, attribute increments, and evaluates MULTI_ROUTE relic unlocks
 export async function completeMission(valenteId: string, missionId: string) {
   try {
-    const mission = await prisma.mission.findUnique({
-      where: { id: missionId }
+    const mission = await prisma.mission.findUnique({ where: { id: missionId } });
+    if (!mission) throw new Error("Missão não encontrada.");
+
+    const currentValente = await prisma.valente.findUnique({
+      where: { id: valenteId },
+      include: { reliquias: true }
     });
 
-    if (!mission) throw new Error("Missão não encontrada.");
+    if (!currentValente) throw new Error("Valente não encontrado.");
 
     const multiplier = GET_XP_MULTIPLIER();
     const finalXp = Math.floor(mission.xpReward * multiplier.factor);
+    const newTotalXP = currentValente.totalXP + finalXp;
+
+    const earnedRelicIds = new Set(currentValente.reliquias.map(r => r.reliquiaId));
+    const allRelics = await prisma.reliquia.findMany();
+
+    const newlyEarned = allRelics.filter(relic => {
+      if (earnedRelicIds.has(relic.id)) return false;
+
+      const rules = typeof relic.ruleParams === 'string' 
+        ? JSON.parse(relic.ruleParams) 
+        : relic.ruleParams;
+
+      let meetsRequirement = false;
+
+      // Robust check: handles both the NEW Array format and the OLD Object format
+      if (Array.isArray(rules)) {
+        meetsRequirement = rules.some((route: any) => {
+          if (route.type === "XP") return newTotalXP >= Number(route.value);
+          if (route.type === "MISSION") return route.value === missionId;
+          return false;
+        });
+      } else if (rules && typeof rules === 'object') {
+        if (relic.triggerType === "XP_MILESTONE" && rules.target) {
+          meetsRequirement = newTotalXP >= Number(rules.target);
+        }
+      }
+
+      return meetsRequirement;
+    });
 
     const updatedValente = await prisma.$transaction(async (tx) => {
       await tx.valenteMission.upsert({
-        where: {
-          valenteId_missionId: { valenteId, missionId }
-        },
-        update: {
-          status: "COMPLETED",
-          completedAt: new Date()
-        },
-        create: {
-          valenteId,
-          missionId,
-          status: "COMPLETED",
-          completedAt: new Date()
-        }
+        where: { valenteId_missionId: { valenteId, missionId } },
+        update: { status: "COMPLETED", completedAt: new Date() },
+        create: { valenteId, missionId, status: "COMPLETED", completedAt: new Date() }
       });
 
       const attributeUpdate = mission.rewardAttribute 
@@ -47,14 +69,12 @@ export async function completeMission(valenteId: string, missionId: string) {
         where: { id: valenteId },
         data: {
           totalXP: { increment: finalXp },
-          xpLogs: {
-            create: {
-              amount: finalXp,
-              reason: `Missão: ${mission.title}`
-            }
-          },
-          attributes: {
-            update: attributeUpdate
+          xpLogs: { create: { amount: finalXp, reason: `Missão: ${mission.title}` } },
+          attributes: { update: attributeUpdate },
+          reliquias: {
+            create: newlyEarned.map(r => ({
+              reliquia: { connect: { id: r.id } }
+            }))
           }
         },
         include: { attributes: true }
@@ -69,7 +89,8 @@ export async function completeMission(valenteId: string, missionId: string) {
       success: true, 
       xpGained: finalXp,
       attributeBoosted: mission.rewardAttribute,
-      newTotalXp: updatedValente.totalXP
+      newTotalXp: updatedValente.totalXP,
+      newRelics: newlyEarned
     };
   } catch (error) {
     console.error("Critical Failure in Mission Completion:", error);
@@ -77,7 +98,7 @@ export async function completeMission(valenteId: string, missionId: string) {
   }
 }
 
-// Processes direct XP additions and evaluates if any milestone-based relics should be awarded
+// Processes direct XP additions and evaluates MULTI_ROUTE relic unlocks
 export async function updateValenteXp(valenteId: string, baseAmount: number, customReason?: string) {
   try {
     const multiplier = GET_XP_MULTIPLIER();
@@ -85,32 +106,33 @@ export async function updateValenteXp(valenteId: string, baseAmount: number, cus
 
     const currentValente = await prisma.valente.findUnique({
       where: { id: valenteId },
-      include: { 
-        reliquias: { include: { reliquia: true } },
-        holyPower: true 
-      }
+      include: { reliquias: { include: { reliquia: true } }, holyPower: true }
     });
 
     if (!currentValente) throw new Error("Valente not found.");
 
     const newTotalXP = currentValente.totalXP + finalXp;
     const alreadyEarnedIds = new Set(currentValente.reliquias.map(vr => vr.reliquiaId));
-
     const allReliquias = await prisma.reliquia.findMany();
 
     const newlyEarned = allReliquias.filter(relic => {
       if (alreadyEarnedIds.has(relic.id)) return false;
-      const params = relic.ruleParams as any;
+      
+      const rules = typeof relic.ruleParams === 'string' ? JSON.parse(relic.ruleParams) : relic.ruleParams;
+      let meetsRequirement = false;
 
-      switch (relic.triggerType) {
-        case "XP_MILESTONE":
-          return newTotalXP >= params.target;
-        case "HABIT_STREAK":
-          const habit = currentValente.holyPower.find(h => h.name === params.habit);
-          return habit ? habit.streak >= params.days : false;
-        default:
+      if (Array.isArray(rules)) {
+        meetsRequirement = rules.some((route: any) => {
+          if (route.type === "XP") return newTotalXP >= Number(route.value);
           return false;
+        });
+      } else if (rules && typeof rules === 'object') {
+        if (relic.triggerType === "XP_MILESTONE" && rules.target) {
+          meetsRequirement = newTotalXP >= Number(rules.target);
+        }
       }
+
+      return meetsRequirement;
     });
 
     const updated = await prisma.valente.update({
