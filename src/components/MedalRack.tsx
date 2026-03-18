@@ -1,12 +1,10 @@
-// MURAL DE RELIQUIAS
-
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ICONS } from "@/constants/gameConfig"; 
 
-// Update the interface to require valenteId
 interface MedalRackProps {
   valenteId: string; 
   medals: {
@@ -25,7 +23,7 @@ interface MedalRackProps {
 }
 
 /**
- * Mapping for atmospheric ray images based on relic rarity.
+ * Atmospheric background images mapped to specific relic rarity levels.
  */
 const rarityRayMap: Record<string, string> = {
   LEGENDARY: "/images/ray-legendary.png", 
@@ -34,7 +32,16 @@ const rarityRayMap: Record<string, string> = {
 };
 
 /**
- * Normalization logic to ensure rarity strings match the mapping keys.
+ * Weighting system for sorting: higher numbers represent higher priority in the grid.
+ */
+const rarityWeight: Record<string, number> = {
+  LEGENDARY: 3,
+  RARE: 2,
+  COMMON: 1,
+};
+
+/**
+ * Standardizes rarity strings to ensure they match the defined priority weights and asset maps.
  */
 const normalizeRarity = (rarity: string) => {
   const str = (rarity || "").toUpperCase().trim();
@@ -43,42 +50,55 @@ const normalizeRarity = (rarity: string) => {
   return "COMMON";
 };
 
-// Add valenteId to the destructured props
 export default function MedalRack({ valenteId, medals, catalog = [], currentXp = 0 }: MedalRackProps) {
   const router = useRouter();
   
   /**
-   * Configuration for the grid layout and slot calculation.
+   * Sorts the collection by rarity tier first, then by acquisition date (newest to oldest).
+   */
+  const sortedMedals = useMemo(() => {
+    return [...medals].sort((a, b) => {
+      const rarityA = normalizeRarity(a.medal.rarity);
+      const rarityB = normalizeRarity(b.medal.rarity);
+      
+      if (rarityWeight[rarityA] !== rarityWeight[rarityB]) {
+        return rarityWeight[rarityB] - rarityWeight[rarityA];
+      }
+      
+      return new Date(b.awardedAt).getTime() - new Date(a.awardedAt).getTime();
+    });
+  }, [medals]);
+
+  /**
+   * Defines the grid capacity and calculates necessary placeholders to reach the 12-slot minimum.
    */
   const totalSlots = 12; 
-  const earnedCount = medals.length;
+  const earnedCount = sortedMedals.length;
   const emptySlots = Math.max(0, totalSlots - earnedCount);
 
   /**
-   * Navigation handler dynamically routing to the specific valente's codex.
+   * Redirects the user to the full relic archive for the specific character.
    */
   const navigateToCodex = () => {
     router.push(`/admin/valentes/${valenteId}/Reliccodex`);
   };
 
   return (
-    <div className="bg-dark-bg/40 border border-white/5 rounded-2xl p-6 sm:p-8 backdrop-blur-md relative shadow-xl min-h-[340px] flex flex-col justify-between">
+    <div className="bg-dark-bg/40 border border-white/5 rounded-2xl p-6 sm:p-8 backdrop-blur-md relative shadow-xl min-h-[340px] flex flex-col justify-between overflow-hidden">
       
+      {/* Decorative tactical background insignia */}
       <div className="absolute -right-6 -top-6 opacity-[0.02] pointer-events-none rotate-[15deg] z-0">
          <img src={ICONS.patentes} className="w-40 h-40 object-contain" alt="" />
       </div>
 
-      {/* Header section containing the title and tactical navigation trigger */}
       <div className="flex flex-row justify-between items-center mb-12 relative z-10 gap-4">
         
         <div className="relative flex flex-col gap-1 min-w-fit">
-          
           <div className="absolute top-1/2 left-[-40px] sm:left-[-70px] -translate-y-[70%] sm:-translate-y-[60%] w-[300px] sm:w-[390px] pointer-events-none z-[-10] mix-blend-screen opacity-40">
              <img 
                src="/images/ray-header.png"
                alt=""
                className="w-full h-auto object-contain"
-               onError={(e) => e.currentTarget.style.display = 'none'}
              />
           </div>
 
@@ -90,7 +110,7 @@ export default function MedalRack({ valenteId, medals, catalog = [], currentXp =
               {earnedCount}
             </span>
             <span className="text-white/80 font-bold hud-label-tactical text-[12px] whitespace-nowrap drop-shadow-md">
-              / {totalSlots}
+              / {catalog.length || totalSlots}
             </span>
           </div>
         </div>
@@ -110,24 +130,22 @@ export default function MedalRack({ valenteId, medals, catalog = [], currentXp =
         </button>
       </div>
 
-      {/* Grid rendering for earned relics and empty placeholders */}
+      {/* Grid rendering sorted relics with atmospheric rarity effects */}
       <div className="grid grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-12 relative z-10 mt-auto">
-        {medals.map((vm, index) => {
+        {sortedMedals.map((vm, index) => {
             const rayImageSrc = rarityRayMap[normalizeRarity(vm.medal.rarity)];
 
             return (
               <div 
-                key={index}
+                key={vm.medal.id || index}
                 onClick={navigateToCodex}
                 className="group relative w-full aspect-square flex items-center justify-center cursor-pointer"
               >
-                
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none z-0">
                    <img 
                      src={rayImageSrc}
                      alt=""
                      className="w-full h-full object-contain mix-blend-screen group-hover:opacity-100 transition-all duration-700 scale-[2.0] group-hover:scale-[2.5]"
-                     onError={(e) => e.currentTarget.style.display = 'none'}
                    />
                 </div>
                 
@@ -143,6 +161,7 @@ export default function MedalRack({ valenteId, medals, catalog = [], currentXp =
             );
         })}
 
+        {/* Placeholder sockets displayed as semi-transparent silhouettes to indicate pending achievements */}
         {emptySlots > 0 && [...Array(emptySlots)].map((_, i) => (
           <div 
             key={`empty-${i}`}

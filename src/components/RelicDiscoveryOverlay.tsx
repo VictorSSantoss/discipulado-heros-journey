@@ -14,14 +14,12 @@ interface RelicDiscoveryProps {
   onComplete: () => void;
 }
 
-// ⚔️ MAP YOUR ACTUAL IMAGE FILES HERE
 const rarityRayMap: Record<string, string> = {
   LEGENDARY: "/images/ray-legendary.png", 
   RARE: "/images/ray-rare.png",           
   COMMON: "/images/ray-common.png",       
 };
 
-// ⚔️ Unified Rarity Color Map for Glows/Text
 const rarityColorMap: Record<string, string> = {
   LEGENDARY: "255, 170, 0", 
   RARE: "59, 130, 246", 
@@ -43,79 +41,60 @@ export default function RelicDiscoveryOverlay({ relic, onComplete }: RelicDiscov
   const rayImageSrc = rarityRayMap[normalizedRarity];
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center pointer-events-auto overflow-hidden bg-black/95">
-      {/* Cinematic Backdrop Blur */}
+    <div className="fixed inset-0 z-[500] flex items-center justify-center pointer-events-auto overflow-hidden bg-black/95">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         className="fixed inset-0 backdrop-blur-2xl pointer-events-none" 
       />
 
-      {/* ⚔️ CHANGED: Increased max-width to 'none' and width to '90vw' to push lines to the edges */}
-      <div className="relative text-center max-w-none px-6 w-[90vw] h-full max-h-[100svh] flex flex-col justify-center items-center z-10 py-6">
+      <div className="relative text-center max-w-none px-6 w-[90vw] h-full flex flex-col justify-center items-center z-10">
         
-        {/* Top Dramatic Line - Now has much more room to breathe */}
         <motion.div 
           initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.2, duration: 1 }}
-          className="h-px w-full mb-[8vh] lg:mb-[10vh] opacity-40 shrink-0" 
+          className="h-px w-full mb-[8vh] opacity-40 shrink-0" 
           style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 0.8), transparent)` }}
         />
 
         <motion.span 
           initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
-          className="text-[10px] sm:text-[12px] tracking-[0.5em] sm:tracking-[0.8em] uppercase mb-[4vh] lg:mb-[5vh] block font-bold shrink-0" 
+          className="text-[10px] sm:text-[12px] tracking-[0.8em] uppercase mb-[4vh] block font-bold shrink-0" 
           style={{ color: `rgb(${baseColor})`, textShadow: `0 0 15px rgba(${baseColor}, 0.8)` }}
         >
           Nova Relíquia Descoberta
         </motion.span>
         
-        {/* THE ASSET CONTAINER */}
-        <div className="relative mb-[4vh] lg:mb-[5vh] w-[30vh] h-[30vh] sm:w-[35vh] sm:h-[35vh] max-w-[320px] max-h-[320px] min-w-[180px] min-h-[180px] flex items-center justify-center shrink-0">
-           
-           {/* BF1 Ray Image */}
+        <div className="relative mb-[4vh] w-[30vh] h-[30vh] max-w-[320px] max-h-[320px] flex items-center justify-center shrink-0">
            <motion.div
              initial={{ scale: 0.5, opacity: 0 }} 
              animate={{ scale: 2.1, opacity: 0.9 }} 
              transition={{ delay: 0.1, duration: 0.8 }}
              className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none"
            >
-               <img 
-                 src={rayImageSrc}
-                 alt=""
-                 className="w-full h-full object-contain mix-blend-screen max-w-none"
-                 onError={(e) => e.currentTarget.style.display = 'none'}
-               />
+               <img src={rayImageSrc} alt="" className="w-full h-full object-contain mix-blend-screen max-w-none" />
            </motion.div>
 
-           {/* Relic Icon */}
            <motion.div 
-              initial={{ scale: 0, opacity: 0 }} 
-              animate={{ scale: 0.95, opacity: 1 }} 
+              initial={{ scale: 0, opacity: 0 }} animate={{ scale: 0.95, opacity: 1 }} 
               transition={{ delay: 0.4, duration: 0.8 }}
               className="relative w-full h-full z-10"
            >
               <div className="relative w-full h-full">
-                <Image 
-                  src={relic.icon} 
-                  alt={relic.name}
-                  fill
-                  priority 
-                  className="object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,1)]" 
-                />
+                <Image src={relic.icon} alt={relic.name} fill priority className="object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,1)]" />
               </div>
            </motion.div>
         </div>
 
         <motion.h1 
           initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8 }}
-          className="text-white text-[clamp(2.5rem,8vh,6rem)] leading-none font-serif italic tracking-tighter mb-[2vh] lg:mb-[3vh] drop-shadow-2xl px-4 shrink-0"
+          className="text-white text-[clamp(2.5rem,8vh,6rem)] leading-none font-serif italic tracking-tighter mb-[2vh] drop-shadow-2xl px-4 shrink-0"
         >
           {relic.name}
         </motion.h1>
         
         <motion.p 
           initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 1.0 }}
-          className="font-barlow text-gray-400 max-w-lg mx-auto leading-relaxed mb-[4vh] lg:mb-[5vh] text-sm sm:text-lg px-6 shrink-0"
+          className="font-barlow text-gray-400 max-w-lg mx-auto leading-relaxed mb-[4vh] text-sm sm:text-lg px-6 shrink-0"
         >
           {relic.description}
         </motion.p>
@@ -131,10 +110,9 @@ export default function RelicDiscoveryOverlay({ relic, onComplete }: RelicDiscov
           </span>
         </motion.button>
 
-        {/* ⚔️ Bottom Dramatic Line - Now has much more room to breathe */}
         <motion.div 
           initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.2, duration: 1 }}
-          className="h-px w-full mt-[8vh] lg:mt-[10vh] opacity-40 shrink-0" 
+          className="h-px w-full mt-[8vh] opacity-40 shrink-0" 
           style={{ background: `linear-gradient(90deg, transparent, rgba(${baseColor}, 0.8), transparent)` }}
         />
       </div>
