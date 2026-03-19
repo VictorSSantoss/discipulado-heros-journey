@@ -9,6 +9,166 @@ const PLACEHOLDERS = [
   "/images/man-silhouette-2.svg" 
 ];
 
+// -----------------------------------------------------------------------------
+// STREAK ENGINE & HOLY POWER LOGIC
+// -----------------------------------------------------------------------------
+
+// Handles the increment of habit progress and manages the daily streak lock
+export async function logHolyPower(valenteId: string, habitName: string, amount: number) {
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    const updatedValente = await prisma.$transaction(async (tx) => {
+      const habit = await tx.holyPower.findFirst({
+        where: { valenteId, name: habitName }
+      });
+
+      if (!habit) throw new Error("Hábito não encontrado.");
+
+      const lastUpdateStr = habit.lastStreakUpdate 
+        ? new Date(habit.lastStreakUpdate).toISOString().split('T')[0] 
+        : null;
+
+      const newCurrent = habit.current + amount;
+      let newStreak = habit.streak;
+      let newLastStreakUpdate = habit.lastStreakUpdate;
+
+      // Increments streak only if goal is reached and no update happened today
+      if (newCurrent >= habit.goal && lastUpdateStr !== todayStr) {
+        newStreak += 1;
+        newLastStreakUpdate = now;
+      }
+
+      const updatedHabit = await tx.holyPower.update({
+        where: { id: habit.id },
+        data: { 
+          current: newCurrent, 
+          streak: newStreak, 
+          lastStreakUpdate: newLastStreakUpdate 
+        }
+      });
+
+      // If a streak was achieved, check for related missions
+      if (newStreak > habit.streak) {
+        await checkStreakMissions(valenteId, habitName, newStreak, tx);
+      }
+
+      return updatedHabit;
+    });
+
+    revalidatePath(`/admin/valentes/${valenteId}`);
+    return { success: true, current: updatedValente.current, streak: updatedValente.streak };
+  } catch (error) {
+    console.error("Holy Power Log Error:", error);
+    return { success: false };
+  }
+}
+
+// Internal logic to evaluate missions triggered by specific habit streaks
+async function checkStreakMissions(valenteId: string, habitName: string, currentStreak: number, tx: any) {
+  const missions = await tx.mission.findMany({
+    where: { 
+      triggerType: "HABIT_STREAK", 
+      targetHabit: habitName,
+      targetValue: { lte: currentStreak }
+    }
+  });
+
+  for (const mission of missions) {
+    const completion = await tx.valenteMission.findUnique({
+      where: { valenteId_missionId: { valenteId, missionId: mission.id } }
+    });
+
+    if (!completion || completion.status !== "COMPLETED") {
+      // Reusing the completion logic for streaks
+      const multiplier = GET_XP_MULTIPLIER();
+      const finalXp = Math.floor(mission.xpReward * multiplier.factor);
+      
+      await tx.valenteMission.upsert({
+        where: { valenteId_missionId: { valenteId, missionId: mission.id } },
+        update: { status: "COMPLETED", completedAt: new Date() },
+        create: { valenteId, missionId: mission.id, status: "COMPLETED", completedAt: new Date() }
+      });
+
+      await tx.valente.update({
+        where: { id: valenteId },
+        data: {
+          totalXP: { increment: finalXp },
+          xpLogs: { create: { amount: finalXp, reason: `Conquista de Sequência: ${mission.title}` } }
+        }
+      });
+    }
+  }
+}
+
+// Resets daily progress and evaluates streak breaks or protection usage
+export async function validateStreakContinuity(valenteId: string) {
+  try {
+    const now = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    await prisma.$transaction(async (tx) => {
+      const valente = await tx.valente.findUnique({
+        where: { id: valenteId },
+        include: { holyPower: true, reliquias: { include: { reliquia: true } } }
+      });
+
+      if (!valente) return;
+
+      for (const habit of valente.holyPower) {
+        const lastUpdateStr = habit.lastStreakUpdate 
+          ? new Date(habit.lastStreakUpdate).toISOString().split('T')[0] 
+          : null;
+
+        // Reset current progress regardless of streak
+        await tx.holyPower.update({
+          where: { id: habit.id },
+          data: { current: 0 }
+        });
+
+        // Check if the streak was maintained yesterday
+        if (lastUpdateStr !== yesterdayStr && habit.streak > 0) {
+          const protectionRelic = valente.reliquias.find(r => r.reliquiaId === "reliquia-anjo-guarda");
+
+          if (protectionRelic) {
+            // Preservation via Guardian Angel
+            await tx.valenteReliquia.delete({ 
+              where: { 
+                valenteId_reliquiaId: { 
+                  valenteId: valente.id, 
+                  reliquiaId: "reliquia-anjo-guarda" 
+                } 
+              } 
+            });
+            await tx.xpLog.create({
+              data: { valenteId, amount: 0, reason: `Anjo da Guarda protegeu a sequência de ${habit.name}` }
+            });
+          } else {
+            // Streak reset
+            await tx.holyPower.update({
+              where: { id: habit.id },
+              data: { streak: 0 }
+            });
+          }
+        }
+      }
+    });
+
+    revalidatePath(`/admin/valentes/${valenteId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Streak Validation Error:", error);
+    return { success: false };
+  }
+}
+
+// -----------------------------------------------------------------------------
+// CORE VALENTE OPERATIONS
+// -----------------------------------------------------------------------------
+
 // Handles mission completion, XP distribution, attribute increments, and evaluates MULTI_ROUTE relic unlocks
 export async function completeMission(valenteId: string, missionId: string) {
   try {

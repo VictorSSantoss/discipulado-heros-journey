@@ -9,7 +9,7 @@ import { completeMission, deleteMissionTemplate } from "@/app/actions/missionAct
 import { toggleTrackedMission } from "@/app/actions/valenteActions";
 
 /**
- * Permission interface to define available interactions for the current user.
+ * Interface defining available interactions and user identification.
  */
 export interface MissionPermissions {
   canManage: boolean;
@@ -17,7 +17,7 @@ export interface MissionPermissions {
 }
 
 /**
- * Wrapper component to facilitate search parameter access and provide a loading fallback.
+ * Component providing search parameter context and a base loading state.
  */
 function MissionsWrapper(props: any) {
   return (
@@ -28,12 +28,12 @@ function MissionsWrapper(props: any) {
 }
 
 /**
- * Primary logical component for filtering, searching, and displaying missions.
+ * Main logical handler for mission filtering and administrative actions.
  */
 function MissoesContent({ 
   initialMissions, 
   valentes,
-  permissions = { canManage: true }
+  permissions = { canManage: true } 
 }: {
   initialMissions: any[],
   valentes?: any[],
@@ -62,10 +62,11 @@ function MissoesContent({
   const [modalSearchQuery, setModalSearchQuery] = useState("");
   const [modalSelectedValente, setModalSelectedValente] = useState("");
 
-  // Notification state for the pin limit
   const [pinLimitNotice, setPinLimitNotice] = useState<string | null>(null);
 
-  // Auto-clear pin limit notice
+  /**
+   * Effect to remove system notifications after a designated time period.
+   */
   useEffect(() => {
     if (pinLimitNotice) {
       const timer = setTimeout(() => setPinLimitNotice(null), 4000);
@@ -169,7 +170,9 @@ function MissoesContent({
     setModalSearchQuery("");
   };
 
-  // Handles the logic for a player tracking a mission
+  /**
+   * Communicates with the action to track or untrack a mission for the identified valente.
+   */
   const handleTogglePin = async (missionId: string) => {
     if (!permissions.valenteId) return;
     
@@ -407,7 +410,9 @@ function MissoesContent({
         </div>
       )}
 
-      {/* Notification toast for the limit */}
+      {/**
+       * Visual feedback overlay for mission tracking limits.
+       */}
       <AnimatePresence>
         {pinLimitNotice && (
           <motion.div 
@@ -437,22 +442,17 @@ function MissoesContent({
 }
 
 /**
- * Renders individual mission cards with strict color differentiation.
+ * Visual card representing a single mission with thematic coloring and interactive pinning.
  */
 function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModal, onTogglePin }: any) {
   const isLvlUp = mission.xpReward === 9999; 
   const triggerTypeNormalized = String(mission.triggerType || "MANUAL").toUpperCase().trim();
   const isAutomaticFriendGoal = triggerTypeNormalized !== "MANUAL";
   
-  // Forces evaluation of the string safely. If missing, defaults to NONE.
   const rawPeriodicity = mission.periodicity ? String(mission.periodicity).toUpperCase().trim() : "NONE";
-
-  // Check for the 4 special time-gated categories.
   const isSpecialCycle = ["DAILY", "WEEKLY", "MONTHLY", "EVENT"].includes(rawPeriodicity);
 
-  // Determine the card's theme properties
   const getCardTheme = () => {
-    // Priority 1: Level Up
     if (isLvlUp) return { 
       border: 'border-brand/30 hover:border-brand/60', 
       text: 'text-brand', 
@@ -463,7 +463,6 @@ function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModa
       badgeBorder: 'border-brand/30'
     };
 
-    // Priority 2: Special Cycles 
     if (isSpecialCycle) return {
       border: 'border-amber-500/50 hover:border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.1)]',
       text: 'text-amber-400',
@@ -474,7 +473,6 @@ function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModa
       badgeBorder: 'border-amber-500/50'
     };
 
-    // Priority 3: Automated
     if (isAutomaticFriendGoal) return { 
       border: 'border-indigo-500/40 hover:border-indigo-400/70', 
       text: 'text-indigo-400', 
@@ -485,7 +483,6 @@ function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModa
       badgeBorder: 'border-indigo-500/30'
     };
 
-    // Default Fallback: Standard Normal Mission
     return { 
       border: 'border-white/10 hover:border-mission/40', 
       text: 'text-mission', 
@@ -513,12 +510,13 @@ function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModa
       id={mission.id}
       className={`p-6 rounded-2xl flex flex-col border transition-all shadow-xl group relative backdrop-blur-xl ${theme.border} ${isHighlighted ? 'mission-highlight-active ring-4 ring-mission ring-offset-4 ring-offset-black' : 'overflow-hidden'}`}
       style={{
-        // Balances the background color for special cycles to match the others
+        /**
+         * Standardized background transparency to maintain visual consistency across all card types.
+         */
         backgroundColor: 'rgba(10, 10, 10, 0.4)',
         backgroundImage: `radial-gradient(circle at 0% 0%, ${theme.glow} 0%, transparent 50%)`
       }}
     >
-      {/* Decorative Top Line for Special Cycles */}
       {isSpecialCycle && (
         <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500 to-transparent shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
       )}
@@ -531,12 +529,14 @@ function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModa
             {!isLvlUp && <span className="font-barlow font-black text-sm ml-1.5 opacity-60 mb-1.5 uppercase tracking-widest">XP</span>}
           </div>
           
-          {/* Tracking button visible only to players */}
-          {!permissions.canManage && permissions.valenteId && (
+          {/**
+           * UI toggle for mission tracking, styled for high visibility against dark backgrounds.
+           */
+          permissions.valenteId && (
             <button 
               type="button"
               onClick={onTogglePin}
-              className="hud-label-tactical text-[10px] text-white/40 hover:text-white transition-all flex items-center gap-1.5 font-black drop-shadow-[0_0_8px_rgba(17,194,199,0.4)]"
+              className="hud-label-tactical text-[10px] text-white/80 hover:text-brand border border-white/10 px-2 py-1 rounded-md bg-white/5 transition-all flex items-center gap-1.5 font-black drop-shadow-[0_0_10px_rgba(17,194,199,0.3)]"
             >
               ☆ FIXAR
             </button>

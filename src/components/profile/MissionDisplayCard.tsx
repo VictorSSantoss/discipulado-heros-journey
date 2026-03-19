@@ -8,7 +8,7 @@ interface MissionDisplayCardProps {
   onTogglePin: (id: string) => void;
   onComplete: (id: string) => void;
   isProcessing: boolean;
-  isAdmin?: boolean; // ⚔️ Added Admin Gate
+  isAdmin?: boolean; // Admin Gate
 }
 
 export default function MissionDisplayCard({ 
@@ -17,7 +17,7 @@ export default function MissionDisplayCard({
   onTogglePin, 
   onComplete, 
   isProcessing,
-  isAdmin = true // Defaulting to true as per request
+  isAdmin = true
 }: MissionDisplayCardProps) {
   const periodicity = (mission.periodicity || "NONE").toUpperCase();
   const isSpecial = ["DAILY", "WEEKLY", "MONTHLY", "EVENT"].includes(periodicity);

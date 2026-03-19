@@ -20,22 +20,22 @@ enum Role {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  name          String
-  email         String   @unique
-  password      String   // Stores the hashed password
-  role          Role     @default(DISCIPULADOR)
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  password        String   // Stores the hashed password
+  role            Role     @default(DISCIPULADOR)
 
   // Stores the public name of the group managed by this user
-  guildaName    String?
+  guildaName      String?
   // Stores the selected faction symbol for the group
-  guildaIcon    String?  
+  guildaIcon      String?  
 
   // HIERARCHY: Self-referencing relationship
   // One-to-Many relationship. A Gerente manages multiple Discipuladores.
-  reportsToId   String?
-  reportsTo     User?    @relation("ManagementChain", fields: [reportsToId], references: [id])
-  subordinates  User[]   @relation("ManagementChain")
+  reportsToId     String?
+  reportsTo       User?    @relation("ManagementChain", fields: [reportsToId], references: [id])
+  subordinates    User[]   @relation("ManagementChain")
 
   // OWNERSHIP: One-to-Many relationship. Heroes managed by a specific user.
   managedValentes Valente[]
@@ -121,11 +121,13 @@ model LoveLanguages {
 }
 
 model HolyPower {
-  id        String  @id @default(uuid())
-  name      String  // Identifies the specific power (Oração, Leitura, etc.)
-  current   Int     @default(0)
-  goal      Int     @default(30)
-  streak    Int     @default(0)
+  id               String    @id @default(uuid())
+  name             String    // Identifies the specific power (Oração, Leitura, etc.)
+  current          Int       @default(0)
+  goal             Int       @default(30)
+  streak           Int       @default(0)
+  // ⏳ --- STREAK ENGINE DATA --- ⏳
+  lastStreakUpdate DateTime? // Crucial for daily lock and reset calculations
 
   // One-to-Many relationship with Valente
   valenteId String
@@ -174,6 +176,7 @@ model ValenteReliquia {
   valente    Valente  @relation(fields: [valenteId], references: [id], onDelete: Cascade)
   reliquia   Reliquia @relation(fields: [reliquiaId], references: [id], onDelete: Cascade)
 
+  // Composite key ensures a player can only have ONE instance of a specific Relic
   @@id([valenteId, reliquiaId])
 }
 
@@ -189,13 +192,15 @@ model Mission {
   
   // Defines the numerical target for the trigger
   targetValue      Int              @default(0)
+  // Defines the specific habit to monitor if triggerType is "HABIT_STREAK"
+  targetHabit      String?          
 
   // UNIFIED REWARD ENGINE (Attribute Progression)
   rewardAttribute  String?          // First attribute (e.g., "sabedoria")
   rewardAttribute2 String?          // Second attribute (e.g., "carisma")
   rewardAttrValue  Int              @default(0)
   
-  // ⏳ --- TIME-GATING & CYCLES --- ⏳
+  //  --- TIME-GATING & CYCLES ---
   // "NONE", "DAILY", "WEEKLY", "MONTHLY", "EVENT"
   periodicity      String           @default("NONE") 
   // Deadline for "EVENT" types or current cycle expiration
@@ -206,11 +211,11 @@ model Mission {
 }
 
 model ValenteMission {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   valenteId   String
   missionId   String
-  status      String    @default("ACTIVE") 
-  createdAt   DateTime  @default(now()) 
+  status      String   @default("ACTIVE") 
+  createdAt   DateTime @default(now()) 
   completedAt DateTime?
 
   valente     Valente   @relation(fields: [valenteId], references: [id], onDelete: Cascade)

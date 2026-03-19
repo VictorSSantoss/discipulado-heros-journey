@@ -65,6 +65,7 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
   const [description, setDescription] = useState(mission?.description || "");
   const [triggerType, setTriggerType] = useState(mission?.triggerType || "MANUAL");
   const [targetValue, setTargetValue] = useState(mission?.targetValue || 0);
+  const [targetHabit, setTargetHabit] = useState(mission?.targetHabit || "Oração");
   
   const [periodicity, setPeriodicity] = useState(mission?.periodicity || "NONE");
   const [expiresAt, setExpiresAt] = useState(
@@ -94,7 +95,8 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
   const categoryOptions = MISSION_CATEGORIES.map(cat => ({ label: cat.toUpperCase(), value: cat }));
   const triggerOptions = [
     { label: "MANUAL (Avaliado pelo Líder)", value: "MANUAL" },
-    { label: "AUTOMÁTICO (Meta de Companheiros)", value: "FRIEND_COUNT" }
+    { label: "AUTOMÁTICO (Meta de Companheiros)", value: "FRIEND_COUNT" },
+    { label: "AUTOMÁTICO (Sequência de Hábito)", value: "HABIT_STREAK" }
   ];
   
   const periodicityOptions = [
@@ -135,6 +137,7 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
       description,
       triggerType,
       targetValue: Number(targetValue),
+      targetHabit: triggerType === "HABIT_STREAK" ? targetHabit : null,
       periodicity,
       expiresAt: parsedExpiresAt,
       rewardAttribute: rewardAttribute || null,
@@ -222,6 +225,29 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
                     onChange={(e) => setTargetValue(parseInt(e.target.value) || 0)}
                     className="bg-black/40 border border-brand/30 p-4 text-white rounded-xl focus:border-brand outline-none transition-all h-[58px] hud-number-input"
                   />
+                </div>
+              )}
+
+              {triggerType === "HABIT_STREAK" && (
+                <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                   <HUDSelect 
+                    label="Hábito Alvo" 
+                    value={targetHabit} 
+                    onChange={setTargetHabit} 
+                    options={[
+                      { label: "ORAÇÃO", value: "Oração" },
+                      { label: "LEITURA", value: "Leitura" },
+                      { label: "JEJUM", value: "Jejum" }
+                    ]} 
+                  />
+                  <div className="flex flex-col gap-2 mt-4">
+                    <label className="hud-label-tactical text-brand uppercase">Meta de Sequência (Dias)</label>
+                    <input 
+                      type="number" min="1" value={targetValue}
+                      onChange={(e) => setTargetValue(parseInt(e.target.value) || 0)}
+                      className="bg-black/40 border border-brand/30 p-4 text-white rounded-xl focus:border-brand outline-none transition-all h-[58px] hud-number-input"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -336,6 +362,12 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
                 {triggerType === "FRIEND_COUNT" && targetValue > 0 && (
                   <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hud-label-tactical px-3 py-1 rounded-lg text-[9px] uppercase tracking-widest w-fit">
                     META: {targetValue} AMIGOS
+                  </span>
+                )}
+
+                {triggerType === "HABIT_STREAK" && targetValue > 0 && (
+                  <span className="bg-brand/10 text-brand border border-brand/20 hud-label-tactical px-3 py-1 rounded-lg text-[9px] uppercase tracking-widest w-fit">
+                    {targetHabit.toUpperCase()}: {targetValue} DIAS
                   </span>
                 )}
               </div>

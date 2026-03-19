@@ -16,7 +16,6 @@ async function main() {
   // 1. LIMPEZA (Ordem inversa de dependência)
   await prisma.valenteMission.deleteMany()
   await prisma.mission.deleteMany() 
-  // REPLACED: medals with reliquias
   await prisma.valenteReliquia.deleteMany() 
   await prisma.reliquia.deleteMany()
   await prisma.xpLog.deleteMany()
@@ -39,46 +38,72 @@ async function main() {
   })
   console.log('👤 Usuário Victor criado.')
 
-  // 3. CRIAR MISSÕES 
+  // 3. CRIAR MISSÕES (Incluindo Missões de Sequência/Streak)
   const missionsData = [
-    { title: 'LER 1 CAPÍTULO DA BÍBLIA', xpReward: 50, type: 'Hábitos Espirituais' },
-    { title: 'LER 5 CAPÍTULOS DA BÍBLIA', xpReward: 300, type: 'Hábitos Espirituais' },
-    { title: 'ORAR POR 15 MINUTOS', xpReward: 50, type: 'Hábitos Espirituais' },
-    { title: 'JEJUM DE 1 REFEIÇÃO', xpReward: 150, type: 'Hábitos Espirituais' },
-    { title: 'DEVOCIONAL MATINAL (1 SEMANA)', xpReward: 500, type: 'Hábitos Espirituais' },
-    { title: 'CONVIDAR UM AMIGO PARA A CÉLULA', xpReward: 100, type: 'Evangelismo e Liderança' },
-    { title: 'COMPARTILHAR TESTEMUNHO', xpReward: 200, type: 'Evangelismo e Liderança' },
-    { title: 'LIDERAR UMA DINÂMICA', xpReward: 300, type: 'Evangelismo e Liderança' },
-    { title: 'MEMORIZAR VERSÍCULO CHAVE', xpReward: 50, type: 'Conhecimento' },
-    { title: 'RESUMO DO SERMÃO', xpReward: 100, type: 'Conhecimento' },
-    { title: 'LER LIVRO RECOMENDADO', xpReward: 500, type: 'Conhecimento' },
-    { title: 'CHEGAR NO HORÁRIO (1 MÊS)', xpReward: 200, type: 'Estrutura e Participação' },
-    { title: 'AJUDAR NA LIMPEZA', xpReward: 100, type: 'Estrutura e Participação' },
-    { title: 'PARTICIPAR DO ACAMPAMENTO', xpReward: 9999, type: 'Eventos e Especiais' },
-    { title: 'TRAZER OS PAIS NO CULTO', xpReward: 500, type: 'Eventos e Especiais' }
+    // Hábitos Diários
+    { title: 'LER 1 CAPÍTULO DA BÍBLIA', xpReward: 50, type: 'Hábitos Espirituais', triggerType: 'MANUAL' },
+    { title: 'ORAR POR 15 MINUTOS', xpReward: 50, type: 'Hábitos Espirituais', triggerType: 'MANUAL' },
+    { title: 'JEJUM DE 1 REFEIÇÃO', xpReward: 150, type: 'Hábitos Espirituais', triggerType: 'MANUAL' },
+    
+    // 🔥 NOVAS: MISSÕES DE SEQUÊNCIA (Gatilho Automático)
+    { 
+      title: 'FOGO CONSTANTE (7 DIAS)', 
+      description: 'Mantenha sua sequência de Oração por 7 dias seguidos.',
+      xpReward: 500, 
+      type: 'Hábitos Espirituais', 
+      triggerType: 'HABIT_STREAK', 
+      targetHabit: 'Oração', 
+      targetValue: 7 
+    },
+    { 
+      title: 'ERUDITO DO REINO (15 DIAS)', 
+      description: 'Mantenha sua sequência de Leitura por 15 dias seguidos.',
+      xpReward: 1200, 
+      type: 'Conhecimento', 
+      triggerType: 'HABIT_STREAK', 
+      targetHabit: 'Leitura', 
+      targetValue: 15 
+    },
+
+    // Evangelismo e Outros
+    { title: 'CONVIDAR UM AMIGO PARA A CÉLULA', xpReward: 100, type: 'Evangelismo e Liderança', triggerType: 'MANUAL' },
+    { title: 'COMPARTILHAR TESTEMUNHO', xpReward: 200, type: 'Evangelismo e Liderança', triggerType: 'MANUAL' },
+    { title: 'PARTICIPAR DO ACAMPAMENTO', xpReward: 9999, type: 'Eventos e Especiais', triggerType: 'MANUAL' },
   ];
 
   for (const m of missionsData) {
     await prisma.mission.create({
       data: {
         title: m.title,
-        description: "Desafio oficial do reino para fortalecimento do Valente.",
+        description: m.description || "Desafio oficial do reino para fortalecimento do Valente.",
         xpReward: m.xpReward,
-        type: m.type
+        type: m.type,
+        triggerType: m.triggerType,
+        targetHabit: m.targetHabit || null,
+        targetValue: m.targetValue || 0
       }
     })
   }
-  console.log('📜 Missões forjadas.')
+  console.log('📜 Missões e Decretos de Sequência forjados.')
 
-  // 4. RELÍQUIAS (Atualizado para a nova regra JSON)
+  // 4. RELÍQUIAS (Incluindo o Anjo da Guarda)
   const reliquiasData = [
+    { 
+      id: 'reliquia-anjo-guarda', // ID Fixo para a lógica do motor de streaks
+      name: "Anjo da Guarda", 
+      description: "Protege suas sequências de Poder Santo. Se você falhar um dia, esta relíquia é consumida para manter seu streak intacto.", 
+      icon: "/icons/relics/guardian-angel.svg", 
+      rarity: "EPIC", 
+      triggerType: "MANUAL", 
+      ruleParams: { power: 'streak_protection', charges: 1 }
+    },
     { 
       name: "Iniciante do Reino", 
       description: "1.000 XP alcançados.", 
       icon: "/images/bronze-achievement.svg", 
       rarity: "COMMON", 
       triggerType: "XP_MILESTONE", 
-      ruleParams: { target: 1000 } // <-- The new dynamic rules format!
+      ruleParams: { target: 1000 } 
     },
     { 
       name: "Guerreiro de Elite", 
@@ -87,25 +112,16 @@ async function main() {
       rarity: "RARE", 
       triggerType: "XP_MILESTONE", 
       ruleParams: { target: 5000 } 
-    },
-    { 
-      name: "Lenda do Reino", 
-      description: "10.000 XP registrados.", 
-      icon: "/images/gold-achievement.svg", 
-      rarity: "LEGENDARY", 
-      triggerType: "XP_MILESTONE", 
-      ruleParams: { target: 10000 } 
-    },
+    }
   ]
   for (const r of reliquiasData) { await prisma.reliquia.create({ data: r }) }
-  console.log('💎 Relíquias criadas.')
+  console.log('💎 Relíquias (incluindo Anjo da Guarda) criadas.')
 
   // 5. VALENTES
   const valentes = [
-    { name: 'Nathan', totalXP: 2500, structure: 'Louvor', description: 'Guerreiro da harmonia.' },
-    { name: 'Cadu', totalXP: 4800, structure: 'GAD', description: 'Estrategista de grupo.' },
-    { name: 'Siclano', totalXP: 550, structure: 'IMS', description: 'Operações furtivas.' },
-    { name: 'Beltrano', totalXP: 1200, structure: 'Mídia', description: 'E aí! Meu nome é Beltrano. Eu gosto muito de jogar videogame, jogar bola e assistir vídeos no YouTube. Mas, para mim, a coisa mais importante de todas é a minha fé. Eu amo Deus de todo o meu coração, mesmo sabendo que seguir Jesus não é o caminho mais fácil.' }
+    { name: 'Nathan', totalXP: 2500, structure: 'Louvor' },
+    { name: 'Cadu', totalXP: 4800, structure: 'GAD' },
+    { name: 'Victor (Líder)', totalXP: 10000, structure: 'MASTER' }
   ]
 
   for (const v of valentes) {
@@ -115,10 +131,18 @@ async function main() {
         image: '/images/man-silhouette.svg',
         totalXP: v.totalXP,
         structure: v.structure,
-        description: v.description,
+        description: 'Membro honrado do Reino.',
         userId: victor.id,
         attributes: { create: { forca: 10, destreza: 10, constituicao: 10, inteligencia: 10, sabedoria: 10, carisma: 10 } },
-        loveLanguages: { create: { palavras: 50, tempo: 50, presentes: 50, servico: 50, toque: 50 } }
+        loveLanguages: { create: { palavras: 50, tempo: 50, presentes: 50, servico: 50, toque: 50 } },
+        // 🔥 Inicializa os Poderes Santos para cada Valente
+        holyPower: {
+          create: [
+            { name: 'Oração', current: 0, goal: 30, streak: 0 },
+            { name: 'Leitura', current: 0, goal: 30, streak: 0 },
+            { name: 'Jejum', current: 0, goal: 1, streak: 0 },
+          ]
+        }
       }
     })
   }

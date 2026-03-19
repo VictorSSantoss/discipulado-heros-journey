@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ESTRUTURAS, LEVEL_SYSTEM, ICONS, ATTRIBUTE_MAP } from "@/constants/gameConfig";
 import { addCompanheiro } from "@/app/actions/companheiroActions";
-import { completeMission, grantManualRelic, updateValenteProfile, toggleTrackedMission } from "@/app/actions/valenteActions";
+import { 
+  completeMission, 
+  grantManualRelic, 
+  updateValenteProfile, 
+  toggleTrackedMission,
+  validateStreakContinuity,
+  logHolyPower // Added import for habit logging
+} from "@/app/actions/valenteActions";
 
 import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
@@ -23,8 +30,11 @@ import AvatarUploader from "@/components/game/AvatarUploader";
 import RelicDiscoveryOverlay from "@/components/RelicDiscoveryOverlay";
 import MissionCompletionOverlay from "@/components/MissionCompletionOverlay";
 import MissionDisplayCard from "@/components/profile/MissionDisplayCard";
+import HolyCelebration from "@/components/effects/HolyCelebration"; // Added sacred effect
 
-// ⚔️ Interfaces
+/**
+ * Type definitions for medals and missions.
+ */
 interface Medal {
   id: string;
   name: string;
@@ -42,6 +52,9 @@ interface CompletedMission {
   rewardAttribute2?: string;
 }
 
+/**
+ * Logical component for rendering and managing the Valente profile interface.
+ */
 export default function ValenteProfileClient({ 
   initialValente, 
   initialCompanheiros,
@@ -64,12 +77,19 @@ export default function ValenteProfileClient({
   const [isGrantRelicModalOpen, setIsGrantRelicModalOpen] = useState(false); 
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   
-  // ⚔️ ADMIN CHECK
+  /**
+   * Flag for administrative privileges.
+   */
   const isAdmin = true;
 
-  // ⚔️ HUD NOTIFICATION STATE
+  /**
+   * State for managing system-level HUD notifications.
+   */
   const [pinLimitNotice, setPinLimitNotice] = useState<string | null>(null);
 
+  /**
+   * Function to extract and format medal data from multiple potential source formats.
+   */
   const getNormalizedMedals = (source: any) => {
     if (!source.reliquias) return source.medals || [];
     return source.reliquias.map((r: any) => ({
@@ -106,9 +126,22 @@ export default function ValenteProfileClient({
   const currentLevelIndex = LEVEL_SYSTEM.findIndex(lvl => lvl.name === currentLevelInfo.name);
   const nextLevelInfo = LEVEL_SYSTEM[currentLevelIndex + 1];
 
-  useEffect(() => { setMounted(true); }, []);
+  /**
+   * Sets the mounted state and triggers the daily streak validation check.
+   */
+  useEffect(() => { 
+    setMounted(true); 
+    const syncDailyCycle = async () => {
+      if (valente?.id) {
+        await validateStreakContinuity(valente.id);
+      }
+    };
+    syncDailyCycle();
+  }, [valente.id]);
 
-  // ⚔️ Auto-clear pin limit notice
+  /**
+   * Automatically clears pinning limit notifications after a timeout.
+   */
   useEffect(() => {
     if (pinLimitNotice) {
       const timer = setTimeout(() => setPinLimitNotice(null), 4000);
@@ -116,6 +149,9 @@ export default function ValenteProfileClient({
     }
   }, [pinLimitNotice]);
 
+  /**
+   * Syncs internal state with updated properties from the server.
+   */
   useEffect(() => {
     const currentMedals = getNormalizedMedals(initialValente);
     const newlyEarned: Medal[] = [];
@@ -136,6 +172,9 @@ export default function ValenteProfileClient({
     setCompanheiros(initialCompanheiros);
   }, [initialValente, initialCompanheiros]);
 
+  /**
+   * Calculates and animates the experience bar progress.
+   */
   useEffect(() => {
     if (mounted && valente) {
       const targetXP = nextLevelInfo ? nextLevelInfo.minXP : valente.totalXP;
@@ -145,6 +184,9 @@ export default function ValenteProfileClient({
     }
   }, [mounted, valente, nextLevelInfo]);
 
+  /**
+   * Updates state following successful server actions and handles level-up checks.
+   */
   const refreshValenteData = (result: any) => {
     const unlockedRelics = result.newRelics || (result.relic ? [result.relic] : []);
     if (unlockedRelics.length > 0) {
@@ -171,6 +213,16 @@ export default function ValenteProfileClient({
           ? [...prev.medals, ...unlockedRelics.map((r: any) => ({ medal: r, awardedAt: new Date() }))] 
           : prev.medals
       })); 
+    }
+  };
+
+  /**
+   * Communicates habit progress to the server and triggers a router refresh to sync streak data.
+   */
+  const handleLogHolyPower = async (habitName: string, amount: number) => {
+    const result = await logHolyPower(valente.id, habitName, amount);
+    if (result.success) {
+      router.refresh();
     }
   };
 
@@ -250,7 +302,7 @@ export default function ValenteProfileClient({
   };
 
   /**
-   * ⏳ MURAL ENGINE
+   * Logic for filtering and prioritizing missions within the decree board.
    */
   const trackedMissions = availableMissions.filter(m => valente.trackedMissionIds?.includes(m.id));
   
@@ -261,15 +313,13 @@ export default function ValenteProfileClient({
   }, [availableMissions, valente.trackedMissionIds]);
 
   /**
-   * ⚔️ PRIORITY SHUFFLE: Sorting Temporary Missions first
+   * Sorting logic to prioritize temporary missions over standard ones.
    */
   const routineMissions = useMemo(() => {
-    // 1. Get everyone who isn't Pinned or the Epic Highlight
     const pool = availableMissions.filter(
       m => !valente.trackedMissionIds?.includes(m.id) && m.id !== epicMission?.id
     );
 
-    // 2. Separate into Tiers and Shuffle individually
     const tempMissions = pool
       .filter(m => m.periodicity !== "NONE")
       .sort(() => Math.random() - 0.5);
@@ -278,7 +328,6 @@ export default function ValenteProfileClient({
       .filter(m => m.periodicity === "NONE")
       .sort(() => Math.random() - 0.5);
 
-    // 3. Combine: Temporary Decretos take priority slots, then standard ones
     return [...tempMissions, ...permMissions].slice(0, 6);
   }, [availableMissions, valente.trackedMissionIds, epicMission]);
 
@@ -311,7 +360,6 @@ export default function ValenteProfileClient({
           }
         `}} />
 
-        {/* ... Header & Profile Details ... */}
         <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <Link 
             href="/admin/valentes" 
@@ -342,7 +390,6 @@ export default function ValenteProfileClient({
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ... Profile Sections (Stats, Chart, etc.) ... */}
           <div className="flex flex-col gap-8">
             <div className="flex flex-col items-center bg-dark-bg/40 backdrop-blur-xl p-10 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
@@ -426,7 +473,7 @@ export default function ValenteProfileClient({
           <div className="flex flex-col gap-8">
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
               <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Poder Santo</h2>
-              <HolyPowerBars powers={valente.holyPower} />
+              <HolyPowerBars powers={valente.holyPower} onLogPower={handleLogHolyPower} />
             </div>
             
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
@@ -446,27 +493,40 @@ export default function ValenteProfileClient({
           </div>
         </div>
 
-        {/* ⚔️ MURAL DE DECRETOS ⚔️ */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
             <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
                 <span className="text-gray-700 text-2xl">⚔️</span>
             </div>
             
             <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div>
+              <div>
                 <h2 className="hud-title-lg text-white flex items-center gap-4 m-0 uppercase text-3xl">
-                    <img src={ICONS.missoes} className="w-12 h-12 object-contain" alt="" /> Mural de Decretos
+                  <img src={ICONS.missoes} className="w-12 h-12 object-contain" alt="" /> Mural de Decretos
                 </h2>
                 <p className="hud-label-tactical mt-2 uppercase text-gray-500">Operações em Andamento</p>
-                </div>
-                <Link href="/admin/missoes" className="hud-label-tactical text-gray-500 hover:text-white border border-white/5 hover:border-white/20 px-6 py-3 rounded-2xl transition-all bg-white/[0.02] uppercase tracking-[0.1em]">
-                  Acervo Completo →
-                </Link>
+              </div>
+
+              <Link 
+                href="/admin/missoes" 
+                className="group relative flex items-center gap-4 px-8 py-3.5 transition-all duration-500 rounded-2xl 
+                          bg-brand/10 backdrop-blur-md border border-brand/30 
+                          hover:border-brand/70 hover:bg-brand/20 
+                          shadow-[0_0_20px_rgba(17,194,199,0.15)] 
+                          hover:shadow-[0_0_40px_rgba(17,194,199,0.3)] 
+                          overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-brand/5 animate-pulse transition-opacity" />
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand to-transparent -translate-x-full animate-glow-sweep group-hover:duration-700" />
+                <span className="hud-label-tactical text-[11px] text-brand tracking-[0.2em] relative z-10 font-black uppercase transition-transform group-hover:scale-105">
+                  Ver Todas as Missões →
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand/10 to-transparent -translate-x-full group-hover:animate-shimmer transition-transform duration-1000" />
+                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand to-transparent -translate-x-full animate-glow-sweep group-hover:duration-700" />
+                <div className="absolute -inset-2 bg-brand/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </Link>
             </header>
 
             <div className="flex flex-col gap-12">
-              
-              {/* 1. DECRETOS EM FOCO (TRACKED) */}
               {trackedMissions.length > 0 && (
                 <div className="space-y-6">
                   <h3 className="hud-label-tactical text-brand text-xs flex items-center gap-3 uppercase tracking-[0.4em] font-black">
@@ -488,7 +548,6 @@ export default function ValenteProfileClient({
                 </div>
               )}
 
-              {/* 2. DECRETO ÉPICO (EPIC HIGHLIGHT) */}
               {epicMission && (
                 <div className="space-y-6">
                   <h3 className="hud-label-tactical text-amber-500 text-xs flex items-center gap-3 uppercase tracking-[0.4em] font-black">
@@ -540,7 +599,6 @@ export default function ValenteProfileClient({
                 </div>
               )}
 
-              {/* 3. DECRETOS DA ROTINA (SHUFFLED + PRIORITY) */}
               <div className="space-y-6">
                 <h3 className="hud-label-tactical text-gray-500 text-xs flex items-center gap-3 uppercase tracking-[0.4em] font-black">
                   <span className="w-8 h-px bg-white/10"></span> Decretos da Rotina
@@ -563,7 +621,6 @@ export default function ValenteProfileClient({
         </section>
       </main>
 
-      {/* 🛡️ HUD PIN LIMIT NOTIFICATION */}
       <AnimatePresence>
         {pinLimitNotice && (
           <motion.div 
@@ -589,13 +646,16 @@ export default function ValenteProfileClient({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {missionQueue.length > 0 ? (
-          <MissionCompletionOverlay 
-            key={`mission-${missionQueue[0].id}`}
-            mission={missionQueue[0]} 
-            onComplete={() => setMissionQueue(prev => prev.slice(1))} 
-          />
+          <>
+            <HolyCelebration key="celebration-fx" onComplete={() => {}} />
+            <MissionCompletionOverlay 
+              key={`mission-${missionQueue[0].id}`}
+              mission={missionQueue[0]} 
+              onComplete={() => setMissionQueue(prev => prev.slice(1))} 
+            />
+          </>
         ) : medalQueue.length > 0 ? (
           <RelicDiscoveryOverlay 
             key={`relic-${medalQueue[0].id}`}
