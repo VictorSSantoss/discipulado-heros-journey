@@ -4,14 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { ICONS } from "@/constants/gameConfig";
 
-// ⚔️ Define the Interface to fix the "implicitly any" errors
 interface Relic {
   id: string;
   name: string;
   icon: string;
   rarity: string;
   description: string;
-  requirement?: number;
+  ruleParams?: { type: string; value?: number; attr?: string }[];
 }
 
 const rarityRayMap: Record<string, string> = {
@@ -44,21 +43,22 @@ export default function GrantRelicModal({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRelicId, setSelectedRelicId] = useState("");
 
-  // ⚔️ Fixed: Parameter 'm' typed as any/Medal
   const earnedIds = new Set(earnedMedals.map((m: any) => m.medal?.id || m.reliquia?.id));
   
-  // ⚔️ Fixed: Parameter 'relic' typed as Relic
   const availableRelics = (catalog as Relic[]).filter((relic: Relic) => {
     if (earnedIds.has(relic.id)) return false;
+    const isManual = !relic.ruleParams || 
+                    relic.ruleParams.length === 0 || 
+                    relic.ruleParams[0]?.type === "MANUAL";
+    if (!isManual) return false;
     return relic.name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // ⚔️ Fixed: Parameter 'r' typed as Relic
   const selectedRelic = availableRelics.find((r: Relic) => r.id === selectedRelicId);
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-      <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl w-full max-w-3xl shadow-[0_0_60px_rgba(0,0,0,1)] flex flex-col max-h-[90vh] relative animate-in zoom-in-95 duration-200 overflow-visible">
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[600] flex items-center justify-center p-4 overflow-hidden">
+      <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl w-full max-w-3xl shadow-[0_0_60px_rgba(0,0,0,1)] flex flex-col max-h-[90vh] relative animate-in zoom-in-95 duration-200 overflow-visible font-barlow">
         
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent"></div>
         
@@ -84,24 +84,22 @@ export default function GrantRelicModal({
         </div>
 
         {/* SEARCH BAR */}
-        <div className="p-8 border-b border-white/5 bg-black/20 shrink-0">
-          <div className="relative group">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 z-10 pointer-events-none flex items-center justify-center w-12 h-12">
-              <div 
-                className="absolute w-[100px] h-[100px] opacity-70 pointer-events-none mix-blend-screen"
-                style={{ background: 'radial-gradient(circle, rgba(17,194,199,0.6) 0%, rgba(17,194,199,0) 35%)' }}
-              ></div>
-              <Image src={ICONS.search} alt="" width={65} height={65} className="relative z-10 drop-shadow-[0_0_5px_rgba(17,194,199,0.5)]" />
-            </div>
-            <input 
-              type="text" 
-              placeholder="BUSCAR NO ACERVO..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '90px' }}
-              className="w-full bg-black/60 border border-white/10 p-5 rounded-xl text-white hud-label-tactical text-xs outline-none focus:border-brand/60 transition-all placeholder:opacity-50 font-normal"
+        <div className="p-8 border-b border-white/5 bg-black/20 shrink-0 relative">
+          <div className="absolute left-10 top-1/2 -translate-y-1/2 z-10 pointer-events-none flex items-center justify-center w-12 h-12">
+            <div 
+              className="absolute w-[100px] h-[100px] opacity-70 pointer-events-none mix-blend-screen"
+              style={{ background: 'radial-gradient(circle, rgba(17,194,199,0.6) 0%, rgba(17,194,199,0) 35%)' }}
             />
+            <Image src={ICONS.search} alt="" width={45} height={45} className="relative z-10 drop-shadow-[0_0_5px_rgba(17,194,199,0.5)]" />
           </div>
+          <input 
+            type="text" 
+            placeholder="BUSCAR NO ACERVO..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ paddingLeft: '80px' }}
+            className="w-full bg-black/60 border border-white/10 p-5 rounded-xl text-white hud-label-tactical text-xs outline-none focus:border-brand/60 transition-all placeholder:opacity-50 font-normal shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] uppercase tracking-widest"
+          />
         </div>
 
         {/* RELICS LIST */}
@@ -116,32 +114,28 @@ export default function GrantRelicModal({
               <div 
                 key={relic.id} 
                 onClick={() => setSelectedRelicId(relic.id)}
-                className={`group flex gap-8 p-6 transition-all duration-500 rounded-2xl relative cursor-pointer border overflow-hidden ${
+                className={`group flex gap-8 p-6 transition-all duration-300 rounded-2xl relative cursor-pointer border overflow-hidden ${
                   isSelected 
                     ? 'bg-brand/10 border-brand shadow-[0_0_30px_rgba(17,194,199,0.2)] scale-[1.01]' 
                     : 'bg-black/40 border-white/10 hover:border-white/30 hover:-translate-y-1'
                 }`}
               >
-                {/* ⚔️ THE BACKGROUND LOCKER: Centered with White Glow */}
+                {/* ⚔️ THE OVERLAY LOCKER: High z-index to sit on top of text and icon */}
                 {!isSelected && (
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0">
-                    {/* The White Glow behind the Lock */}
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-white/10 blur-3xl rounded-full group-hover:bg-white/20 transition-all duration-500" />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
+                    {/* Discrete Central Glow */}
+                    <div className="absolute w-64 h-64 bg-white/[0.03] blur-3xl rounded-full transition-all duration-300" />
                     
-                    <div className="relative group-hover:opacity-20 transition-opacity">
-                        <Image 
-                        src={ICONS.locker || "/images/lock-icon.svg"} 
-                        alt="" 
-                        width={120} 
-                        height={120}
-                        />
+                    {/* Big Locker Image */}
+                    <div className="relative drop-shadow-[0_15px_30px_rgba(0,0,0,1)]">
+                        <Image src="/images/locker-icon.svg" alt="Locked" width={140} height={140} />
                     </div>
                   </div>
                 )}
 
-                {/* ICON AREA */}
-                <div className="w-28 h-28 shrink-0 relative flex items-center justify-center pointer-events-none z-10">
-                  <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none z-0 transition-all duration-700 ${isSelected ? 'opacity-100 scale-[2.2]' : 'opacity-60 scale-[1.8]'}`}>
+                {/* ICON AREA (Pushed back/Blurred when locked) */}
+                <div className={`w-28 h-28 shrink-0 relative flex items-center justify-center pointer-events-none z-10 transition-all duration-500 ${!isSelected ? 'grayscale brightness-[0.2] opacity-30 blur-[4px]' : ''}`}>
+                  <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none z-0 transition-all duration-700 ${isSelected ? 'opacity-100 scale-[2.2]' : 'opacity-20 scale-[1.5]'}`}>
                      <img src={rayImageSrc} alt="" className="w-full h-full object-contain mix-blend-screen" />
                   </div>
                   
@@ -150,14 +144,14 @@ export default function GrantRelicModal({
                       src={relic.icon} 
                       alt={relic.name} 
                       fill 
-                      className={`object-contain transition-all duration-500 ${isSelected ? 'drop-shadow-[0_0_20px_rgba(17,194,199,0.6)] scale-110' : 'drop-shadow-lg opacity-90'}`} 
+                      className={`object-contain transition-all duration-500 ${isSelected ? 'drop-shadow-[0_0_20px_rgba(17,194,199,0.6)] scale-110' : 'drop-shadow-lg'}`} 
                     />
                   </div>
                 </div>
                 
-                {/* TEXT INFO */}
-                <div className="flex-1 flex flex-col justify-center gap-1 relative z-10">
-                  <div className="flex justify-between items-center mb-1">
+                {/* TEXT INFO (Pushed back/Blurred when locked) */}
+                <div className={`flex-1 flex flex-col justify-center gap-1 relative z-10 transition-all duration-500 ${!isSelected ? 'opacity-20 blur-[3px]' : ''}`}>
+                  <div className="flex justify-between items-center mb-1 gap-4">
                     <h3 className={`hud-title-md text-2xl transition-colors ${isSelected ? 'text-brand' : 'text-white'}`}>
                       {relic.name}
                     </h3>
@@ -175,13 +169,9 @@ export default function GrantRelicModal({
                     </div>
                   </div>
                   
-                  <p className="font-barlow text-sm text-gray-400 leading-relaxed italic-none max-w-[90%]">
+                  <p className="font-barlow text-sm text-gray-400 leading-relaxed italic-none max-w-[95%]">
                     {relic.description}
                   </p>
-
-                  <div className={`h-1 w-full mt-4 rounded-full transition-all duration-500 overflow-hidden ${isSelected ? 'bg-brand/30' : 'bg-white/5'}`}>
-                    {isSelected && <div className="h-full bg-brand w-full shadow-[0_0_10px_#11c2c7]" />}
-                  </div>
                 </div>
               </div>
             );
@@ -190,15 +180,21 @@ export default function GrantRelicModal({
 
         {/* FOOTER */}
         <div className="p-8 bg-black/60 border-t border-white/5 rounded-b-2xl shrink-0">
-          <div className="flex justify-between items-center">
-            <div className="flex flex-col gap-1">
-              <p className="hud-label-tactical text-gray-500 text-[10px] uppercase font-normal">STATUS DE VÍNCULO:</p>
-              <p className={`font-normal text-lg hud-title-md tracking-wider uppercase ${selectedRelic ? 'text-brand animate-pulse' : 'text-gray-600'}`}>
-                {selectedRelic ? `VINCULAR ${selectedRelic.name}` : "AGUARDANDO SELEÇÃO..."}
-              </p>
+          <div className="flex justify-between items-center gap-8">
+            <div className="flex flex-col gap-1 min-h-[50px] justify-center flex-1">
+              <p className="hud-label-tactical text-gray-500 text-[10px] uppercase font-normal tracking-widest">STATUS DE VÍNCULO:</p>
+              {selectedRelic ? (
+                <p className="font-normal text-lg hud-title-md tracking-wider uppercase text-brand animate-pulse">
+                  VINCULAR {selectedRelic.name}
+                </p>
+              ) : (
+                <p className="font-normal text-lg hud-title-md tracking-wider uppercase text-gray-600">
+                  AGUARDANDO SELEÇÃO...
+                </p>
+              )}
             </div>
-            <div className="flex gap-4">
-              <button onClick={onClose} className="hud-label-tactical text-xs tracking-widest text-gray-500 hover:text-white px-6 py-4 uppercase font-normal">Abortar</button>
+            <div className="flex gap-4 shrink-0">
+              <button onClick={onClose} className="hud-label-tactical text-xs tracking-widest text-gray-500 hover:text-white px-6 py-4 uppercase font-normal transition-colors">Abortar</button>
               <button 
                 onClick={() => selectedRelicId && onConfirm(selectedRelicId)}
                 disabled={!selectedRelicId || isProcessing}

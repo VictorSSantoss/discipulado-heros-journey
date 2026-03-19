@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MISSION_CATEGORIES, ATTRIBUTE_MAP } from "@/constants/gameConfig";
@@ -66,6 +66,11 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
   const [triggerType, setTriggerType] = useState(mission?.triggerType || "MANUAL");
   const [targetValue, setTargetValue] = useState(mission?.targetValue || 0);
   
+  const [periodicity, setPeriodicity] = useState(mission?.periodicity || "NONE");
+  const [expiresAt, setExpiresAt] = useState(
+    mission?.expiresAt ? new Date(mission.expiresAt).toISOString().slice(0, 16) : ""
+  );
+
   const isInitialLvlUp = mission?.xpReward === 9999;
   const [isLvlUp, setIsLvlUp] = useState(isInitialLvlUp);
   const [xpReward, setXpReward] = useState(isInitialLvlUp ? "" : String(mission?.xpReward || "50"));
@@ -75,12 +80,31 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
   const [rewardAttrValue, setRewardAttrValue] = useState<number>(mission?.rewardAttrValue || 0);
   const [showSecondary, setShowSecondary] = useState(!!mission?.rewardAttribute2);
 
+  // --- PREVIEW THEME LOGIC ---
+  const isSpecial = periodicity !== "NONE";
+  const theme = useMemo(() => ({
+    border: isSpecial ? 'border-amber-500/30' : 'border-brand/30',
+    glow: isSpecial ? 'via-amber-500/40' : 'via-brand/40',
+    text: isSpecial ? 'text-amber-400' : 'text-brand',
+    badge: isSpecial ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-brand/10 text-brand border-brand/20',
+    shadow: isSpecial ? 'drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'drop-shadow-[0_0_10px_rgba(17,194,199,0.4)]'
+  }), [isSpecial]);
+
   // Mappings
   const categoryOptions = MISSION_CATEGORIES.map(cat => ({ label: cat.toUpperCase(), value: cat }));
   const triggerOptions = [
     { label: "MANUAL (Avaliado pelo Líder)", value: "MANUAL" },
     { label: "AUTOMÁTICO (Meta de Companheiros)", value: "FRIEND_COUNT" }
   ];
+  
+  const periodicityOptions = [
+    { label: "PADRÃO (Sem limite)", value: "NONE" },
+    { label: "DIÁRIA (Reseta meia-noite)", value: "DAILY" },
+    { label: "SEMANAL (Reseta domingo)", value: "WEEKLY" },
+    { label: "MENSAL (Reseta dia 1º)", value: "MONTHLY" },
+    { label: "EVENTO (Data Fixa de Fim)", value: "EVENT" }
+  ];
+
   const attributeOptions = [
     { label: "NENHUM (APENAS XP)", value: "" },
     ...Object.entries(ATTRIBUTE_MAP).map(([key, label]) => ({ label: label.toUpperCase(), value: key }))
@@ -98,6 +122,12 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
     
     setIsSubmitting(true);
     const finalXpReward = isLvlUp ? 9999 : Number(xpReward);
+    
+    let parsedExpiresAt = null;
+    if (periodicity === "EVENT" && expiresAt) {
+      parsedExpiresAt = new Date(expiresAt).toISOString();
+    }
+
     const payload = {
       title,
       type: category,
@@ -105,6 +135,8 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
       description,
       triggerType,
       targetValue: Number(targetValue),
+      periodicity,
+      expiresAt: parsedExpiresAt,
       rewardAttribute: rewardAttribute || null,
       rewardAttribute2: (showSecondary && rewardAttribute2) ? rewardAttribute2 : null,
       rewardAttrValue: rewardAttribute ? Number(rewardAttrValue) : 0,
@@ -119,13 +151,13 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
       router.refresh();
     } else {
       setIsSubmitting(false);
+      alert("Erro ao salvar decreto.");
     }
   };
 
   return (
     <main className="min-h-screen p-6 max-w-7xl mx-auto flex flex-col pb-20 text-white font-barlow">
       
-      {/* ⚔️ UNIFIED HEADER */}
       <header className="w-full bg-dark-bg/60 backdrop-blur-xl border border-white/10 p-5 rounded-2xl flex justify-between items-center shadow-2xl mb-8 relative">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent"></div>
         <div className="flex items-center gap-5">
@@ -145,7 +177,7 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
         <form onSubmit={handleSubmit} className="lg:col-span-2 bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-8 rounded-2xl shadow-2xl space-y-10 relative">
           
           <div className="space-y-6">
-            <h3 className="hud-label-tactical text-gray-500 text-xs italic-none tracking-[0.3em] flex items-center gap-3">
+            <h3 className="hud-label-tactical text-gray-500 text-xs tracking-[0.3em] flex items-center gap-3">
               <span className="w-8 h-px bg-white/10"></span> DADOS DA JORNADA
             </h3>
 
@@ -177,6 +209,11 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
                 textStyle={triggerType !== "MANUAL" ? { color: '#818cf8' } : { color: '#10b981' }}
               />
 
+              <HUDSelect 
+                label="Ciclo da Missão" value={periodicity} onChange={setPeriodicity} options={periodicityOptions}
+                textStyle={periodicity !== "NONE" ? { color: '#f59e0b' } : { color: '#9ca3af' }}
+              />
+
               {triggerType === "FRIEND_COUNT" && (
                 <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                   <label className="hud-label-tactical text-brand uppercase">Quantidade de Amigos</label>
@@ -187,6 +224,19 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
                   />
                 </div>
               )}
+
+              {periodicity === "EVENT" && (
+                <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="hud-label-tactical text-orange-400 uppercase">Expiração do Evento</label>
+                  <input 
+                    type="datetime-local" 
+                    required 
+                    value={expiresAt}
+                    onChange={(e) => setExpiresAt(e.target.value)}
+                    className="bg-black/40 border border-orange-500/30 p-4 text-white rounded-xl focus:border-orange-500 outline-none transition-all h-[58px] hud-date-input"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -194,7 +244,7 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
 
           {/* REWARD MATRIX */}
           <div className="bg-brand/5 border border-brand/10 p-8 rounded-2xl space-y-6 relative">
-            <h3 className="hud-label-tactical text-brand text-xs italic-none tracking-[0.3em] uppercase relative z-10 flex items-center gap-3">
+            <h3 className="hud-label-tactical text-brand text-xs tracking-[0.3em] uppercase relative z-10 flex items-center gap-3">
               <span className="w-8 h-px bg-brand/20"></span> Matriz de Recompensa
             </h3>
             
@@ -250,52 +300,65 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
             )}
           </div>
 
-          <button
-            type="submit" disabled={isSubmitting}
-            className="w-full bg-brand hover:brightness-110 text-dark-bg hud-title-md text-2xl py-5 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.3)] disabled:opacity-50"
-          >
-            {isSubmitting ? "PROCESSANDO..." : isEdit ? "SALVAR ALTERAÇÕES" : "PUBLICAÇÃO OFICIAL"}
-          </button>
+          <div className="pt-6">
+            <button
+              type="submit" disabled={isSubmitting}
+              className="w-full bg-brand hover:brightness-110 text-dark-bg hud-title-md text-2xl py-5 rounded-xl transition-all shadow-[0_0_20px_rgba(17,194,199,0.3)] disabled:opacity-50"
+            >
+              {isSubmitting ? "PROCESSANDO..." : isEdit ? "SALVAR ALTERAÇÕES" : "PUBLICAÇÃO OFICIAL"}
+            </button>
+          </div>
         </form>
 
-        {/* RIGHT COLUMN: PREVIEW */}
+        {/* RIGHT COLUMN: TACTICAL PREVIEW */}
         <div className="lg:col-span-1 space-y-6">
-          <h3 className="hud-label-tactical text-gray-500 text-xs italic-none tracking-[0.3em] flex items-center gap-3">
+          <h3 className="hud-label-tactical text-gray-500 text-xs tracking-[0.3em] flex items-center gap-3">
              VISUALIZAÇÃO NO HUD
           </h3>
           
-          <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 p-8 rounded-2xl flex flex-col hover:border-brand/30 transition-all group relative overflow-hidden sticky top-8 min-h-[400px]">
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent"></div>
+          <div className={`bg-dark-bg/40 backdrop-blur-xl border p-8 rounded-2xl flex flex-col transition-all group relative overflow-hidden sticky top-8 min-h-[400px] shadow-2xl ${theme.border}`}>
+            {/* Dynamic Glow Line */}
+            <div className={`absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent ${theme.glow} to-transparent`}></div>
             
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex flex-col gap-2">
-                <span className="bg-white/5 text-gray-400 border border-white/10 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest w-fit">
+            <div className="flex justify-between items-start mb-6 gap-2 relative z-10">
+              <div className="flex flex-wrap gap-2">
+                <span className="bg-white/5 text-gray-400 border border-white/10 hud-label-tactical px-3 py-1 rounded-lg text-[9px] uppercase tracking-widest w-fit">
                   {category}
                 </span>
+                
+                {/* ⏳ Time-Gating Badge with Dynamic Color */}
+                {isSpecial && (
+                  <span className={`hud-label-tactical px-3 py-1 rounded-lg text-[9px] uppercase tracking-widest w-fit border shadow-lg animate-in zoom-in-95 duration-300 ${theme.badge}`}>
+                    {periodicity === "DAILY" ? "DIÁRIA" : periodicity === "WEEKLY" ? "SEMANAL" : periodicity === "MONTHLY" ? "MENSAL" : "EVENTO"}
+                  </span>
+                )}
+
                 {triggerType === "FRIEND_COUNT" && targetValue > 0 && (
-                  <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest w-fit">
+                  <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hud-label-tactical px-3 py-1 rounded-lg text-[9px] uppercase tracking-widest w-fit">
                     META: {targetValue} AMIGOS
                   </span>
                 )}
               </div>
-              <span className="hud-value text-brand text-3xl drop-shadow-[0_0_10px_rgba(17,194,199,0.4)]">
+              <span className={`hud-value text-3xl shrink-0 ${theme.text} ${theme.shadow}`}>
                 {isLvlUp ? 'LVL UP' : `+${xpReward || 0} XP`}
               </span>
             </div>
             
-            <h3 className="hud-title-md text-white mb-3 uppercase tracking-wider text-2xl break-words">{title || "TÍTULO DA MISSÃO"}</h3>
-            <p className="font-barlow text-gray-500 text-sm mb-8 leading-relaxed break-words line-clamp-4">{description || "Instruções estratégicas..."}</p>
+            <h3 className="hud-title-md text-white mb-3 uppercase tracking-wider text-2xl break-words relative z-10">{title || "NOME DO DECRETO"}</h3>
+            <p className="font-barlow text-gray-500 text-sm mb-8 leading-relaxed break-words line-clamp-5 uppercase tracking-tighter relative z-10">
+              {description || "Aguardando entrada de dados táticos para descrição da operação..."}
+            </p>
             
             {rewardAttribute && rewardAttrValue > 0 && (
-              <div className="mt-auto pt-4 border-t border-white/5 flex flex-wrap gap-3">
-                <div className="inline-flex items-center gap-2 bg-brand/10 border border-brand/30 px-3 py-1.5 rounded-md shadow-[0_0_15px_rgba(17,194,199,0.1)]">
-                   <span className="text-brand text-xs font-black">+{rewardAttrValue}</span>
-                   <span className="hud-label-tactical text-[10px] text-brand uppercase tracking-widest">{ATTRIBUTE_MAP[rewardAttribute]}</span>
+              <div className="mt-auto pt-6 border-t border-white/5 flex flex-wrap gap-3 relative z-10">
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors ${theme.badge}`}>
+                   <span className="font-black text-xs">+{rewardAttrValue}</span>
+                   <span className="hud-label-tactical text-[10px] uppercase tracking-widest">{ATTRIBUTE_MAP[rewardAttribute]}</span>
                 </div>
                 {showSecondary && rewardAttribute2 && (
-                  <div className="inline-flex items-center gap-2 bg-brand/10 border border-brand/30 px-3 py-1.5 rounded-md">
-                     <span className="text-brand text-xs font-black">+{rewardAttrValue}</span>
-                     <span className="hud-label-tactical text-[10px] text-brand uppercase tracking-widest">{ATTRIBUTE_MAP[rewardAttribute2]}</span>
+                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors ${theme.badge}`}>
+                     <span className="font-black text-xs">+{rewardAttrValue}</span>
+                     <span className="hud-label-tactical text-[10px] uppercase tracking-widest">{ATTRIBUTE_MAP[rewardAttribute2]}</span>
                   </div>
                 )}
               </div>
@@ -304,21 +367,23 @@ export default function MissionForm({ mission, isEdit = false }: { mission?: any
         </div>
       </div>
 
-      {/* TACTICAL CSS FOR SPIN BUTTONS */}
       <style jsx>{`
         .hud-number-input::-webkit-inner-spin-button,
         .hud-number-input::-webkit-outer-spin-button {
           opacity: 1;
-          /* Inverts the black arrows to white and tints them to brand-cyan */
           filter: invert(1) brightness(2) sepia(1) saturate(5) hue-rotate(140deg);
           cursor: pointer;
           height: 24px;
           width: 14px;
         }
 
-        /* Standardized glow effect on hover for the arrows */
         .hud-number-input::-webkit-inner-spin-button:hover {
           filter: invert(1) brightness(3) sepia(1) saturate(10) hue-rotate(140deg) drop-shadow(0 0 5px rgba(17, 194, 199, 0.8));
+        }
+
+        .hud-date-input::-webkit-calendar-picker-indicator {
+          filter: invert(1) sepia(1) saturate(5) hue-rotate(350deg) brightness(1.2);
+          cursor: pointer;
         }
       `}</style>
     </main>

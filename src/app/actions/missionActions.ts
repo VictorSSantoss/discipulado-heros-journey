@@ -114,6 +114,8 @@ export async function createMission(data: {
   rewardAttribute?: string | null;
   rewardAttribute2?: string | null; 
   rewardAttrValue?: number;
+  periodicity?: string; // ⏳ Added Time-Gate parameter
+  expiresAt?: string | null; // ⏳ Added Expiration Date parameter
 }) {
   try {
     const mission = await prisma.mission.create({
@@ -127,6 +129,8 @@ export async function createMission(data: {
         rewardAttribute: data.rewardAttribute,
         rewardAttribute2: data.rewardAttribute2,
         rewardAttrValue: data.rewardAttrValue || 0,
+        periodicity: data.periodicity || "NONE", // ⏳ Save to DB
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null, // ⏳ Parse and Save to DB
       },
     });
 
@@ -149,6 +153,8 @@ export async function updateMission(id: string, data: {
   rewardAttribute?: string | null;
   rewardAttribute2?: string | null; 
   rewardAttrValue?: number;
+  periodicity?: string; // ⏳ Added Time-Gate parameter
+  expiresAt?: string | null; // ⏳ Added Expiration Date parameter
 }) {
   try {
     await prisma.mission.update({
@@ -163,6 +169,8 @@ export async function updateMission(id: string, data: {
         rewardAttribute: data.rewardAttribute,
         rewardAttribute2: data.rewardAttribute2,
         rewardAttrValue: data.rewardAttrValue || 0,
+        periodicity: data.periodicity || "NONE", // ⏳ Save to DB
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null, // ⏳ Parse and Save to DB
       },
     });
     revalidatePath("/admin/missoes");
@@ -184,7 +192,9 @@ export async function getAllMissions() {
         xpReward: true, 
         type: true,
         triggerType: true,
-        targetValue: true
+        targetValue: true,
+        periodicity: true, // ⏳ Ensure the frontend gets this data
+        expiresAt: true,   // ⏳ Ensure the frontend gets this data
       },
       orderBy: { title: 'asc' }
     });

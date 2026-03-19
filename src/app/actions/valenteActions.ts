@@ -378,3 +378,37 @@ export async function grantManualRelic(valenteId: string, relicId: string) {
     return { success: false, error: "Database error" };
   }
 }
+
+// Toggles a mission ID in the Valente's trackedMissionIds array (Limit 3)
+export async function toggleTrackedMission(valenteId: string, missionId: string) {
+  try {
+    const valente = await prisma.valente.findUnique({
+      where: { id: valenteId },
+      select: { trackedMissionIds: true }
+    });
+
+    if (!valente) return { success: false };
+
+    let newIds = [...valente.trackedMissionIds];
+    
+    if (newIds.includes(missionId)) {
+      // Unpin
+      newIds = newIds.filter(id => id !== missionId);
+    } else {
+      // Pin (Limit 3)
+      if (newIds.length >= 3) return { success: false, message: "Limite de 3 decretos fixados atingido." };
+      newIds.push(missionId);
+    }
+
+    await prisma.valente.update({
+      where: { id: valenteId },
+      data: { trackedMissionIds: newIds }
+    });
+
+    revalidatePath(`/admin/valentes/${valenteId}`);
+    return { success: true, trackedIds: newIds };
+  } catch (error) {
+    console.error("Failed to toggle track:", error);
+    return { success: false };
+  }
+}

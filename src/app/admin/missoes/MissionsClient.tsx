@@ -2,16 +2,18 @@
 
 import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ICONS, MISSION_CATEGORIES, ATTRIBUTE_MAP } from "@/constants/gameConfig";
 import { completeMission, deleteMissionTemplate } from "@/app/actions/missionActions";
+import { toggleTrackedMission } from "@/app/actions/valenteActions";
 
 /**
  * Permission interface to define available interactions for the current user.
  */
 export interface MissionPermissions {
   canManage: boolean;
+  valenteId?: string;
 }
 
 /**
@@ -31,12 +33,13 @@ function MissionsWrapper(props: any) {
 function MissoesContent({ 
   initialMissions, 
   valentes,
-  permissions = { canManage: true } // Defaulting to true for existing admin routes
+  permissions = { canManage: true }
 }: {
   initialMissions: any[],
   valentes?: any[],
   permissions?: MissionPermissions
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight");
 
@@ -59,9 +62,17 @@ function MissoesContent({
   const [modalSearchQuery, setModalSearchQuery] = useState("");
   const [modalSelectedValente, setModalSelectedValente] = useState("");
 
-  /**
-   * Evaluates the highlight parameter from the URL to provide automated navigation to a specific decreto.
-   */
+  // Notification state for the pin limit
+  const [pinLimitNotice, setPinLimitNotice] = useState<string | null>(null);
+
+  // Auto-clear pin limit notice
+  useEffect(() => {
+    if (pinLimitNotice) {
+      const timer = setTimeout(() => setPinLimitNotice(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [pinLimitNotice]);
+
   useEffect(() => {
     if (highlightId) {
       setActiveFilter("TODAS");
@@ -79,9 +90,6 @@ function MissoesContent({
     }
   }, [highlightId]);
 
-  /**
-   * Logic to maintain the high-visibility highlight until a global click event is detected.
-   */
   useEffect(() => {
     if (!highlightedId) return;
 
@@ -161,6 +169,18 @@ function MissoesContent({
     setModalSearchQuery("");
   };
 
+  // Handles the logic for a player tracking a mission
+  const handleTogglePin = async (missionId: string) => {
+    if (!permissions.valenteId) return;
+    
+    const result = await toggleTrackedMission(permissions.valenteId, missionId);
+    if (result.success) {
+      router.refresh();
+    } else if (result.message) {
+      setPinLimitNotice(result.message);
+    }
+  };
+
   return (
     <main className="min-h-screen py-6 px-4 md:px-8 max-w-7xl mx-auto text-white font-barlow overflow-x-hidden relative">
       
@@ -185,7 +205,6 @@ function MissoesContent({
           <p className="hud-label-tactical mt-1">Acervo de Desafios Ativos no Reino</p>
         </div>
         
-        {/* Conditional rendering of the creation tool based on manage permissions */}
         {permissions.canManage && (
           <Link 
             href="/admin/missoes/create"
@@ -265,6 +284,7 @@ function MissoesContent({
                       permissions={permissions}
                       onDelete={() => handleDeleteClick(mission)} 
                       onOpenModal={() => setSelectedMissionForModal(mission)}
+                      onTogglePin={() => handleTogglePin(mission.id)}
                     />
                   ))}
                 </div>
@@ -283,6 +303,7 @@ function MissoesContent({
                   permissions={permissions}
                   onDelete={() => handleDeleteClick(mission)} 
                   onOpenModal={() => setSelectedMissionForModal(mission)}
+                  onTogglePin={() => handleTogglePin(mission.id)}
                 />
               ))
             }
@@ -290,7 +311,6 @@ function MissoesContent({
         )}
       </div>
 
-      {/* Confirmation and selection modals restricted to administrative users */}
       <AnimatePresence>
         {permissions.canManage && missionToConfirm && (
           <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
@@ -386,82 +406,169 @@ function MissoesContent({
           </div>
         </div>
       )}
+
+      {/* Notification toast for the limit */}
+      <AnimatePresence>
+        {pinLimitNotice && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0, x: '-50%' }}
+            animate={{ y: 0, opacity: 1, x: '-50%' }}
+            exit={{ y: 50, opacity: 0, x: '-50%' }}
+            className="fixed bottom-10 left-1/2 z-[300] bg-dark-bg/95 border border-amber-500/50 px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.2)] flex items-center gap-4 backdrop-blur-xl"
+          >
+            <div className="flex flex-col">
+              <span className="hud-label-tactical text-[10px] text-amber-500 uppercase tracking-[0.2em] font-black">Aviso do Sistema</span>
+              <p className="text-white text-sm font-barlow m-0 uppercase tracking-tighter">
+                {pinLimitNotice}
+              </p>
+            </div>
+            <button 
+              onClick={() => setPinLimitNotice(null)} 
+              className="text-gray-500 hover:text-white transition-colors ml-4"
+            >
+              ✕
+            </button>
+            <div className="absolute -top-1 -left-1 w-2 h-2 bg-amber-500 rounded-full animate-ping"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
 
 /**
- * Renders individual mission cards and restricts interactive tools based on user permissions.
+ * Renders individual mission cards with strict color differentiation.
  */
-function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModal }: any) {
+function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModal, onTogglePin }: any) {
   const isLvlUp = mission.xpReward === 9999; 
-  const triggerTypeNormalized = (mission.triggerType || "MANUAL").toString().toUpperCase().trim();
+  const triggerTypeNormalized = String(mission.triggerType || "MANUAL").toUpperCase().trim();
   const isAutomaticFriendGoal = triggerTypeNormalized !== "MANUAL";
+  
+  // Forces evaluation of the string safely. If missing, defaults to NONE.
+  const rawPeriodicity = mission.periodicity ? String(mission.periodicity).toUpperCase().trim() : "NONE";
 
+  // Check for the 4 special time-gated categories.
+  const isSpecialCycle = ["DAILY", "WEEKLY", "MONTHLY", "EVENT"].includes(rawPeriodicity);
+
+  // Determine the card's theme properties
   const getCardTheme = () => {
+    // Priority 1: Level Up
     if (isLvlUp) return { 
       border: 'border-brand/30 hover:border-brand/60', 
       text: 'text-brand', 
       glow: 'rgba(17,194,199,0.2)', 
-      shadow: 'rgba(17,194,199,0.5)' 
+      shadow: 'rgba(17,194,199,0.5)',
+      badgeBg: 'bg-brand/10',
+      badgeText: 'text-brand',
+      badgeBorder: 'border-brand/30'
     };
+
+    // Priority 2: Special Cycles 
+    if (isSpecialCycle) return {
+      border: 'border-amber-500/50 hover:border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.1)]',
+      text: 'text-amber-400',
+      glow: 'rgba(245, 158, 11, 0.25)',
+      shadow: 'rgba(245, 158, 11, 0.6)',
+      badgeBg: 'bg-amber-500/20',
+      badgeText: 'text-amber-400',
+      badgeBorder: 'border-amber-500/50'
+    };
+
+    // Priority 3: Automated
     if (isAutomaticFriendGoal) return { 
       border: 'border-indigo-500/40 hover:border-indigo-400/70', 
       text: 'text-indigo-400', 
       glow: 'rgba(99, 102, 241, 0.25)', 
-      shadow: 'rgba(99, 102, 241, 0.6)' 
+      shadow: 'rgba(99, 102, 241, 0.6)',
+      badgeBg: 'bg-indigo-500/10',
+      badgeText: 'text-indigo-400',
+      badgeBorder: 'border-indigo-500/30'
     };
+
+    // Default Fallback: Standard Normal Mission
     return { 
       border: 'border-white/10 hover:border-mission/40', 
-      text: 'text-xp', 
-      glow: 'rgba(234,88,12,0.15)', 
-      shadow: 'rgba(234,88,12,0.4)' 
+      text: 'text-mission', 
+      glow: 'rgba(16,185,129,0.15)', 
+      shadow: 'rgba(16,185,129,0.4)',
+      badgeBg: 'bg-white/5',
+      badgeText: 'text-gray-400',
+      badgeBorder: 'border-white/10'
     };
   };
 
   const theme = getCardTheme();
+
+  const getBadgeLabel = () => {
+    if (rawPeriodicity === "DAILY") return "DECRETO DIÁRIO";
+    if (rawPeriodicity === "WEEKLY") return "DECRETO SEMANAL";
+    if (rawPeriodicity === "MONTHLY") return "DECRETO MENSAL";
+    if (rawPeriodicity === "EVENT") return "EVENTO TEMPORÁRIO";
+    if (isAutomaticFriendGoal) return 'SISTEMA AUTOMÁTICO';
+    return "DECRETO PERMANENTE";
+  };
 
   return (
     <div 
       id={mission.id}
       className={`p-6 rounded-2xl flex flex-col border transition-all shadow-xl group relative backdrop-blur-xl ${theme.border} ${isHighlighted ? 'mission-highlight-active ring-4 ring-mission ring-offset-4 ring-offset-black' : 'overflow-hidden'}`}
       style={{
+        // Balances the background color for special cycles to match the others
         backgroundColor: 'rgba(10, 10, 10, 0.4)',
         backgroundImage: `radial-gradient(circle at 0% 0%, ${theme.glow} 0%, transparent 50%)`
       }}
     >
+      {/* Decorative Top Line for Special Cycles */}
+      {isSpecialCycle && (
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500 to-transparent shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+      )}
+
       <div className="relative flex flex-col h-full">
-        <div className="flex flex-col mb-6">
+        <div className="flex justify-between items-start mb-6">
           <div className={`hud-value flex items-end ${theme.text} drop-shadow-[0_0_12px_${theme.shadow}]`}>
             {!isLvlUp && <span className="text-3xl mr-1 opacity-60 mb-1">+</span>}
             <span>{isLvlUp ? 'LVL UP' : mission.xpReward}</span>
             {!isLvlUp && <span className="font-barlow font-black text-sm ml-1.5 opacity-60 mb-1.5 uppercase tracking-widest">XP</span>}
           </div>
-          <div className="flex items-center gap-2 mt-3 bg-dark-bg/60 w-fit px-2.5 py-1 rounded-lg border border-white/5">
-            <span className={`w-1.5 h-1.5 rounded-full ${isAutomaticFriendGoal ? 'bg-indigo-400 animate-pulse shadow-[0_0_6px_rgba(99,102,241,0.6)]' : 'bg-mission animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.6)]'}`}></span>
-            <span className="hud-label-tactical text-[8px] text-gray-400 uppercase tracking-widest">
-              {isAutomaticFriendGoal ? 'PROCESSAMENTO AUTOMÁTICO' : 'MURAL ATIVO'}
-            </span>
-          </div>
+          
+          {/* Tracking button visible only to players */}
+          {!permissions.canManage && permissions.valenteId && (
+            <button 
+              type="button"
+              onClick={onTogglePin}
+              className="hud-label-tactical text-[10px] text-white/40 hover:text-white transition-all flex items-center gap-1.5 font-black drop-shadow-[0_0_8px_rgba(17,194,199,0.4)]"
+            >
+              ☆ FIXAR
+            </button>
+          )}
         </div>
-        <h3 className={`hud-title-md text-white mb-3 leading-tight transition-colors ${isAutomaticFriendGoal ? 'group-hover:text-indigo-400' : 'group-hover:text-mission'}`}>
+        
+        <div className={`flex items-center gap-2 mb-3 w-fit px-2.5 py-1 rounded-lg border shadow-[0_0_10px_${theme.shadow}] ${theme.badgeBg} ${theme.badgeBorder}`}>
+          <span className={`w-1.5 h-1.5 rounded-full animate-pulse bg-current ${theme.badgeText}`}></span>
+          <span className={`hud-label-tactical text-[8px] uppercase tracking-widest font-black ${theme.badgeText}`}>
+            {getBadgeLabel()}
+          </span>
+        </div>
+
+        <h3 className={`hud-title-md text-white mb-3 leading-tight transition-colors ${isSpecialCycle ? 'group-hover:text-amber-400' : 'group-hover:text-mission'}`}>
           {mission.title}
         </h3>
-        <p className="font-barlow text-gray-500 text-[13px] mb-6 leading-relaxed border-l border-white/10 pl-4 uppercase tracking-tighter">
+        <p className={`font-barlow text-[13px] mb-6 leading-relaxed border-l-2 pl-4 uppercase tracking-tighter ${isSpecialCycle ? 'text-amber-200/50 border-amber-500/30' : 'text-gray-400 border-white/10'}`}>
           {mission.description || "Entrada de desafio sob observação tática."}
         </p>
+
         {mission.rewardAttribute && mission.rewardAttrValue > 0 && (
-          <div className="flex flex-wrap gap-2 mb-8 animate-in fade-in slide-in-from-left-2 duration-500">
-            <div className="inline-flex items-center gap-1.5 bg-brand/5 border border-brand/20 px-2.5 py-1 rounded-md shadow-[0_0_10px_rgba(17,194,199,0.05)] group-hover:border-brand/40 transition-colors">
-              <span className="text-brand font-black text-[11px] drop-shadow-[0_0_5px_rgba(17,194,199,0.3)]">+{mission.rewardAttrValue}</span>
-              <span className="hud-label-tactical text-[8px] text-brand/60 uppercase tracking-widest">
+          <div className="flex flex-wrap gap-2 mb-8 animate-in fade-in slide-in-from-left-2 duration-500 mt-auto pt-4">
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition-colors ${isSpecialCycle ? 'bg-amber-500/10 border-amber-500/30' : 'bg-brand/5 border-brand/20'}`}>
+              <span className={`font-black text-[11px] ${isSpecialCycle ? 'text-amber-400' : 'text-brand'}`}>+{mission.rewardAttrValue}</span>
+              <span className={`hud-label-tactical text-[8px] uppercase tracking-widest ${isSpecialCycle ? 'text-amber-400/60' : 'text-brand/60'}`}>
                 {ATTRIBUTE_MAP[mission.rewardAttribute] || mission.rewardAttribute}
               </span>
             </div>
             {mission.rewardAttribute2 && (
-              <div className="inline-flex items-center gap-1.5 bg-brand/5 border border-brand/20 px-2.5 py-1 rounded-md shadow-[0_0_10px_rgba(17,194,199,0.05)] group-hover:border-brand/40 transition-colors animate-in zoom-in-95">
-                <span className="text-brand font-black text-[11px] drop-shadow-[0_0_5px_rgba(17,194,199,0.3)]">+{mission.rewardAttrValue}</span>
-                <span className="hud-label-tactical text-[8px] text-brand/60 uppercase tracking-widest">
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition-colors ${isSpecialCycle ? 'bg-amber-500/10 border-amber-500/30' : 'bg-brand/5 border-brand/20'}`}>
+                <span className={`font-black text-[11px] ${isSpecialCycle ? 'text-amber-400' : 'text-brand'}`}>+{mission.rewardAttrValue}</span>
+                <span className={`hud-label-tactical text-[8px] uppercase tracking-widest ${isSpecialCycle ? 'text-amber-400/60' : 'text-brand/60'}`}>
                   {ATTRIBUTE_MAP[mission.rewardAttribute2] || mission.rewardAttribute2}
                 </span>
               </div>
@@ -469,7 +576,6 @@ function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModa
           </div>
         )}
         
-        {/* Interactive action block: rendered only if administrative management is allowed */}
         {permissions.canManage && (
           <div className="flex flex-col gap-3 pt-5 border-t border-white/5 mt-auto relative z-20">
             {isAutomaticFriendGoal ? (
@@ -479,7 +585,11 @@ function MissionCard({ mission, isHighlighted, permissions, onDelete, onOpenModa
             ) : (
               <button 
                 onClick={onOpenModal} 
-                className="w-full bg-mission/10 text-mission border border-mission/30 hover:bg-mission hover:text-white py-3 rounded-xl hud-title-md transition-all shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] uppercase"
+                className={`w-full border py-3 rounded-xl hud-title-md transition-all shadow-lg uppercase ${
+                  isSpecialCycle 
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500 hover:text-black shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                  : 'bg-mission/10 text-mission border-mission/30 hover:bg-mission hover:text-white shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                }`}
               >
                 CONCEDER XP
               </button>

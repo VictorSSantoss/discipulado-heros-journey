@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import { motion, AnimatePresence } from "framer-motion";
-import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
+import { ESTRUTURAS, LEVEL_SYSTEM, ICONS, ATTRIBUTE_MAP } from "@/constants/gameConfig";
 import { addCompanheiro } from "@/app/actions/companheiroActions";
-import { completeMission, grantManualRelic, updateValenteProfile } from "@/app/actions/valenteActions";
+import { completeMission, grantManualRelic, updateValenteProfile, toggleTrackedMission } from "@/app/actions/valenteActions";
 
 import AttributesChart from "@/components/AttributesChart";
 import LoveLanguagesChart from "@/components/LoveLanguagesChart";
@@ -22,8 +22,9 @@ import AddCompanionModal from "@/components/profile/AddCompanionModal";
 import AvatarUploader from "@/components/game/AvatarUploader";
 import RelicDiscoveryOverlay from "@/components/RelicDiscoveryOverlay";
 import MissionCompletionOverlay from "@/components/MissionCompletionOverlay";
+import MissionDisplayCard from "@/components/profile/MissionDisplayCard";
 
-// ⚔️ Interfaces strictly aligned with Component Props
+// ⚔️ Interfaces
 interface Medal {
   id: string;
   name: string;
@@ -62,6 +63,12 @@ export default function ValenteProfileClient({
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
   const [isGrantRelicModalOpen, setIsGrantRelicModalOpen] = useState(false); 
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
+  
+  // ⚔️ ADMIN CHECK
+  const isAdmin = true;
+
+  // ⚔️ HUD NOTIFICATION STATE
+  const [pinLimitNotice, setPinLimitNotice] = useState<string | null>(null);
 
   const getNormalizedMedals = (source: any) => {
     if (!source.reliquias) return source.medals || [];
@@ -75,7 +82,8 @@ export default function ValenteProfileClient({
 
   const [valente, setValente] = useState({
     ...initialValente,
-    medals: initialMedals
+    medals: initialMedals,
+    trackedMissionIds: initialValente.trackedMissionIds || []
   });
   
   const [companheiros, setCompanheiros] = useState(initialCompanheiros);
@@ -100,6 +108,14 @@ export default function ValenteProfileClient({
 
   useEffect(() => { setMounted(true); }, []);
 
+  // ⚔️ Auto-clear pin limit notice
+  useEffect(() => {
+    if (pinLimitNotice) {
+      const timer = setTimeout(() => setPinLimitNotice(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [pinLimitNotice]);
+
   useEffect(() => {
     const currentMedals = getNormalizedMedals(initialValente);
     const newlyEarned: Medal[] = [];
@@ -116,7 +132,7 @@ export default function ValenteProfileClient({
       setMedalQueue(prev => [...prev, ...newlyEarned]);
     }
     
-    setValente({ ...initialValente, medals: currentMedals });
+    setValente({ ...initialValente, medals: currentMedals, trackedMissionIds: initialValente.trackedMissionIds || [] });
     setCompanheiros(initialCompanheiros);
   }, [initialValente, initialCompanheiros]);
 
@@ -176,6 +192,16 @@ export default function ValenteProfileClient({
     setIsRewardModalOpen(false);
   };
 
+  const handleTogglePin = async (missionId: string) => {
+    const result = await toggleTrackedMission(valente.id, missionId);
+    if (result.success) {
+      setValente((prev: any) => ({ ...prev, trackedMissionIds: result.trackedIds }));
+      router.refresh();
+    } else if (result.message) {
+      setPinLimitNotice(result.message);
+    }
+  };
+
   const handleGrantRelic = async (relicId: string) => {
     setIsProcessing(true);
     const result = await grantManualRelic(valente.id, relicId);
@@ -223,6 +249,39 @@ export default function ValenteProfileClient({
     setIsSavingLore(false);
   };
 
+  /**
+   * ⏳ MURAL ENGINE
+   */
+  const trackedMissions = availableMissions.filter(m => valente.trackedMissionIds?.includes(m.id));
+  
+  const epicMission = useMemo(() => {
+    return availableMissions
+      .filter(m => !valente.trackedMissionIds?.includes(m.id) && m.periodicity !== "NONE")
+      .sort((a, b) => b.xpReward - a.xpReward)[0];
+  }, [availableMissions, valente.trackedMissionIds]);
+
+  /**
+   * ⚔️ PRIORITY SHUFFLE: Sorting Temporary Missions first
+   */
+  const routineMissions = useMemo(() => {
+    // 1. Get everyone who isn't Pinned or the Epic Highlight
+    const pool = availableMissions.filter(
+      m => !valente.trackedMissionIds?.includes(m.id) && m.id !== epicMission?.id
+    );
+
+    // 2. Separate into Tiers and Shuffle individually
+    const tempMissions = pool
+      .filter(m => m.periodicity !== "NONE")
+      .sort(() => Math.random() - 0.5);
+
+    const permMissions = pool
+      .filter(m => m.periodicity === "NONE")
+      .sort(() => Math.random() - 0.5);
+
+    // 3. Combine: Temporary Decretos take priority slots, then standard ones
+    return [...tempMissions, ...permMissions].slice(0, 6);
+  }, [availableMissions, valente.trackedMissionIds, epicMission]);
+
   if (!mounted) return (
     <div className="min-h-screen bg-dark-surface flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
@@ -252,6 +311,7 @@ export default function ValenteProfileClient({
           }
         `}} />
 
+        {/* ... Header & Profile Details ... */}
         <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <Link 
             href="/admin/valentes" 
@@ -282,6 +342,7 @@ export default function ValenteProfileClient({
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* ... Profile Sections (Stats, Chart, etc.) ... */}
           <div className="flex flex-col gap-8">
             <div className="flex flex-col items-center bg-dark-bg/40 backdrop-blur-xl p-10 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
@@ -349,7 +410,6 @@ export default function ValenteProfileClient({
           <div className="flex flex-col gap-8">
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
               <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Atributos</h2>
-              {/* ⚔️ FIXED: 'label' property removed to match 'AttributesChart' prop type */}
               <AttributesChart skills={valente.attributes} theme={{ hex: theme.color }} />
             </div>
             
@@ -386,74 +446,150 @@ export default function ValenteProfileClient({
           </div>
         </div>
 
-        {/* ... Bottom Sections ... */}
+        {/* ⚔️ MURAL DE DECRETOS ⚔️ */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
             <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
                 <span className="text-gray-700 text-2xl">⚔️</span>
             </div>
+            
             <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
                 <h2 className="hud-title-lg text-white flex items-center gap-4 m-0 uppercase text-3xl">
                     <img src={ICONS.missoes} className="w-12 h-12 object-contain" alt="" /> Mural de Decretos
                 </h2>
-                <p className="hud-label-tactical mt-2 uppercase text-gray-500">Operações Ativas para {valente.name}</p>
+                <p className="hud-label-tactical mt-2 uppercase text-gray-500">Operações em Andamento</p>
                 </div>
-                <Link href="/admin/missoes" className="hud-label-tactical text-gray-500 hover:text-white border border-white/5 hover:border-white/20 px-6 py-3 rounded-2xl transition-all bg-white/[0.02] uppercase">
-                Histórico Completo →
+                <Link href="/admin/missoes" className="hud-label-tactical text-gray-500 hover:text-white border border-white/5 hover:border-white/20 px-6 py-3 rounded-2xl transition-all bg-white/[0.02] uppercase tracking-[0.1em]">
+                  Acervo Completo →
                 </Link>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {availableMissions?.slice(0, 6).map((mission: any) => (
-                <div key={mission.id} className="bg-dark-bg/40 border border-white/5 p-8 rounded-2xl flex flex-col hover:border-mission/30 transition-all group relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission/40 to-transparent"></div>
-                    <div className="flex justify-between items-start mb-6">
-                    <span className="bg-white/5 text-gray-500 border border-white/5 hud-label-tactical px-3 py-1 rounded-full text-[9px] uppercase tracking-widest">{mission.type}</span>
-                    <span className="hud-value text-mission text-3xl">+{mission.xpReward} XP</span>
-                    </div>
-                    <h3 className="hud-title-md text-white mb-3 uppercase tracking-wider">{mission.title}</h3>
-                    <p className="font-barlow text-gray-500 text-sm mb-8 flex-1 leading-relaxed line-clamp-2">{mission.description}</p>
-                    <button onClick={() => handleCompleteMission(mission.id)} disabled={isProcessing} className="w-full bg-mission/10 border border-mission/20 hover:bg-mission hover:text-white text-mission hud-btn-text py-3 rounded-2xl transition-all uppercase tracking-widest disabled:opacity-50">
-                    {isProcessing ? "PROCESSANDO..." : "CONCLUIR MISSÃO"}
-                    </button>
+            <div className="flex flex-col gap-12">
+              
+              {/* 1. DECRETOS EM FOCO (TRACKED) */}
+              {trackedMissions.length > 0 && (
+                <div className="space-y-6">
+                  <h3 className="hud-label-tactical text-brand text-xs flex items-center gap-3 uppercase tracking-[0.4em] font-black">
+                    <span className="w-2 h-2 rounded-full bg-brand animate-ping shadow-[0_0_10px_#11c2c7]"></span> Decretos em Foco
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {trackedMissions.map((mission: any) => (
+                      <MissionDisplayCard 
+                        key={mission.id} 
+                        mission={mission} 
+                        isTracked={true} 
+                        onTogglePin={handleTogglePin} 
+                        onComplete={handleCompleteMission} 
+                        isProcessing={isProcessing}
+                        isAdmin={isAdmin}
+                      />
+                    ))}
+                  </div>
                 </div>
-                ))}
+              )}
+
+              {/* 2. DECRETO ÉPICO (EPIC HIGHLIGHT) */}
+              {epicMission && (
+                <div className="space-y-6">
+                  <h3 className="hud-label-tactical text-amber-500 text-xs flex items-center gap-3 uppercase tracking-[0.4em] font-black">
+                    <span className="w-8 h-px bg-amber-500/30"></span> Destaque do Ciclo
+                  </h3>
+                  <div className="relative group">
+                    <div className="bg-gradient-to-br from-amber-950/30 via-dark-bg/40 to-dark-bg/40 border border-amber-500/30 p-8 rounded-3xl flex flex-col lg:flex-row justify-between items-center gap-8 hover:border-amber-500/60 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-visible">
+                      <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+                        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+                        <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-colors"></div>
+                      </div>
+                      
+                      <div className="flex-1 space-y-4 relative z-10">
+                        <div className="flex items-center gap-3">
+                          <span className="bg-amber-500 text-black font-black hud-label-tactical px-3 py-1 rounded text-[10px] uppercase tracking-tighter">
+                            {epicMission.periodicity === "DAILY" ? "DECRETO DIÁRIO" : 
+                             epicMission.periodicity === "WEEKLY" ? "DECRETO SEMANAL" : 
+                             epicMission.periodicity === "MONTHLY" ? "DECRETO MENSAL" : "EVENTO ESPECIAL"}
+                          </span>
+                          <button onClick={() => handleTogglePin(epicMission.id)} className="text-white/40 hover:text-amber-400 text-[10px] uppercase tracking-widest font-black transition-colors drop-shadow-[0_0_5px_rgba(245,158,11,0.3)]">☆ FIXAR</button>
+                        </div>
+                        <h4 className="hud-title-md text-4xl text-white m-0 uppercase leading-none tracking-tight">{epicMission.title}</h4>
+                        <p className="text-gray-400 font-barlow max-w-2xl text-base uppercase tracking-tighter leading-tight border-l-2 border-amber-500/20 pl-4">
+                          {epicMission.description}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center lg:items-end gap-4 shrink-0 relative z-10">
+                        <div className="flex flex-col items-center lg:items-end">
+                          <span className="hud-value text-amber-500 text-6xl drop-shadow-[0_0_20px_rgba(245,158,11,0.5)]">+{epicMission.xpReward} XP</span>
+                          {epicMission.rewardAttribute && (
+                            <span className="hud-label-tactical text-amber-400/80 text-[10px] uppercase tracking-widest font-black">+{epicMission.rewardAttrValue} {ATTRIBUTE_MAP[epicMission.rewardAttribute]}</span>
+                          )}
+                        </div>
+                        {isAdmin && (
+                          <div className="p-2 -m-2"> 
+                            <button 
+                              onClick={() => handleCompleteMission(epicMission.id)} 
+                              disabled={isProcessing}
+                              className="bg-amber-500 hover:bg-amber-400 text-black px-12 py-4 rounded-xl font-black hud-title-md text-lg uppercase transition-all shadow-[0_0_25px_rgba(245,158,11,0.4)] hover:shadow-[0_0_40px_rgba(245,158,11,0.6)] hover:-translate-y-1 active:translate-y-0 disabled:opacity-50"
+                            >
+                              {isProcessing ? "PROCESSANDO..." : "CONCLUIR OPERAÇÃO"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. DECRETOS DA ROTINA (SHUFFLED + PRIORITY) */}
+              <div className="space-y-6">
+                <h3 className="hud-label-tactical text-gray-500 text-xs flex items-center gap-3 uppercase tracking-[0.4em] font-black">
+                  <span className="w-8 h-px bg-white/10"></span> Decretos da Rotina
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {routineMissions.map((mission: any) => (
+                    <MissionDisplayCard 
+                      key={mission.id} 
+                      mission={mission} 
+                      isTracked={false} 
+                      onTogglePin={handleTogglePin} 
+                      onComplete={handleCompleteMission} 
+                      isProcessing={isProcessing}
+                      isAdmin={isAdmin}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
         </section>
       </main>
 
-      {/* Admin Modals */}
-      {isRewardModalOpen && (
-        <RewardModal 
-          valente={valente}
-          missions={availableMissions}
-          onClose={() => setIsRewardModalOpen(false)}
-          onConfirm={handleCompleteMission}
-          isProcessing={isProcessing}
-        />
-      )}
-
-      {isGrantRelicModalOpen && (
-        <GrantRelicModal 
-          valente={valente}
-          catalog={medalCatalog}
-          earnedMedals={valente.medals || []}
-          onClose={() => setIsGrantRelicModalOpen(false)}
-          onConfirm={handleGrantRelic}
-          isProcessing={isProcessing}
-        />
-      )}
-
-      <AddCompanionModal 
-        isOpen={isAddFriendOpen} 
-        onClose={() => setIsAddFriendOpen(false)} 
-        onAdd={handleAddFriend}
-        currentValenteId={valente.id}
-      />
-
-      {/* ⚔️ FIXED: Overlay Logic explicitly separated to prevent TS type interference */}
+      {/* 🛡️ HUD PIN LIMIT NOTIFICATION */}
       <AnimatePresence>
-        {/* Priority 1: Mission Completion Overlay */}
+        {pinLimitNotice && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0, x: '-50%' }}
+            animate={{ y: 0, opacity: 1, x: '-50%' }}
+            exit={{ y: 50, opacity: 0, x: '-50%' }}
+            className="fixed bottom-10 left-1/2 z-[300] bg-dark-bg/95 border border-amber-500/50 px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.2)] flex items-center gap-4 backdrop-blur-xl"
+          >
+            <div className="flex flex-col">
+              <span className="hud-label-tactical text-[10px] text-amber-500 uppercase tracking-[0.2em] font-black">Aviso do Sistema</span>
+              <p className="text-white text-sm font-barlow m-0 uppercase tracking-tighter">
+                {pinLimitNotice}
+              </p>
+            </div>
+            <button 
+              onClick={() => setPinLimitNotice(null)} 
+              className="text-gray-500 hover:text-white transition-colors ml-4"
+            >
+              ✕
+            </button>
+            <div className="absolute -top-1 -left-1 w-2 h-2 bg-amber-500 rounded-full animate-ping"></div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {missionQueue.length > 0 ? (
           <MissionCompletionOverlay 
             key={`mission-${missionQueue[0].id}`}
@@ -461,14 +597,12 @@ export default function ValenteProfileClient({
             onComplete={() => setMissionQueue(prev => prev.slice(1))} 
           />
         ) : medalQueue.length > 0 ? (
-          /* Priority 2: Relic Discovery Overlay */
           <RelicDiscoveryOverlay 
             key={`relic-${medalQueue[0].id}`}
             relic={medalQueue[0]} 
             onComplete={() => setMedalQueue(prev => prev.slice(1))} 
           />
         ) : showLevelUp ? (
-          /* Priority 3: Level Up Notification */
           <LevelUpNotification 
             key="levelup-notification"
             levelName={currentLevelInfo.name} 

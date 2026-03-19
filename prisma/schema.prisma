@@ -20,22 +20,22 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  password     String   // Stores the hashed password
-  role         Role     @default(DISCIPULADOR)
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password      String   // Stores the hashed password
+  role          Role     @default(DISCIPULADOR)
 
   // Stores the public name of the group managed by this user
-  guildaName   String?
+  guildaName    String?
   // Stores the selected faction symbol for the group
-  guildaIcon   String?  
+  guildaIcon    String?  
 
   // HIERARCHY: Self-referencing relationship
   // One-to-Many relationship. A Gerente manages multiple Discipuladores.
-  reportsToId  String?
-  reportsTo    User?    @relation("ManagementChain", fields: [reportsToId], references: [id])
-  subordinates User[]   @relation("ManagementChain")
+  reportsToId   String?
+  reportsTo     User?    @relation("ManagementChain", fields: [reportsToId], references: [id])
+  subordinates  User[]   @relation("ManagementChain")
 
   // OWNERSHIP: One-to-Many relationship. Heroes managed by a specific user.
   managedValentes Valente[]
@@ -73,6 +73,10 @@ model Valente {
   // --- COMPANHEIROS SYSTEM ---
   // Simple array of IDs to store friend connections efficiently
   friendIds   String[] @default([]) 
+
+  // ⏳ --- QUEST TRACKING --- ⏳
+  // Stores IDs of missions pinned by the player to the top of their board
+  trackedMissionIds String[] @default([])
 
   // Many-to-Many Relations
   reliquias   ValenteReliquia[] 
@@ -191,6 +195,12 @@ model Mission {
   rewardAttribute2 String?          // Second attribute (e.g., "carisma")
   rewardAttrValue  Int              @default(0)
   
+  // ⏳ --- TIME-GATING & CYCLES --- ⏳
+  // "NONE", "DAILY", "WEEKLY", "MONTHLY", "EVENT"
+  periodicity      String           @default("NONE") 
+  // Deadline for "EVENT" types or current cycle expiration
+  expiresAt        DateTime?
+
   createdAt        DateTime         @default(now())
   valentes         ValenteMission[]
 }

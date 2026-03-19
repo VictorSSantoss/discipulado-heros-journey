@@ -4,15 +4,16 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ICONS } from "@/constants/gameConfig";
+import { ICONS, ATTRIBUTE_MAP } from "@/constants/gameConfig"; // ⚔️ Imported ATTRIBUTE_MAP
 
-const GAME_ATTRIBUTES = [
-  { label: "FORÇA", value: "FOR" },
-  { label: "AGILIDADE", value: "AGI" },
-  { label: "VITALIDADE", value: "VIT" },
-  { label: "INTELIGÊNCIA", value: "INT" },
-  { label: "DESTREZA", value: "DES" }
-];
+// ⚔️ Automatically generate the options from your gameConfig
+const GAME_ATTRIBUTES = Object.entries(ATTRIBUTE_MAP).map(([key, label]) => ({
+  label: label, // e.g., "LIDERANÇA"
+  value: key,   // e.g., "forca"
+}));
+
+// Default attribute fallback to prevent errors when creating a new route
+const DEFAULT_ATTR = GAME_ATTRIBUTES.length > 0 ? GAME_ATTRIBUTES[0].value : "forca";
 
 const MISSION_CATEGORIES = [
   "TODAS", "Hábitos Espirituais", "Evangelismo e Liderança", 
@@ -22,6 +23,7 @@ const MISSION_CATEGORIES = [
 function HUDSelect({ label, options, value, onChange, className = "", textStyle = {} }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as any)) setIsOpen(false);
@@ -76,7 +78,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
   });
 
   const [alternatives, setAlternatives] = useState(
-    initialData?.alternatives || [{ id: Date.now(), type: "XP", value: "", attr: "FOR" }]
+    initialData?.alternatives || [{ id: Date.now(), type: "XP", value: "", attr: DEFAULT_ATTR }]
   );
 
   const handleFileChange = (e: any) => {
@@ -111,7 +113,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
   return (
     <main className="min-h-screen px-4 py-8 max-w-7xl mx-auto flex flex-col text-white pb-20 font-barlow relative">
       
-      {/* ⚔️ HEADER */}
+      {/* HEADER */}
       <header className="mb-14 flex flex-col md:flex-row justify-between items-center gap-8 border-b border-white/10 pb-10">
         <div className="text-center md:text-left">
           <h1 className="hud-title-lg text-5xl md:text-6xl uppercase tracking-tighter font-normal leading-none m-0">
@@ -169,7 +171,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
           <section className="bg-dark-surface border border-brand/20 rounded-2xl p-8 backdrop-blur-md relative">
             <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6 relative z-10">
               <h2 className="hud-title-md text-2xl text-white uppercase tracking-wider font-normal">ROTAS DE DESBLOQUEIO</h2>
-              <button onClick={() => setAlternatives([...alternatives, { id: Date.now(), type: "XP", value: "" }])} className="bg-brand/10 border border-brand/30 text-brand text-[9px] px-4 py-2 rounded hover:bg-brand hover:text-white transition-all">+ ADICIONAR ROTA</button>
+              <button onClick={() => setAlternatives([...alternatives, { id: Date.now(), type: "XP", value: "", attr: DEFAULT_ATTR }])} className="bg-brand/10 border border-brand/30 text-brand text-[9px] px-4 py-2 rounded hover:bg-brand hover:text-white transition-all">+ ADICIONAR ROTA</button>
             </div>
 
             <div className="space-y-4 relative z-10">
@@ -185,7 +187,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                   <div className="flex flex-col sm:flex-row gap-4 items-end">
                     <HUDSelect 
                       className="w-full sm:w-1/3" value={alt.type}
-                      onChange={(val: any) => updateAlt(alt.id, { type: val, value: "", attr: "FOR" })}
+                      onChange={(val: any) => updateAlt(alt.id, { type: val, value: "", attr: DEFAULT_ATTR })}
                       options={[{ label: "Total de XP", value: "XP" }, { label: "Missão", value: "MISSION" }, { label: "Atributo", value: "ATTRIBUTE" }, { label: "Manual", value: "MANUAL" }]}
                     />
 
@@ -197,7 +199,6 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                         </div>
                       )}
 
-                      {/* ⚔️ RESTORED PERFECT MISSION BUTTON */}
                       {alt.type === "MISSION" && (
                         <button 
                           type="button"
@@ -213,9 +214,15 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
                         </button>
                       )}
 
+                      {/* ⚔️ FIXED: HUDSelect now uses the mapped GAME_ATTRIBUTES */}
                       {alt.type === "ATTRIBUTE" && (
                         <div className="flex gap-2 w-full">
-                          <HUDSelect className="flex-[4]" value={alt.attr || "FOR"} onChange={(val: any) => updateAlt(alt.id, { attr: val })} options={GAME_ATTRIBUTES} />
+                          <HUDSelect 
+                            className="flex-[4]" 
+                            value={alt.attr || DEFAULT_ATTR} 
+                            onChange={(val: any) => updateAlt(alt.id, { attr: val })} 
+                            options={GAME_ATTRIBUTES} 
+                          />
                           <input type="number" value={alt.value} onChange={(e) => updateAlt(alt.id, { value: e.target.value })} className="w-[100px] bg-dark-bg border border-white/10 rounded-lg p-3 text-sm outline-none focus:border-brand h-[50px] text-center" placeholder="VALOR" />
                         </div>
                       )}
@@ -232,7 +239,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
             </div>
           </section>
 
-          {/* ⚔️ BOTTOM ACTIONS */}
+          {/* BOTTOM ACTIONS */}
           <div className="flex flex-col sm:flex-row justify-between items-center pt-20 border-t border-white/5 mt-20 gap-10">
             <div className="w-full sm:w-auto">
               {isEdit && onDelete && (
@@ -300,7 +307,7 @@ export default function RelicForm({ initialData, missions, onSave, onDelete, isE
         </div>
       </div>
 
-      {/* ⚔️ RESTORED PERFECT MISSIONS MODAL */}
+      {/* MISSIONS MODAL */}
       {isMissionModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4">
           <div className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] relative animate-in fade-in zoom-in duration-200 overflow-visible">
