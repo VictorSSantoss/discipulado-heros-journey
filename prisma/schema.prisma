@@ -74,7 +74,7 @@ model Valente {
   // Simple array of IDs to store friend connections efficiently
   friendIds   String[] @default([]) 
 
-  // ⏳ --- QUEST TRACKING --- ⏳
+  // --- QUEST TRACKING ---
   // Stores IDs of missions pinned by the player to the top of their board
   trackedMissionIds String[] @default([])
 
@@ -126,8 +126,10 @@ model HolyPower {
   current          Int       @default(0)
   goal             Int       @default(30)
   streak           Int       @default(0)
-  // ⏳ --- STREAK ENGINE DATA --- ⏳
+  
+  // --- STREAK ENGINE DATA ---
   lastStreakUpdate DateTime? // Crucial for daily lock and reset calculations
+  isResetDaily     Boolean   @default(true) // True = Resets at midnight (Streak). False = Cumulative (Goal).
 
   // One-to-Many relationship with Valente
   valenteId String

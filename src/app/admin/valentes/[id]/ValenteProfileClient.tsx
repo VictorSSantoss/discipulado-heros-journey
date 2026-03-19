@@ -9,10 +9,10 @@ import { addCompanheiro } from "@/app/actions/companheiroActions";
 import { 
   completeMission, 
   grantManualRelic, 
-  updateValenteProfile, 
+  updateValenteProfile,
   toggleTrackedMission,
   validateStreakContinuity,
-  logHolyPower // Added import for habit logging
+  logHolyPower
 } from "@/app/actions/valenteActions";
 
 import AttributesChart from "@/components/AttributesChart";
@@ -30,17 +30,15 @@ import AvatarUploader from "@/components/game/AvatarUploader";
 import RelicDiscoveryOverlay from "@/components/RelicDiscoveryOverlay";
 import MissionCompletionOverlay from "@/components/MissionCompletionOverlay";
 import MissionDisplayCard from "@/components/profile/MissionDisplayCard";
-import HolyCelebration from "@/components/effects/HolyCelebration"; // Added sacred effect
+import HolyCelebration from "@/components/effects/HolyCelebration";
 
-/**
- * Type definitions for medals and missions.
- */
 interface Medal {
   id: string;
   name: string;
   icon: string;
   rarity: string;
   description: string;
+  requirement?: number;
 }
 
 interface CompletedMission {
@@ -52,9 +50,6 @@ interface CompletedMission {
   rewardAttribute2?: string;
 }
 
-/**
- * Logical component for rendering and managing the Valente profile interface.
- */
 export default function ValenteProfileClient({ 
   initialValente, 
   initialCompanheiros,
@@ -77,32 +72,19 @@ export default function ValenteProfileClient({
   const [isGrantRelicModalOpen, setIsGrantRelicModalOpen] = useState(false); 
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
   
-  /**
-   * Flag for administrative privileges.
-   */
   const isAdmin = true;
-
-  /**
-   * State for managing system-level HUD notifications.
-   */
   const [pinLimitNotice, setPinLimitNotice] = useState<string | null>(null);
 
-  /**
-   * Function to extract and format medal data from multiple potential source formats.
-   */
-  const getNormalizedMedals = (source: any) => {
-    if (!source.reliquias) return source.medals || [];
-    return source.reliquias.map((r: any) => ({
-      medal: r.reliquia || r.medal || r, 
-      awardedAt: r.createdAt || r.awardedAt || new Date()
-    }));
-  };
-
-  const initialMedals = getNormalizedMedals(initialValente);
+  const normalizedInitialMedals = initialValente.reliquias 
+    ? initialValente.reliquias.map((r: any) => ({
+        medal: r.reliquia || r.medal, 
+        awardedAt: r.createdAt || r.awardedAt || new Date()
+      }))
+    : (initialValente.medals || []);
 
   const [valente, setValente] = useState({
     ...initialValente,
-    medals: initialMedals,
+    medals: normalizedInitialMedals,
     trackedMissionIds: initialValente.trackedMissionIds || []
   });
   
@@ -117,31 +99,29 @@ export default function ValenteProfileClient({
   const [loreText, setLoreText] = useState("");
   const [isSavingLore, setIsSavingLore] = useState(false);
 
-  const knownMedalIds = useRef(new Set(initialMedals.map((m: any) => m.medal?.id)));
-
   const currentLevelInfo = valente 
     ? [...LEVEL_SYSTEM].reverse().find(lvl => valente.totalXP >= lvl.minXP) || LEVEL_SYSTEM[0] 
     : LEVEL_SYSTEM[0];
 
+  const [prevLevel, setPrevLevel] = useState(currentLevelInfo.name);
   const currentLevelIndex = LEVEL_SYSTEM.findIndex(lvl => lvl.name === currentLevelInfo.name);
   const nextLevelInfo = LEVEL_SYSTEM[currentLevelIndex + 1];
 
-  /**
-   * Sets the mounted state and triggers the daily streak validation check.
-   */
+  const prevMedalsRef = useRef(normalizedInitialMedals);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Sync Daily Cycle
   useEffect(() => { 
-    setMounted(true); 
     const syncDailyCycle = async () => {
       if (valente?.id) {
         await validateStreakContinuity(valente.id);
       }
     };
-    syncDailyCycle();
-  }, [valente.id]);
+    if (mounted) syncDailyCycle();
+  }, [valente?.id, mounted]);
 
-  /**
-   * Automatically clears pinning limit notifications after a timeout.
-   */
+  // Clear Pin Notices
   useEffect(() => {
     if (pinLimitNotice) {
       const timer = setTimeout(() => setPinLimitNotice(null), 4000);
@@ -149,32 +129,34 @@ export default function ValenteProfileClient({
     }
   }, [pinLimitNotice]);
 
-  /**
-   * Syncs internal state with updated properties from the server.
-   */
   useEffect(() => {
-    const currentMedals = getNormalizedMedals(initialValente);
-    const newlyEarned: Medal[] = [];
+    const currentMedals = initialValente.reliquias 
+      ? initialValente.reliquias.map((r: any) => ({
+          medal: r.reliquia || r.medal,
+          awardedAt: r.createdAt || r.awardedAt || new Date()
+        }))
+      : (initialValente.medals || []);
 
-    currentMedals.forEach((m: any) => {
-      const id = m.medal?.id;
-      if (id && !knownMedalIds.current.has(id)) {
-        newlyEarned.push(m.medal);
-        knownMedalIds.current.add(id);
+    if (currentMedals.length > prevMedalsRef.current.length) {
+      const prevIds = new Set(prevMedalsRef.current.map((m: any) => m.medal?.id));
+      const newlyEarned = currentMedals
+        .filter((m: any) => !prevIds.has(m.medal?.id))
+        .map((m: any) => m.medal as Medal);
+
+      if (newlyEarned.length > 0) {
+        setMedalQueue((prev: Medal[]) => {
+          const currentQueueIds = new Set(prev.map((m: Medal) => m.id));
+          const uniqueNew = newlyEarned.filter((m: Medal) => !currentQueueIds.has(m.id));
+          return [...prev, ...uniqueNew];
+        });
       }
-    });
-
-    if (newlyEarned.length > 0) {
-      setMedalQueue(prev => [...prev, ...newlyEarned]);
     }
     
+    prevMedalsRef.current = currentMedals;
     setValente({ ...initialValente, medals: currentMedals, trackedMissionIds: initialValente.trackedMissionIds || [] });
     setCompanheiros(initialCompanheiros);
   }, [initialValente, initialCompanheiros]);
 
-  /**
-   * Calculates and animates the experience bar progress.
-   */
   useEffect(() => {
     if (mounted && valente) {
       const targetXP = nextLevelInfo ? nextLevelInfo.minXP : valente.totalXP;
@@ -184,27 +166,22 @@ export default function ValenteProfileClient({
     }
   }, [mounted, valente, nextLevelInfo]);
 
-  /**
-   * Updates state following successful server actions and handles level-up checks.
-   */
   const refreshValenteData = (result: any) => {
-    const unlockedRelics = result.newRelics || (result.relic ? [result.relic] : []);
-    if (unlockedRelics.length > 0) {
-      const uniqueNew = unlockedRelics.filter((r: any) => !knownMedalIds.current.has(r.id));
-      if (uniqueNew.length > 0) {
-        uniqueNew.forEach((r: any) => knownMedalIds.current.add(r.id));
-        setMedalQueue(prev => [...prev, ...uniqueNew]);
-      }
-    }
-
     if (result.newTotalXp !== undefined || result.newTotalXP !== undefined) {
       const newXp = result.newTotalXp ?? result.newTotalXP;
       const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
-      
-      if (newLevel.name !== currentLevelInfo.name) {
+      if (newLevel.name !== prevLevel) {
         setShowLevelUp(true);
+        setPrevLevel(newLevel.name);
       }
-      
+      const unlockedRelics = result.newRelics || [];
+      if (unlockedRelics.length > 0) {
+        setMedalQueue((prev: Medal[]) => {
+          const existingIds = new Set(prev.map((m: Medal) => m.id));
+          const uniqueNew = unlockedRelics.filter((m: any) => !existingIds.has(m.id));
+          return [...prev, ...uniqueNew];
+        });
+      }
       setValente((prev: any) => ({ 
         ...prev, 
         totalXP: newXp,
@@ -213,12 +190,19 @@ export default function ValenteProfileClient({
           ? [...prev.medals, ...unlockedRelics.map((r: any) => ({ medal: r, awardedAt: new Date() }))] 
           : prev.medals
       })); 
+    } else if (result.relic) {
+      setMedalQueue((prev: Medal[]) => {
+        const existingIds = new Set(prev.map((m: Medal) => m.id));
+        if (!existingIds.has(result.relic.id)) return [...prev, result.relic];
+        return prev;
+      });
+      setValente((prev: any) => ({
+        ...prev,
+        medals: [...prev.medals, { medal: result.relic, awardedAt: new Date() }]
+      }));
     }
   };
 
-  /**
-   * Communicates habit progress to the server and triggers a router refresh to sync streak data.
-   */
   const handleLogHolyPower = async (habitName: string, amount: number) => {
     const result = await logHolyPower(valente.id, habitName, amount);
     if (result.success) {
@@ -230,7 +214,6 @@ export default function ValenteProfileClient({
     setIsProcessing(true);
     const missionData = availableMissions.find(m => m.id === missionId);
     const result = await completeMission(valente.id, missionId);
-    
     if (result.success) {
       if (missionData) {
         setMissionQueue(prev => [...prev, missionData]);
@@ -301,9 +284,7 @@ export default function ValenteProfileClient({
     setIsSavingLore(false);
   };
 
-  /**
-   * Logic for filtering and prioritizing missions within the decree board.
-   */
+  // --- NEW MURAL ENGINE LOGIC ---
   const trackedMissions = availableMissions.filter(m => valente.trackedMissionIds?.includes(m.id));
   
   const epicMission = useMemo(() => {
@@ -312,9 +293,6 @@ export default function ValenteProfileClient({
       .sort((a, b) => b.xpReward - a.xpReward)[0];
   }, [availableMissions, valente.trackedMissionIds]);
 
-  /**
-   * Sorting logic to prioritize temporary missions over standard ones.
-   */
   const routineMissions = useMemo(() => {
     const pool = availableMissions.filter(
       m => !valente.trackedMissionIds?.includes(m.id) && m.id !== epicMission?.id
@@ -339,10 +317,14 @@ export default function ValenteProfileClient({
     </div>
   );
 
-  const theme = Object.values(ESTRUTURAS).find(
-    s => s.label.toLowerCase() === valente.structure.toLowerCase()
-  ) || ESTRUTURAS.GAD;
+  const getTheme = (valenteStructure: string) => {
+    const entry = Object.values(ESTRUTURAS).find(
+      s => s.label.toLowerCase() === valenteStructure.toLowerCase()
+    ) || ESTRUTURAS.GAD;
+    return { hex: entry.color, label: entry.label, fullName: entry.fullName };
+  };
 
+  const theme = getTheme(valente.structure);
   const arcLength = 251.2; 
   const dashOffset = arcLength * (1 - xpWidth / 100);
 
@@ -369,8 +351,12 @@ export default function ValenteProfileClient({
                       hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] 
                       duration-500 overflow-hidden"
           >
-            <img src={ICONS.voltar} alt="" className="w-10 h-10 object-contain relative z-10 opacity-80 group-hover:opacity-100" />
-            <span className="hud-label-tactical text-[11px] text-mission/80 group-hover:text-mission tracking-[0.15em] relative z-10 font-bold uppercase">
+            <img 
+              src={ICONS.voltar} 
+              alt="" 
+              className="w-10 h-10 object-contain relative z-10 opacity-80 group-hover:opacity-100" 
+            />
+            <span className="hud-label-tactical text-[11px] text-mission/80 group-hover:text-mission tracking-[0.15em] relative z-10 font-bold uppercase transition-colors">
               Voltar
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-mission/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
@@ -380,93 +366,166 @@ export default function ValenteProfileClient({
             <Link href={`/admin/valentes/${valente.id}/edit`} className="bg-white/5 border border-white/10 text-white hover:border-brand/50 hud-btn-text px-8 py-2 rounded-2xl transition-all">
               EDITAR FICHA
             </Link>
-            <button onClick={() => setIsGrantRelicModalOpen(true)} className="text-brand border border-brand/30 hud-btn-text px-8 py-2 rounded-2xl hover:bg-brand hover:text-white transition-all shadow-[0_0_15px_rgba(17,194,199,0.1)] bg-brand/10">
+            <button 
+              onClick={() => setIsGrantRelicModalOpen(true)} 
+              className="text-brand border border-brand/30 hud-btn-text px-8 py-2 rounded-2xl hover:bg-brand hover:text-white transition-all shadow-[0_0_15px_rgba(17,194,199,0.1)] bg-brand/10"
+            >
               + CONCEDER RELÍQUIA
             </button>
-            <button onClick={() => setIsRewardModalOpen(true)} className="text-white hud-btn-text px-8 py-2 rounded-2xl hover:brightness-110 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] bg-mission">
+            <button 
+              onClick={() => setIsRewardModalOpen(true)} 
+              className="text-white hud-btn-text px-8 py-2 rounded-2xl hover:brightness-110 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] bg-mission"
+            >
               + CONCEDER RECOMPENSA
             </button>
           </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
           <div className="flex flex-col gap-8">
             <div className="flex flex-col items-center bg-dark-bg/40 backdrop-blur-xl p-10 border border-white/5 rounded-2xl shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                <div className="relative flex flex-col items-center justify-center w-full mb-6 mt-2">
-                    <div className="flex items-center justify-center w-full">
-                        <div className="h-[1px] flex-1 max-w-[60px] opacity-60 mr-4" style={{ background: `linear-gradient(to left, ${theme.color}, transparent)` }} />
-                        <h1 className="hud-title-lg text-white text-center m-0 uppercase tracking-[0.15em] relative z-10" style={{ textShadow: `0 0 10px ${theme.color}FF, 0 0 20px ${theme.color}AA` }}>
-                            {valente.name}
-                        </h1>
-                        <div className="h-[1px] flex-1 max-w-[60px] opacity-60 ml-4" style={{ background: `linear-gradient(to right, ${theme.color}, transparent)` }} />
-                    </div>
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+              
+              <div className="relative flex flex-col items-center justify-center w-full mb-6 mt-2">
+                <div className="flex items-center justify-center w-full">
+                  <div className="h-[1px] flex-1 max-w-[60px] opacity-60 mr-4" style={{ background: `linear-gradient(to left, ${theme.hex}, transparent)` }} />
+                  <h1 className="hud-title-lg text-white text-center m-0 uppercase tracking-[0.15em] relative z-10" style={{ textShadow: `0 0 10px ${theme.hex}FF, 0 0 20px ${theme.hex}AA, 0 0 40px ${theme.hex}60, 0 0 70px ${theme.hex}30` }}>
+                    {valente.name}
+                  </h1>
+                  <div className="h-[1px] flex-1 max-w-[60px] opacity-60 ml-4" style={{ background: `linear-gradient(to right, ${theme.hex}, transparent)` }} />
                 </div>
+                
+                {valente.managedBy?.guildaName && (
+                  <div className="relative mt-4 flex items-center gap-2 px-5 py-2 rounded-2xl bg-gradient-to-r from-mission/20 to-mission/5 border border-mission/40 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.25)] w-fit mx-auto overflow-hidden">
+                    <div className="absolute top-0 bottom-0 left-0 w-[50%] bg-gradient-to-r from-transparent via-mission/40 to-transparent skew-x-12 animate-glow-sweep pointer-events-none z-0"></div>
+                    
+                    <span className="hud-label-tactical text-[11px] text-mission uppercase tracking-[0.2em] font-bold relative z-10">
+                      {valente.managedBy.guildaName}
+                    </span>
+                    {valente.managedBy.guildaIcon && (
+                      <img 
+                        src={valente.managedBy.guildaIcon} 
+                        alt="" 
+                        className="w-8 h-8 object-contain ml-1 relative z-10 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" 
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
 
-                <div className="relative w-full max-w-[220px] aspect-[3/4] flex items-center justify-center bg-dark-bg/60 border border-white/10 rounded-xl shadow-2xl overflow-hidden group">
-                    <div className="absolute inset-0 z-10">
-                        <AvatarUploader valenteId={valente.id} currentImage={valente.image} className="w-full h-full object-cover p-5 opacity-90 group-hover:opacity-100" />
-                    </div>
-                    <div className="absolute left-0 right-0 h-[1.5px] z-[15] pointer-events-none animate-scan-hologram mix-blend-screen" style={{ background: `linear-gradient(90deg, transparent, ${theme.color}, transparent)`, boxShadow: `0 0 20px ${theme.color}` }} />
-                    <div className="absolute inset-4 border border-solid z-20 pointer-events-none" style={{ borderColor: theme.color, boxShadow: `inset 0 0 15px ${theme.color}44` }} />
-                </div>
+              <div className="flex items-center gap-2 mb-8 bg-brand/5 border border-brand/20 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.05)]">
+                <span className="text-brand text-xs animate-pulse">●</span>
+                <span className="hud-label-tactical text-[10px] text-gray-400">POSIÇÃO NO REINO:</span>
+                <span className="hud-value text-sm text-brand">#{personalRank.rank}</span>
+                <span className="text-white/20 text-[10px] mx-1">/</span>
+                <span className="hud-label-tactical text-[10px] text-gray-500">{personalRank.total}</span>
+              </div>
 
-                <div className="relative w-full max-w-[260px] flex flex-col items-center justify-center mt-12 z-20">
-                    <svg viewBox="0 0 200 120" className="w-full">
-                        <defs>
-                            <linearGradient id="heroXpGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" /> 
-                                <stop offset="100%" stopColor={theme.color} stopOpacity="1" />
-                            </linearGradient>
-                        </defs>
-                        <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="12" strokeLinecap="round" />
-                        <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="url(#heroXpGradient)" strokeWidth="12" strokeLinecap="round" strokeDasharray={arcLength} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out"/>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-start">
-                        <img src={currentLevelInfo.icon} alt={currentLevelInfo.name} className="w-16 h-16 object-contain -mt-24 animate-bounce-slow" />
-                        <span className="hud-title-md text-white mt-1">{currentLevelInfo.name}</span>
-                        <div className="mt-4 flex flex-col items-center">
-                            <span className="hud-value text-white">{valente.totalXP}</span>
-                            <span className="hud-label-tactical mt-1 uppercase tracking-widest text-[9px] text-gray-500">
-                                META: {nextLevelInfo ? `${nextLevelInfo.minXP} XP` : 'ASCENSÃO MÁXIMA'}
-                            </span>
-                        </div>
-                    </div>
+              <div className="relative w-full max-w-[220px] aspect-[3/4] flex items-center justify-center bg-dark-bg/60 border border-white/10 rounded-xl shadow-2xl overflow-hidden group">
+                <div className="absolute inset-0 z-10">
+                  <AvatarUploader 
+                    valenteId={valente.id} 
+                    currentImage={valente.image} 
+                    className="w-full h-full object-cover p-5 opacity-90 transition-opacity group-hover:opacity-100"
+                    alt={`Foto de ${valente.name}`}
+                  />
                 </div>
+                <div className="absolute left-0 right-0 h-[1.5px] z-[15] pointer-events-none animate-scan-hologram mix-blend-screen" style={{ background: `linear-gradient(90deg, transparent, ${theme.hex}, transparent)`, boxShadow: `0 0 20px ${theme.hex}`, width: '100%' }} />
+                <div className="absolute inset-4 border border-solid z-20 pointer-events-none" style={{ borderColor: theme.hex }}>
+                  <div className="absolute inset-0" style={{ boxShadow: `inset 0 0 15px ${theme.hex}44` }} />
+                </div>
+                <div className="absolute top-4 left-4 w-3 h-3 border-t-4 border-l-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+                <div className="absolute top-4 right-4 w-3 h-3 border-t-4 border-r-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+                <div className="absolute bottom-4 left-4 w-3 h-3 border-b-4 border-l-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+                <div className="absolute bottom-4 right-4 w-3 h-3 border-b-4 border-r-4 border-solid z-30 pointer-events-none" style={{ borderColor: theme.hex }}></div>
+              </div>
+
+              <div className="relative w-full max-w-[260px] flex flex-col items-center justify-center mt-12 z-20">
+                <svg viewBox="0 0 200 120" className="w-full">
+                  <defs>
+                    <linearGradient id="heroXpGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" /> 
+                      <stop offset="60%" stopColor={theme.hex} stopOpacity="0.8" />
+                      <stop offset="100%" stopColor={theme.hex} stopOpacity="1" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="12" strokeLinecap="round" />
+                  <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="url(#heroXpGradient)" strokeWidth="12" strokeLinecap="round" strokeDasharray={arcLength} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out"/>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-start">
+                  <img src={currentLevelInfo.icon} alt={currentLevelInfo.name} className="w-16 h-16 object-contain -mt-24 animate-bounce-slow" />
+                  <span className="hud-title-md text-white mt-1">{currentLevelInfo.name}</span>
+                  <div className="mt-4 flex flex-col items-center">
+                    <span className="hud-value text-white">{valente.totalXP}</span>
+                    <span className="hud-label-tactical mt-1">META: {nextLevelInfo ? nextLevelInfo.minXP : 'MÁXIMO'} XP</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-8 relative group cursor-default">
+                <div className="absolute -inset-1.5 opacity-10 blur-xl group-hover:opacity-30 rounded-lg transition-opacity duration-300 mix-blend-screen" style={{ backgroundColor: theme.hex }}></div>
+                <div className="relative flex flex-col items-center">
+                  <div className="px-6 py-1 rounded-full mb-[-12px] z-10 shadow-xl border border-white/10 backdrop-blur-md" style={{ backgroundColor: theme.hex }}>
+                    <span className="hud-label-tactical text-white">ESTRUTURA</span>
+                  </div>
+                  <div className="bg-dark-bg border-2 px-10 py-3 shadow-2xl flex items-center justify-center min-w-[180px] relative rounded-lg" style={{ borderColor: theme.hex }}>
+                    <span className="hud-title-md text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+                      {theme.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <div className="bg-dark-bg/40 backdrop-blur-xl p-8 border border-white/5 rounded-2xl relative group">
+
+            <div className="bg-dark-bg/40 backdrop-blur-xl p-8 border border-white/5 rounded-2xl relative overflow-hidden group">
+              <div className="absolute -right-4 -bottom-4 text-white opacity-5 text-8xl hud-title-lg pointer-events-none italic">LORE</div>
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: theme.color }}></div>
-                  <h3 className="hud-label-tactical text-gray-400 text-[15px] uppercase tracking-widest">Crônicas do Valente</h3>
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: theme.hex }}></div>
+                  <h3 className="hud-label-tactical text-gray-400 text-[15px] italic-none uppercase tracking-widest">Crônicas do Valente</h3>
                 </div>
-                <button onClick={() => { setLoreText(valente.description || ""); setIsEditingLore(true); }} className="flex items-center gap-2 hud-label-tactical text-[10px] text-brand border border-brand/20 px-3 py-1.5 rounded-md hover:bg-brand/10 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 uppercase">
-                  <img src={ICONS.edit} alt="" className="w-3 h-3 object-contain brightness-110" /> Editar
+                
+                <button
+                  onClick={() => {
+                    setLoreText(valente.description || "");
+                    setIsEditingLore(true);
+                  }}
+                  className="flex items-center gap-2 hud-label-tactical text-[10px] text-brand border border-brand/20 px-3 py-1.5 rounded-md hover:bg-brand/10 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 uppercase"
+                >
+                  <img src={ICONS.edit || "/images/edit-icon.svg"} alt="" className="w-3 h-3 object-contain brightness-110" />
+                  Editar
                 </button>
               </div>
               <p className="font-barlow text-gray-300 text-sm leading-relaxed relative z-10 first-letter:text-3xl first-letter:mr-1">
-                <style dangerouslySetInnerHTML={{__html: `p::first-letter { color: ${theme.color}; font-family: var(--family-bebas); }`}} />
+                <style dangerouslySetInnerHTML={{__html: `p::first-letter { color: ${theme.hex}; font-family: var(--family-bebas); }`}} />
                 {valente.description || "Este herói ainda não registrou seus feitos nas crônicas do Reino."}
               </p>
             </div>
 
-            <MedalRack valenteId={valente.id} medals={valente.medals} catalog={medalCatalog} />
+            <MedalRack 
+              valenteId={valente.id}
+              medals={valente.medals} 
+              catalog={medalCatalog} 
+              currentXp={valente.totalXP} 
+            />
           </div>
 
           <div className="flex flex-col gap-8">
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
               <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Atributos</h2>
-              <AttributesChart skills={valente.attributes} theme={{ hex: theme.color }} />
+              <AttributesChart skills={valente.attributes} theme={theme} />
             </div>
             
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
               <h2 className="hud-title-md text-white text-center border-b border-white/5 pb-4 mb-6 uppercase">Linguagens</h2>
-              <LoveLanguagesChart data={valente.loveLanguages} color={theme.color} />
+              <LoveLanguagesChart data={valente.loveLanguages} color={theme.hex} />
             </div>
             
             <div className="bg-dark-bg/40 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden flex flex-col max-h-[380px]">
-              <TavernaPreview ranking={initialRanking} />
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <TavernaPreview ranking={initialRanking} />
+              </div>
             </div>
           </div>
 
@@ -479,7 +538,12 @@ export default function ValenteProfileClient({
             <div className="bg-dark-bg/40 backdrop-blur-xl p-6 border border-white/5 rounded-2xl">
               <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-6">
                 <h2 className="hud-title-md text-white uppercase m-0">Companheiros</h2>
-                <button onClick={() => setIsAddFriendOpen(true)} className="text-brand text-[10px] border border-brand/20 px-3 py-1 rounded-full hover:bg-brand/10 transition-all uppercase">+ ADICIONAR</button>
+                <button 
+                  onClick={() => setIsAddFriendOpen(true)}
+                  className="text-brand text-[10px] border border-brand/20 px-3 py-1 rounded-full hover:bg-brand/10 transition-all uppercase"
+                >
+                  + ADICIONAR
+                </button>
               </div>
               <BestFriendsList friends={companheiros} currentValenteId={valente.id} />
             </div>
@@ -488,11 +552,14 @@ export default function ValenteProfileClient({
               <h2 className="hud-title-md text-white border-b border-white/5 pb-4 mb-6 uppercase flex items-center justify-center gap-2 shrink-0">
                 <span className="text-emerald-500 animate-pulse">●</span> Crônicas de Batalha
               </h2>
-              <MissionLog logs={valente.xpLogs} />
+              <div className="flex-1 overflow-hidden">
+                <MissionLog logs={valente.xpLogs} />
+              </div>
             </div>
           </div>
         </div>
 
+        {/* MURAL DE DECRETOS ENGINE */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
             <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
                 <span className="text-gray-700 text-2xl">⚔️</span>
@@ -621,6 +688,7 @@ export default function ValenteProfileClient({
         </section>
       </main>
 
+      {/* --- NOTIFICATIONS & MODALS --- */}
       <AnimatePresence>
         {pinLimitNotice && (
           <motion.div 
@@ -646,6 +714,79 @@ export default function ValenteProfileClient({
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {isEditingLore && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-lg bg-dark-bg border border-white/10 p-6 rounded-2xl shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+              <h2 className="hud-title-md text-white mb-4 uppercase">Editar Crônicas</h2>
+              <textarea
+                value={loreText}
+                onChange={(e) => setLoreText(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-gray-300 outline-none focus:border-white/30 h-48 resize-none font-barlow text-sm mb-6"
+                placeholder="Escreva a história deste valente..."
+              />
+              <div className="flex gap-4 justify-end">
+                <button
+                  onClick={() => setIsEditingLore(false)}
+                  disabled={isSavingLore}
+                  className="hud-label-tactical px-6 py-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 uppercase"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveLore}
+                  disabled={isSavingLore}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white hud-label-tactical px-6 py-2 rounded-xl transition-all disabled:opacity-50 uppercase"
+                >
+                  {isSavingLore ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* RESTORED: Modals */}
+      {isRewardModalOpen && (
+        <RewardModal 
+          valente={valente}
+          missions={availableMissions}
+          onClose={() => setIsRewardModalOpen(false)}
+          onConfirm={handleCompleteMission}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {isGrantRelicModalOpen && (
+        <GrantRelicModal 
+          valente={valente}
+          catalog={medalCatalog}
+          earnedMedals={valente.medals || []}
+          onClose={() => setIsGrantRelicModalOpen(false)}
+          onConfirm={handleGrantRelic}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      <AddCompanionModal 
+        isOpen={isAddFriendOpen} 
+        onClose={() => setIsAddFriendOpen(false)} 
+        onAdd={handleAddFriend}
+        currentValenteId={valente.id}
+      />
+
+      {/* --- OVERLAYS (Ordered Priority) --- */}
       <AnimatePresence mode="wait">
         {missionQueue.length > 0 ? (
           <>
@@ -667,7 +808,7 @@ export default function ValenteProfileClient({
             key="levelup-notification"
             levelName={currentLevelInfo.name} 
             levelIcon={currentLevelInfo.icon}
-            themeColor={theme.color}
+            themeColor={theme.hex}
             onComplete={() => setShowLevelUp(false)}
           />
         ) : null}

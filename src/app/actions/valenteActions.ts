@@ -13,13 +13,17 @@ const PLACEHOLDERS = [
 // STREAK ENGINE & HOLY POWER LOGIC
 // -----------------------------------------------------------------------------
 
-// Handles the increment of habit progress and manages the daily streak lock
+/**
+ * Handles the increment of habit progress.
+ * Manages daily streak locks and checks for the "Spiritual Trifecta" bonus.
+ */
 export async function logHolyPower(valenteId: string, habitName: string, amount: number) {
   try {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    const updatedValente = await prisma.$transaction(async (tx) => {
+    const updatedData = await prisma.$transaction(async (tx) => {
+      // 1. Fetch the specific habit
       const habit = await tx.holyPower.findFirst({
         where: { valenteId, name: habitName }
       });
@@ -34,12 +38,13 @@ export async function logHolyPower(valenteId: string, habitName: string, amount:
       let newStreak = habit.streak;
       let newLastStreakUpdate = habit.lastStreakUpdate;
 
-      // Increments streak only if goal is reached and no update happened today
+      // 2. Increment streak only if goal is reached and no update happened today
       if (newCurrent >= habit.goal && lastUpdateStr !== todayStr) {
         newStreak += 1;
         newLastStreakUpdate = now;
       }
 
+      // 3. Update the specific habit
       const updatedHabit = await tx.holyPower.update({
         where: { id: habit.id },
         data: { 
@@ -49,23 +54,54 @@ export async function logHolyPower(valenteId: string, habitName: string, amount:
         }
       });
 
-      // If a streak was achieved, check for related missions
+      // 4. Check for automated Streak Missions
       if (newStreak > habit.streak) {
         await checkStreakMissions(valenteId, habitName, newStreak, tx);
       }
 
-      return updatedHabit;
+      // 5. Check for "Spiritual Trifecta" (All active habits completed)
+      let trifectaTriggered = false;
+      
+      // Only check if we just hit the goal (prevent spamming the bonus on overcharges)
+      if (newCurrent >= habit.goal && habit.current < habit.goal) {
+        const allHabits = await tx.holyPower.findMany({ where: { valenteId } });
+        const allCompleted = allHabits.every(h => 
+          (h.id === updatedHabit.id ? updatedHabit.current : h.current) >= h.goal
+        );
+
+        if (allHabits.length > 0 && allCompleted) {
+          trifectaTriggered = true;
+          const trifectaBonus = 100; // Flat XP bonus for completing the daily trifecta
+          
+          await tx.valente.update({
+            where: { id: valenteId },
+            data: {
+              totalXP: { increment: trifectaBonus },
+              xpLogs: { create: { amount: trifectaBonus, reason: "Sinergia Divina: Disciplina Completa" } }
+            }
+          });
+        }
+      }
+
+      return { updatedHabit, trifectaTriggered };
     });
 
     revalidatePath(`/admin/valentes/${valenteId}`);
-    return { success: true, current: updatedValente.current, streak: updatedValente.streak };
+    return { 
+      success: true, 
+      current: updatedData.updatedHabit.current, 
+      streak: updatedData.updatedHabit.streak,
+      trifectaTriggered: updatedData.trifectaTriggered 
+    };
   } catch (error) {
     console.error("Holy Power Log Error:", error);
     return { success: false };
   }
 }
 
-// Internal logic to evaluate missions triggered by specific habit streaks
+/**
+ * Internal logic to evaluate missions triggered by specific habit streaks.
+ */
 async function checkStreakMissions(valenteId: string, habitName: string, currentStreak: number, tx: any) {
   const missions = await tx.mission.findMany({
     where: { 
@@ -81,7 +117,6 @@ async function checkStreakMissions(valenteId: string, habitName: string, current
     });
 
     if (!completion || completion.status !== "COMPLETED") {
-      // Reusing the completion logic for streaks
       const multiplier = GET_XP_MULTIPLIER();
       const finalXp = Math.floor(mission.xpReward * multiplier.factor);
       
@@ -102,7 +137,10 @@ async function checkStreakMissions(valenteId: string, habitName: string, current
   }
 }
 
-// Resets daily progress and evaluates streak breaks or protection usage
+/**
+ * Resets daily progress based on the `isResetDaily` flag.
+ * Evaluates streak breaks and applies the Guardian Angel relic if needed.
+ */
 export async function validateStreakContinuity(valenteId: string) {
   try {
     const now = new Date();
@@ -123,13 +161,15 @@ export async function validateStreakContinuity(valenteId: string) {
           ? new Date(habit.lastStreakUpdate).toISOString().split('T')[0] 
           : null;
 
-        // Reset current progress regardless of streak
-        await tx.holyPower.update({
-          where: { id: habit.id },
-          data: { current: 0 }
-        });
+        // Reset logic now respects the isResetDaily flag
+        if (habit.isResetDaily) {
+          await tx.holyPower.update({
+            where: { id: habit.id },
+            data: { current: 0 }
+          });
+        }
 
-        // Check if the streak was maintained yesterday
+        // Streak evaluation remains the same: if you didn't check in yesterday, you lose the streak.
         if (lastUpdateStr !== yesterdayStr && habit.streak > 0) {
           const protectionRelic = valente.reliquias.find(r => r.reliquiaId === "reliquia-anjo-guarda");
 
@@ -409,11 +449,24 @@ export async function updateValenteProfile(valenteId: string, data: any) {
           if (existingPower) {
             await tx.holyPower.update({
               where: { id: existingPower.id },
-              data: { current: power.current, goal: power.goal, streak: power.streak }
+              // Uses ?? to prevent overwriting existing properties with undefined if not passed
+              data: { 
+                current: power.current ?? existingPower.current, 
+                goal: power.goal ?? existingPower.goal, 
+                streak: power.streak ?? existingPower.streak,
+                isResetDaily: power.isResetDaily ?? existingPower.isResetDaily
+              }
             });
           } else {
             await tx.holyPower.create({
-              data: { valenteId, name: power.name, current: power.current, goal: power.goal, streak: power.streak }
+              data: { 
+                valenteId, 
+                name: power.name, 
+                current: power.current || 0, 
+                goal: power.goal || 30, 
+                streak: power.streak || 0,
+                isResetDaily: power.isResetDaily ?? true
+              }
             });
           }
         }
@@ -472,9 +525,11 @@ export async function createValente(data: any) {
           holyPower: {
             create: data.holyPower.map((power: any) => ({
               name: power.name,
-              current: power.current,
-              goal: power.goal,
-              streak: power.streak
+              current: power.current || 0,
+              goal: power.goal || 30,
+              streak: power.streak || 0,
+              isResetDaily: power.isResetDaily ?? true,
+              lastStreakUpdate: null // Ensure fresh start for new valentes
             }))
           }
         }
