@@ -144,6 +144,8 @@ async function checkStreakMissions(valenteId: string, habitName: string, current
 export async function validateStreakContinuity(valenteId: string) {
   try {
     const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    
     const yesterday = new Date();
     yesterday.setDate(now.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
@@ -157,34 +159,38 @@ export async function validateStreakContinuity(valenteId: string) {
       if (!valente) return;
 
       for (const habit of valente.holyPower) {
-        const lastUpdateStr = habit.lastStreakUpdate 
+        // We look at the 'updatedAt' (from Prisma) or 'lastStreakUpdate'
+        // to see when the last interaction happened.
+        const lastInteractionStr = habit.lastStreakUpdate 
           ? new Date(habit.lastStreakUpdate).toISOString().split('T')[0] 
-          : null;
+          : habit.updatedAt.toISOString().split('T')[0];
 
-        // Reset logic now respects the isResetDaily flag
-        if (habit.isResetDaily) {
+        // Only reset current progress if the last interaction was NOT today
+        if (habit.isResetDaily && lastInteractionStr !== todayStr) {
           await tx.holyPower.update({
             where: { id: habit.id },
             data: { current: 0 }
           });
         }
 
-        // Streak evaluation remains the same: if you didn't check in yesterday, you lose the streak.
-        if (lastUpdateStr !== yesterdayStr && habit.streak > 0) {
+        // STREAK LOSS LOGIC:
+        // If the last update wasn't today AND wasn't yesterday, the streak is broken.
+        if (lastInteractionStr !== todayStr && lastInteractionStr !== yesterdayStr && habit.streak > 0) {
           const protectionRelic = valente.reliquias.find(r => r.reliquiaId === "reliquia-anjo-guarda");
 
           if (protectionRelic) {
-            // Preservation via Guardian Angel
+            // Guardian Angel Sacrifice
             await tx.valenteReliquia.delete({ 
-              where: { 
-                valenteId_reliquiaId: { 
-                  valenteId: valente.id, 
-                  reliquiaId: "reliquia-anjo-guarda" 
-                } 
-              } 
+              where: { valenteId_reliquiaId: { valenteId: valente.id, reliquiaId: "reliquia-anjo-guarda" } } 
             });
             await tx.xpLog.create({
               data: { valenteId, amount: 0, reason: `Anjo da Guarda protegeu a sequência de ${habit.name}` }
+            });
+            
+            // We update the timestamp so it doesn't try to consume another angel tomorrow
+            await tx.holyPower.update({
+              where: { id: habit.id },
+              data: { lastStreakUpdate: yesterday } 
             });
           } else {
             // Streak reset

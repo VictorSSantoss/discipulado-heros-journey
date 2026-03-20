@@ -130,6 +130,7 @@ model HolyPower {
   // --- STREAK ENGINE DATA ---
   lastStreakUpdate DateTime? // Crucial for daily lock and reset calculations
   isResetDaily     Boolean   @default(true) // True = Resets at midnight (Streak). False = Cumulative (Goal).
+  updatedAt        DateTime  @default(now()) @updatedAt
 
   // One-to-Many relationship with Valente
   valenteId String

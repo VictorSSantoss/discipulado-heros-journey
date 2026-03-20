@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 /* CONFIGURATION IMPORTS */
-// ⚔️ Synced: BASE_ATTRIBUTES removed to favor the automated Class System
 import { ESTRUTURAS, LOVE_LANGUAGES, ICONS } from "@/constants/gameConfig";
 import { updateValenteProfile, createValente, deleteValente } from "@/app/actions/valenteActions";
 import AvatarUploader from "@/components/game/AvatarUploader";
@@ -35,14 +34,16 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   }, {} as Record<string, number>);
   const [loveLanguages, setLoveLanguages] = useState(defaultLoveLanguages);
 
-  // --- HOLY POWER LOGIC ---
+  // --- HOLY POWER LOGIC (Synced with Engine v3) ---
   const formatInitialHolyPower = () => {
     const defaultHp = { 
-      Oração: { current: 0, goal: 7, streak: 0, unit: 'dias' },
-      Leitura: { current: 0, goal: 5, streak: 0, unit: 'capítulos' },
-      Jejum: { current: 0, goal: 1, streak: 0, unit: 'dia' }
+      Oração: { current: 0, goal: 30, streak: 0, unit: 'min', isResetDaily: true },
+      Leitura: { current: 0, goal: 1, streak: 0, unit: 'cap', isResetDaily: true },
+      Jejum: { current: 0, goal: 12, streak: 0, unit: 'hrs', isResetDaily: false }
     };
+
     if (!initialData?.holyPower || !Array.isArray(initialData.holyPower)) return defaultHp;
+
     const formatted: any = { ...defaultHp };
     initialData.holyPower.forEach((hp: any) => {
       if (formatted[hp.name]) {
@@ -50,12 +51,14 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
           current: hp.current,
           goal: hp.goal,
           streak: hp.streak,
-          unit: hp.name === 'Oração' ? 'dias' : hp.name === 'Leitura' ? 'capítulos' : 'dia'
+          isResetDaily: hp.isResetDaily ?? formatted[hp.name].isResetDaily,
+          unit: formatted[hp.name].unit
         };
       }
     });
     return formatted;
   };
+  
   const [holyPower, setHolyPower] = useState(formatInitialHolyPower());
 
   useEffect(() => {
@@ -69,10 +72,13 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     if (file) setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleHolyPowerChange = (powerKey: string, field: string, value: string | number) => {
+  const handleHolyPowerChange = (powerKey: string, field: string, value: string | number | boolean) => {
     setHolyPower((prev: any) => ({
       ...prev,
-      [powerKey]: { ...prev[powerKey], [field]: field === 'unit' ? value : Number(value) }
+      [powerKey]: { 
+        ...prev[powerKey], 
+        [field]: typeof value === 'boolean' ? value : Number(value) 
+      }
     }));
   };
 
@@ -82,8 +88,6 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     
     setIsSubmitting(true);
 
-    // ⚔️ PAYLOAD: Attributes are intentionally omitted. 
-    // They are handled by createValente (baseline) and Mission completions.
     const payload = {
       name,
       structure,
@@ -93,7 +97,8 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         name,
         current: data.current,
         goal: data.goal,
-        streak: data.streak
+        streak: data.streak,
+        isResetDaily: data.isResetDaily
       }))
     };
 
@@ -229,7 +234,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
             
             {mode === "edit" ? (
               <div className="w-full aspect-[3/4] bg-black/60 border border-white/10 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden group shadow-2xl">
-                 <AvatarUploader 
+                <AvatarUploader 
                     valenteId={initialData.id} 
                     currentImage={imagePreview}
                     onImageUpdated={(newUrl) => setImagePreview(newUrl)} 
@@ -242,18 +247,23 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
             ) : (
               <div 
                 onClick={() => fileInputRef.current?.click()} 
-                className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/10 hover:border-brand/40 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
+                className="w-full aspect-[3/4] bg-black/60 border-2 border-dashed border-white/10 hover:border-brand/40 hover:bg-brand/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group shadow-2xl"
               >
                 {imagePreview ? (
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 ) : (
-                  <div className="text-center opacity-30 group-hover:opacity-60 transition-all">
-                    <span className="text-5xl block mb-2">📸</span>
-                    <span className="hud-label-tactical text-[10px] italic-none uppercase tracking-widest">Upload Inicial</span>
+                  <div className="text-center opacity-40 group-hover:opacity-100 text-brand flex flex-col items-center">
+                    {/* ⚔️ UPDATED TO CAMERA-ICON */}
+                    <img 
+                      src="/images/camera-icon.svg" 
+                      alt="Upload Icon" 
+                      className="w-14 h-14 mb-4 drop-shadow-[0_0_15px_rgba(6,182,212,0.8)]"
+                    />
+                    <span className="hud-label-tactical text-[10px] italic-none uppercase tracking-widest text-white">Upload Bio-Scan</span>
                   </div>
                 )}
-                <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-brand/40"></div>
-                <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-brand/40"></div>
+                <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-brand/40 pointer-events-none"></div>
+                <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-brand/40 pointer-events-none"></div>
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
               </div>
             )}
@@ -261,7 +271,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         </div>
       </section>
 
-      {/* 3. SPIRITUAL_PROGRESS (#02) */}
+      {/* 3. SPIRITUAL_PROGRESS (#02) - THE REWORKED ENGINE */}
       <section className="bg-dark-bg/40 border border-white/10 rounded-2xl p-8 relative shadow-2xl">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission to-transparent opacity-50"></div>
         <h2 className="hud-title-md text-4xl text-white mb-10 flex items-center gap-4">
@@ -272,58 +282,89 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         <div className="space-y-6">
           {Object.entries(holyPower).map(([key, data]: [string, any]) => (
             <div key={key} className="bg-black/20 p-8 border border-white/5 rounded-2xl group hover:border-mission/30 transition-all">
-              <div className="flex items-center gap-4 mb-8">
-                <img 
-                  src={key === 'Oração' ? ICONS.oracao : key === 'Leitura' ? ICONS.leitura : ICONS.jejum}
-                  alt={key}
-                  className="w-8 h-8 object-contain brightness-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-                />
-                <h3 className="hud-title-md text-2xl text-white uppercase tracking-tight">{key}</h3>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <img 
+                    src={key === 'Oração' ? ICONS.oracao : key === 'Leitura' ? ICONS.leitura : ICONS.jejum}
+                    alt={key}
+                    className="w-8 h-8 object-contain brightness-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                  />
+                  <h3 className="hud-title-md text-2xl text-white uppercase tracking-tight">{key}</h3>
+                </div>
+
+                {/* ENGINE BEHAVIOR TOGGLE */}
+                <div className="flex items-center gap-3 bg-black/40 p-2 rounded-xl border border-white/5">
+                  <span className={`hud-label-tactical text-[9px] uppercase tracking-widest ${data.isResetDaily ? 'text-mission' : 'text-gray-500'}`}>Streak</span>
+                  <button
+                    type="button"
+                    onClick={() => handleHolyPowerChange(key, 'isResetDaily', !data.isResetDaily)}
+                    className={`w-12 h-6 rounded-full relative transition-all ${data.isResetDaily ? 'bg-mission/40' : 'bg-amber-500/40'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${data.isResetDaily ? 'left-7 bg-mission' : 'left-1 bg-amber-500'}`} />
+                  </button>
+                  <span className={`hud-label-tactical text-[9px] uppercase tracking-widest ${!data.isResetDaily ? 'text-amber-500' : 'text-gray-500'}`}>Acumulativo</span>
+                </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* CURRENT PROGRESS */}
                 <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-widest">Prog. Atual</label>
+                  <label className="hud-label-tactical text-gray-500 text-[10px] uppercase tracking-widest">Progresso Atual</label>
                   <div className="relative flex items-center">
                     <input 
                       type="number" value={data.current} 
                       onChange={(e) => handleHolyPowerChange(key, 'current', e.target.value)} 
-                      className="w-full bg-black/40 border border-white/10 p-4 pr-12 text-white hud-value text-3xl rounded-xl focus:border-mission outline-none shadow-inner [&::-webkit-inner-spin-button]:appearance-none" 
+                      className={`w-full bg-black/40 border border-white/10 p-4 pr-16 text-white hud-value text-3xl rounded-xl outline-none shadow-inner transition-colors ${data.isResetDaily ? 'focus:border-mission' : 'focus:border-amber-500'}`} 
                     />
-                    <div className="absolute right-2 flex flex-col gap-1">
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Number(data.current) + 1)} className="text-mission text-xs hover:brightness-150 transition-all px-1">▲</button>
-                      <button type="button" onClick={() => handleHolyPowerChange(key, 'current', Math.max(0, Number(data.current) - 1))} className="text-mission text-xs hover:brightness-150 transition-all px-1">▼</button>
-                    </div>
+                    <span className="absolute right-4 text-gray-600 hud-label-tactical text-[10px] font-bold uppercase pointer-events-none">
+                      {data.unit}
+                    </span>
                   </div>
                 </div>
 
+                {/* MAIN GOAL - DYNAMIC LABEL */}
                 <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-widest">Meta Semanal</label>
-                  <input 
-                    type="number" value={data.goal} 
-                    onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
-                    className="w-full bg-black/40 border border-white/10 p-4 text-gray-400 hud-value text-3xl rounded-xl focus:border-mission outline-none [&::-webkit-inner-spin-button]:appearance-none" 
-                  />
+                  <label className="hud-label-tactical text-[10px] uppercase tracking-widest flex items-center gap-2 text-gray-400">
+                    {data.isResetDaily ? (
+                      <><span className="text-mission">⚡</span> Objetivo Diário</>
+                    ) : (
+                      <><span className="text-amber-500">📜</span> Objetivo Total (Acumulativo)</>
+                    )}
+                  </label>
+                  <div className="relative flex items-center">
+                    <input 
+                      type="number" value={data.goal} 
+                      onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
+                      className={`w-full bg-black/40 border border-white/10 p-4 pr-16 text-gray-400 hud-value text-3xl rounded-xl outline-none transition-colors ${data.isResetDaily ? 'focus:border-mission' : 'focus:border-amber-500'}`} 
+                    />
+                    <span className="absolute right-4 text-gray-600 hud-label-tactical text-[10px] font-bold uppercase pointer-events-none">
+                      {data.unit}
+                    </span>
+                  </div>
                 </div>
 
+                {/* STREAK RECORD */}
                 <div className="space-y-3">
-                  <label className="hud-label-tactical text-xp text-[10px] italic-none flex items-center gap-2 uppercase tracking-widest">Streak Atual</label>
-                  <input 
-                    type="number" value={data.streak} 
-                    onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
-                    className="w-full bg-black/40 border border-xp/20 p-4 text-xp hud-value text-3xl rounded-xl focus:border-xp outline-none [&::-webkit-inner-spin-button]:appearance-none" 
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-500 text-[10px] italic-none uppercase tracking-widest">Unidade</label>
-                  <input 
-                    type="text" value={data.unit} 
-                    onChange={(e) => handleHolyPowerChange(key, 'unit', e.target.value)} 
-                    className="w-full bg-black/40 border border-white/10 p-4 text-gray-400 hud-label-tactical text-xs rounded-xl focus:border-mission outline-none" 
-                  />
+                  <label className="hud-label-tactical text-xp text-[10px] flex items-center gap-2 uppercase tracking-widest">Sequência (Streak)</label>
+                  <div className="relative flex items-center">
+                    <input 
+                      type="number" value={data.streak} 
+                      onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
+                      className="w-full bg-black/40 border border-xp/20 p-4 pr-16 text-xp hud-value text-3xl rounded-xl focus:border-xp outline-none" 
+                    />
+                    <span className="absolute right-4 text-xp/40 hud-label-tactical text-[10px] font-bold uppercase pointer-events-none">
+                      Dias
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* HELPER TEXT FOR ADMIN */}
+              <p className="mt-4 text-[9px] hud-label-tactical text-gray-600 italic uppercase">
+                {data.isResetDaily 
+                  ? "⚡ MODO STREAK: O objetivo diário deve ser atingido para manter a sequência. Reseta à meia-noite." 
+                  : "📜 MODO ACUMULATIVO: O progresso é somado até atingir o objetivo total. Não reseta."}
+              </p>
             </div>
           ))}
         </div>

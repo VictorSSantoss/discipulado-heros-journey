@@ -71,6 +71,7 @@ export default function ValenteProfileClient({
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
   const [isGrantRelicModalOpen, setIsGrantRelicModalOpen] = useState(false); 
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
+  const [showTrifectaFx, setShowTrifectaFx] = useState(false);
   
   const isAdmin = true;
   const [pinLimitNotice, setPinLimitNotice] = useState<string | null>(null);
@@ -206,7 +207,12 @@ export default function ValenteProfileClient({
   const handleLogHolyPower = async (habitName: string, amount: number) => {
     const result = await logHolyPower(valente.id, habitName, amount);
     if (result.success) {
-      router.refresh();
+      if (result.trifectaTriggered) {
+        console.log("Trifecta detected! Igniting embers..."); // Added to debug in console
+        setShowTrifectaFx(true);
+      }
+      // router.refresh() updates the server data but keeps our local state
+      router.refresh(); 
     }
   };
 
@@ -343,6 +349,12 @@ export default function ValenteProfileClient({
         `}} />
 
         <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <button 
+            onClick={() => setShowTrifectaFx(true)}
+            className="opacity-20 hover:opacity-100 text-[10px] text-white"
+          >
+            [DEBUG FX]
+          </button>
           <Link 
             href="/admin/valentes" 
             className="group relative flex items-center gap-3 px-5 h-10 transition-all rounded-full 
@@ -788,6 +800,14 @@ export default function ValenteProfileClient({
 
       {/* --- OVERLAYS (Ordered Priority) --- */}
       <AnimatePresence mode="wait">
+        {/* Priority 1: Spiritual Trifecta (The Embers) */}
+        {showTrifectaFx && (
+          <HolyCelebration 
+            key="trifecta-celebration" 
+            onComplete={() => setShowTrifectaFx(false)} 
+          />
+        )}
+
         {missionQueue.length > 0 ? (
           <>
             <HolyCelebration key="celebration-fx" onComplete={() => {}} />
