@@ -123,10 +123,10 @@ export default function Sidebar() {
             className="relative flex items-center justify-center gap-3 px-4 py-5 rounded-full border border-yellow-500/20 border-t-yellow-500/50 bg-yellow-500/10 backdrop-blur-md text-yellow-500 hover:bg-yellow-500/20 transition-all group overflow-hidden shadow-lg"
           >
             <img src={ICONS.taverna} alt="" className="w-8 h-8 object-contain transition-transform group-hover:scale-110" />
-            <span className="hud-title-md text-xl italic-none tracking-widest">A TAVERNA</span>
+            <span className="hud-title-md text-xl italic-none tracking-widest">QUARTEL DOS HÉROIS</span>
           </Link>
         </div>
-        
+          
         {/* USER_IDENT_DOSSIER - Integrated with Profile Logic */}
         <div className="p-6 border-t border-white/5 bg-white/[0.03] flex items-center gap-4">
           <div className="w-10 h-10 bg-black/20 backdrop-blur-sm border border-brand/20 rounded-xl flex items-center justify-center shrink-0 relative overflow-hidden shadow-inner">

@@ -3,7 +3,6 @@
 import { motion, useScroll, useTransform, useMotionValueEvent, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import Link from "next/link";
 import { useState, useMemo } from "react";
-import { LEVEL_SYSTEM } from "@/constants/gameConfig";
 
 /**
  * Defining variants for staggered entrance of the list items.
@@ -46,7 +45,12 @@ function MonolithCard({ valente, rank, isFirst = false }: { valente: any; rank: 
   const heightClass = isFirst ? "h-[580px]" : "h-[540px]";
   const rayImageSrc = rarityRayMap[rank as keyof typeof rarityRayMap];
   const rgbColor = rarityColorMap[rank as keyof typeof rarityColorMap];
-  const lvlInfo = [...LEVEL_SYSTEM].reverse().find(l => valente.totalXP >= l.minXP) || LEVEL_SYSTEM[0];
+  
+  // DYNAMIC RANK ASSIGNMENT
+  const lvlInfo = {
+    name: valente.patente?.title || "RECRUTA",
+    icon: valente.patente?.iconUrl || "/images/ranks/default-rank.svg"
+  };
   
   return (
     <div className={`relative flex flex-col w-full ${heightClass} rounded-xl overflow-hidden group transition-all duration-500 hover:-translate-y-2 cursor-default bg-[#0c0d0e] border border-white/5 shadow-2xl flex-shrink-0`}>
@@ -112,7 +116,12 @@ function MonolithCard({ valente, rank, isFirst = false }: { valente: any; rank: 
  * Standard list card for elite ranking display.
  */
 function TavernaHeroCard({ valente, rank }: { valente: any; rank: number }) {
-  const lvlInfo = [...LEVEL_SYSTEM].reverse().find(l => valente.totalXP >= l.minXP) || LEVEL_SYSTEM[0];
+  // DYNAMIC RANK ASSIGNMENT
+  const lvlInfo = {
+    name: valente.patente?.title || "RECRUTA",
+    icon: valente.patente?.iconUrl || "/images/ranks/default-rank.svg"
+  };
+
   return (
     <Link href={`/admin/valentes/${valente.id}`}>
       <div className="relative bg-white/[0.02] border border-white/5 hover:border-mission/40 rounded-xl p-5 flex items-center gap-5 transition-all group overflow-hidden">
