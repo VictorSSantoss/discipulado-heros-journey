@@ -123,7 +123,7 @@ export default function Sidebar() {
             className="relative flex items-center justify-center gap-3 px-4 py-5 rounded-full border border-yellow-500/20 border-t-yellow-500/50 bg-yellow-500/10 backdrop-blur-md text-yellow-500 hover:bg-yellow-500/20 transition-all group overflow-hidden shadow-lg"
           >
             <img src={ICONS.taverna} alt="" className="w-8 h-8 object-contain transition-transform group-hover:scale-110" />
-            <span className="hud-title-md text-xl italic-none tracking-widest">QUARTEL DOS HÉROIS</span>
+            <span className="hud-title-md text-base italic-none tracking-widest">QUARTEL DOS HÉROIS</span>
           </Link>
         </div>
           
