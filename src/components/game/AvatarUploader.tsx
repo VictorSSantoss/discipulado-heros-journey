@@ -2,7 +2,8 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { uploadValenteImage } from "@/app/actions/uploadActions";
+// Renamed the import to match the exported function in uploadActions.ts
+import { uploadValenteAvatar } from "@/app/actions/uploadActions";
 
 interface Props {
   valenteId: string;
@@ -25,10 +26,13 @@ export default function AvatarUploader({ valenteId, currentImage, className, alt
 
     setIsUploading(true);
     
+    // Create the FormData object
     const formData = new FormData();
-    formData.append("image", file);
+    // CRITICAL: Ensure the key is "file" to match the Server Action logic
+    formData.append("file", file);
 
-    const result = await uploadValenteImage(valenteId, formData);
+    // Call the renamed action
+    const result = await uploadValenteAvatar(valenteId, formData);
     
     if (result.success && result.url) {
       // 1. Instantly update the parent UI if the callback is provided
@@ -38,7 +42,8 @@ export default function AvatarUploader({ valenteId, currentImage, className, alt
       // 2. Refresh server data in the background
       router.refresh();
     } else {
-      alert("Error uploading image.");
+      console.error("Upload error details:", result);
+      alert(result.message || "Error uploading image.");
     }
     
     setIsUploading(false);
@@ -47,17 +52,17 @@ export default function AvatarUploader({ valenteId, currentImage, className, alt
   return (
     <div 
       className="relative w-full h-full cursor-pointer group" 
-      onClick={() => fileInputRef.current?.click()}
+      onClick={() => !isUploading && fileInputRef.current?.click()}
     >
       <img 
         src={displayImage} 
         alt={alt || "Avatar"} 
-        className={`${className} ${isUploading ? 'opacity-30' : ''}`} 
+        className={`${className} ${isUploading ? 'opacity-30' : ''} transition-opacity duration-300`} 
       />
       
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 z-20">
-        <span className="text-[10px] font-bold text-white uppercase tracking-tighter">
-          {isUploading ? "Uploading..." : "Change Photo"}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 z-20 rounded-inherit">
+        <span className="text-[10px] font-bold text-white uppercase tracking-widest text-center px-2">
+          {isUploading ? "Enviando..." : "Alterar Foto"}
         </span>
       </div>
 
@@ -68,6 +73,12 @@ export default function AvatarUploader({ valenteId, currentImage, className, alt
         className="hidden" 
         accept="image/*" 
       />
+      
+      {isUploading && (
+        <div className="absolute inset-0 flex items-center justify-center z-30">
+          <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
     </div>
   );
 }

@@ -27,6 +27,7 @@ import MissionLog from "@/components/MissionLog";
 import LevelUpNotification from "@/components/LevelUpNotification";
 import AddCompanionModal from "@/components/profile/AddCompanionModal";
 import AvatarUploader from "@/components/game/AvatarUploader";
+import RankIconUploader from "@/components/game/RankIconUploader";
 import RelicDiscoveryOverlay from "@/components/RelicDiscoveryOverlay";
 import MissionCompletionOverlay from "@/components/MissionCompletionOverlay";
 import MissionDisplayCard from "@/components/profile/MissionDisplayCard";
@@ -100,12 +101,24 @@ export default function ValenteProfileClient({
   const [loreText, setLoreText] = useState("");
   const [isSavingLore, setIsSavingLore] = useState(false);
 
-  // --- DYNAMIC RANK LOGIC (REPLACING LEVEL_SYSTEM) ---
-  const currentLevelInfo = {
-    name: valente.patente?.title || "RECRUTA",
-    icon: valente.patente?.iconUrl || "/images/ranks/default-rank.svg",
-    color: valente.patente?.tierColor || "#ffffff"
-  };
+  // --- DYNAMIC RANK LOGIC FIXED ---
+  const currentLevelInfo = useMemo(() => {
+  // 1. If we have a patente from DB, use it
+  if (valente.patente) {
+    return {
+      name: valente.patente.title,
+      icon: valente.patente.iconUrl,
+      color: valente.patente.tierColor
+    };
+  }
+
+    // 2. Fallback if the user has NO rank assigned yet
+    return {
+      name: "RECRUTA",
+      icon: "/images/level-hero.svg", // Ensure this file exists!
+      color: "#94a3b8" 
+    };
+  }, [valente.patente]);
 
   const [prevLevel, setPrevLevel] = useState(currentLevelInfo.name);
   const prevMedalsRef = useRef(normalizedInitialMedals);
@@ -158,15 +171,24 @@ export default function ValenteProfileClient({
     setCompanheiros(initialCompanheiros);
   }, [initialValente, initialCompanheiros]);
 
-  // Dynamic XP Progress
+  // Dynamic XP Progress FIXED
   useEffect(() => {
     if (mounted && valente) {
-      const targetXP = valente.nextLevelXP || valente.totalXP;
-      const xpPercentage = targetXP > 0 ? Math.min((valente.totalXP / targetXP) * 100, 100) : 100;
+      const nextLevelXP = valente.nextLevelXP;
+      const currentXP = valente.totalXP || 0;
+      const minXP = valente.patente?.xpRequired || 0;
+
+      let xpPercentage = 100;
+      if (nextLevelXP && nextLevelXP > minXP) {
+        const range = nextLevelXP - minXP;
+        const earned = currentXP - minXP;
+        xpPercentage = Math.min(Math.max((earned / range) * 100, 0), 100);
+      }
+      
       const timer = setTimeout(() => setXpWidth(xpPercentage), 100);
       return () => clearTimeout(timer);
     }
-  }, [mounted, valente.totalXP, valente.nextLevelXP]);
+  }, [mounted, valente.totalXP, valente.nextLevelXP, valente.patente]);
 
   const refreshValenteData = (result: any) => {
     if (result.newTotalXp !== undefined || result.newTotalXP !== undefined) {
@@ -467,12 +489,26 @@ export default function ValenteProfileClient({
                   <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="12" strokeLinecap="round" />
                   <path d="M 20 20 A 80 80 0 0 0 180 20" fill="none" stroke="url(#heroXpGradient)" strokeWidth="12" strokeLinecap="round" strokeDasharray={arcLength} strokeDashoffset={dashOffset} className="transition-all duration-1000 ease-out"/>
                 </svg>
+                {/* Find this section in ValenteProfileClient.tsx */}
                 <div className="absolute inset-0 flex flex-col items-center justify-start">
-                  <img src={currentLevelInfo.icon} alt={currentLevelInfo.name} className="w-16 h-16 object-contain -mt-24 animate-bounce-slow" />
-                  <span className="hud-title-md text-white mt-1 uppercase" style={{ color: currentLevelInfo.color }}>{currentLevelInfo.name}</span>
+                  
+                  {/* Update the RankIconUploader positioning here */}
+                  <RankIconUploader 
+                    rankId={valente.patente?.id} 
+                    currentImage={currentLevelInfo.icon}
+                    // Changed -mt-24 to -mt-32 to move it UP
+                    className="w-20 h-20 object-contain -mt-32 animate-bounce-slow relative z-30"
+                  />
+                  
+                  <span className="hud-title-md text-white mt-2 uppercase" style={{ color: currentLevelInfo.color }}>
+                    {currentLevelInfo.name}
+                  </span>
+
                   <div className="mt-4 flex flex-col items-center">
-                    <span className="hud-value text-white">{valente.totalXP}</span>
-                    <span className="hud-label-tactical mt-1 uppercase">META: {valente.nextLevelXP || 'MÁXIMO'} XP</span>
+                    <span className="hud-value text-white text-2xl">{valente.totalXP}</span>
+                    <span className="hud-label-tactical mt-1 uppercase opacity-60">
+                        META: {valente.nextLevelXP || 'MÁXIMO'} XP
+                    </span>
                   </div>
                 </div>
               </div>
