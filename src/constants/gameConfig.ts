@@ -1,5 +1,3 @@
-// src/constants/gameConfig.ts
-
 export const ICONS = {
   home: '/images/nav-home.svg',
   valentes: '/images/nav-shield.svg',
@@ -31,10 +29,6 @@ export const SIDEBAR_MENU = [
   { name: "Relíquias", path: "/admin/reliquias", iconPath: ICONS.relics },
 ] as const;
 
-/**
- * THE FIVEFOLD MAPPING (Corrected)
- * These are the official designations for the Kingdom of God RPG.
- */
 export const ATTRIBUTE_MAP: Record<string, string> = {
   forca: "LIDERANÇA",
   destreza: "SERVO",
@@ -44,14 +38,46 @@ export const ATTRIBUTE_MAP: Record<string, string> = {
   carisma: "EVANGELISMO",
 };
 
-export const LEVEL_SYSTEM = [
-  { name: 'Nível 0', minXP: 0, icon: '/images/level-0.svg' },
-  { name: 'Nível 1', minXP: 1000, icon: '/images/level-1.svg' },
-  { name: 'Nível 2', minXP: 2000, icon: '/images/level-2.svg' },
-  { name: 'Nível 3', minXP: 3500, icon: '/images/level-3.svg' },
-  { name: 'Especial', minXP: 5000, icon: '/images/level-special.svg' },
-  { name: 'Herói', minXP: 8000, icon: '/images/level-hero.svg' }
-] as const;
+/* Mathematical generator for the 50-level progression seed data */
+export const DEFAULT_PATENTES = Array.from({ length: 50 }).map((_, index) => {
+  const level = index + 1;
+  
+  /* Exponential XP Curve calculation */
+  /* Base formula: Level^2.5 * multiplier */
+  let xpRequired = 0;
+  if (level > 1) {
+    const multiplier = level <= 10 ? 50 : level <= 30 ? 65 : 85;
+    xpRequired = Math.floor(Math.pow(level, 2.5) * multiplier);
+    /* Rounds to the nearest 10 for cleaner numbers */
+    xpRequired = Math.ceil(xpRequired / 10) * 10; 
+  }
+
+  /* Tier classification and thematic configuration */
+  let title = "Escudeiro";
+  let tierColor = "#94a3b8"; // Tier I: Cinza Metálico
+  
+  if (level >= 11 && level <= 20) {
+    title = "Soldado";
+    tierColor = "#d97706"; // Tier II: Bronze
+  } else if (level >= 21 && level <= 30) {
+    title = "Cavaleiro";
+    tierColor = "#e4e4e7"; // Tier III: Prata
+  } else if (level >= 31 && level <= 40) {
+    title = "Sentinela";
+    tierColor = "#facc15"; // Tier IV: Ouro
+  } else if (level >= 41 && level <= 50) {
+    title = "Guardião";
+    tierColor = "#06b6d4"; // Tier V: Ciano (Brand)
+  }
+
+  return {
+    level,
+    title,
+    xpRequired,
+    tierColor,
+    iconUrl: `/images/ranks/level-${level}.svg`
+  };
+});
 
 export const ESTRUTURAS = {
   GAD: { label: "GAD", fullName: "Geração de Adoradores", color: "#ea580c", secondary: "#fb923c" },
@@ -63,6 +89,20 @@ export const ESTRUTURAS = {
   KIDS: { label: "Kids", fullName: "Ministério Infantil", color: "#f43f5e", secondary: "#fb7185" },
   TEATRO: { label: "Teatro", fullName: "Artes Cênicas", color: "#d946ef", secondary: "#e879f9" }
 } as const;
+
+/**
+ * THE CLASS SYSTEM (Synced with ESTRUTURAS)
+ */
+export const STRUCTURE_BONUS: Record<string, { attribute: string; value: number }> = {
+  GAD: { attribute: "sabedoria", value: 5 },       
+  IMS: { attribute: "forca", value: 5 },           
+  LOUVOR: { attribute: "carisma", value: 5 },      
+  KIDS: { attribute: "destreza", value: 5 },       
+  TEATRO: { attribute: "carisma", value: 5 },      
+  INTERCESSAO: { attribute: "constituicao", value: 5 }, 
+  NEWBREED: { attribute: "destreza", value: 5 },
+  GOE: { attribute: "forca", value: 5 },
+};
 
 export const MISSION_CATEGORIES = [
   "Hábitos Espirituais",
@@ -91,18 +131,4 @@ export const MEDAL_RARITY_COLORS: Record<string, string> = {
   COMMON: "#9CA3AF",    
   RARE: "#10B981",      
   LEGENDARY: "#F59E0B", 
-};
-
-/**
- * THE CLASS SYSTEM (Synced with ESTRUTURAS)
- */
-export const STRUCTURE_BONUS: Record<string, { attribute: string; value: number }> = {
-  GAD: { attribute: "sabedoria", value: 5 },       
-  IMS: { attribute: "forca", value: 5 },           
-  LOUVOR: { attribute: "carisma", value: 5 },      
-  KIDS: { attribute: "destreza", value: 5 },       
-  TEATRO: { attribute: "carisma", value: 5 },      
-  INTERCESSAO: { attribute: "constituicao", value: 5 }, 
-  NEWBREED: { attribute: "destreza", value: 5 },
-  GOE: { attribute: "forca", value: 5 },
 };

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-/* CONFIGURATION IMPORTS */
+/* Configuration and action imports */
 import { ESTRUTURAS, LOVE_LANGUAGES, ICONS } from "@/constants/gameConfig";
 import { updateValenteProfile, createValente, deleteValente } from "@/app/actions/valenteActions";
 import AvatarUploader from "@/components/game/AvatarUploader";
@@ -21,20 +21,20 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // CORE IDENTITY STATE
+  /* Initial state management for identity and lore attributes */
   const [name, setName] = useState(initialData?.name || "");
   const [structure, setStructure] = useState(initialData?.structure || ESTRUTURAS.GAD.label);
   const [description, setDescription] = useState(initialData?.description || "");
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image || null);
 
-  // --- LOVE LANGUAGES LOGIC ---
+  /* Love languages percentage distribution state initialization */
   const defaultLoveLanguages = LOVE_LANGUAGES.reduce((acc, lang) => {
     acc[lang.key] = initialData?.loveLanguages?.[lang.key] ?? 0;
     return acc;
   }, {} as Record<string, number>);
   const [loveLanguages, setLoveLanguages] = useState(defaultLoveLanguages);
 
-  // --- HOLY POWER LOGIC (Synced with Engine v3) ---
+  /* Holy power progression and goal configuration based on Engine v3 logic */
   const formatInitialHolyPower = () => {
     const defaultHp = { 
       Oração: { current: 0, goal: 30, streak: 0, unit: 'min', isResetDaily: true },
@@ -61,17 +61,20 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
   
   const [holyPower, setHolyPower] = useState(formatInitialHolyPower());
 
+  /* Synchronization of image preview state with incoming external data */
   useEffect(() => {
     if (initialData?.image && initialData.image !== imagePreview) {
       setImagePreview(initialData.image);
     }
   }, [initialData]);
 
+  /* Local file processing for dynamic portrait preview */
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setImagePreview(URL.createObjectURL(file));
   };
 
+  /* Updates for individual holy power attributes within state object */
   const handleHolyPowerChange = (powerKey: string, field: string, value: string | number | boolean) => {
     setHolyPower((prev: any) => ({
       ...prev,
@@ -82,6 +85,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     }));
   };
 
+  /* Data submission logic for profile recruitment or record updates */
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return alert("O Valente precisa de um nome de guerra.");
@@ -130,6 +134,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
     }
   };
 
+  /* Permanent removal logic for valente profile and associated history */
   const handleDelete = async () => {
     if (!initialData?.id) return;
     const confirmed = window.confirm(`ATENÇÃO: Deseja realmente excluir ${name}? Todos os registros de XP e Relíquias serão perdidos.`);
@@ -148,7 +153,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
 
   return (
     <div className="space-y-12 pb-32 animate-in fade-in duration-700">
-      {/* 1. CINEMATIC_HEADER */}
+      {/* Header section for core navigation and primary actions */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-white/5 pb-8">
         <div>
           <Link href={mode === "edit" ? `/admin/valentes/${initialData?.id}` : "/admin/valentes"} className="hud-label-tactical text-brand text-xs hover:pl-2 transition-all flex items-center gap-2 mb-4 italic-none group">
@@ -181,7 +186,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         </div>
       </header>
 
-      {/* 2. IDENTITY_SECTION (#01) */}
+      {/* Identity section for warfare name and combat structure selection */}
       <section className="bg-dark-bg/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 relative overflow-hidden shadow-2xl group">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-brand to-transparent opacity-50"></div>
         <h2 className="hud-title-md text-4xl text-white mb-8 flex items-center gap-4">
@@ -213,7 +218,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-brand/60">
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-brand">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </div>
               </div>
@@ -253,12 +258,15 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 ) : (
                   <div className="text-center opacity-40 group-hover:opacity-100 text-brand flex flex-col items-center">
-                    {/* ⚔️ UPDATED TO CAMERA-ICON */}
-                    <img 
-                      src="/images/camera-icon.svg" 
-                      alt="Upload Icon" 
-                      className="w-14 h-14 mb-4 drop-shadow-[0_0_15px_rgba(6,182,212,0.8)]"
-                    />
+                    {/* Background glow container for the portrait icon */}
+                    <div className="relative flex items-center justify-center mb-4">
+                      <div className="absolute w-10 h-10 bg-[#06b6d4] rounded-full blur-[16px] opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                      <img 
+                        src="/images/camera-icon.svg" 
+                        alt="Upload Icon" 
+                        className="w-14 h-14 relative z-10"
+                      />
+                    </div>
                     <span className="hud-label-tactical text-[10px] italic-none uppercase tracking-widest text-white">Upload Bio-Scan</span>
                   </div>
                 )}
@@ -271,7 +279,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         </div>
       </section>
 
-      {/* 3. SPIRITUAL_PROGRESS (#02) - THE REWORKED ENGINE */}
+      {/* Holy Power section for spiritual progress and behavioral engine control */}
       <section className="bg-dark-bg/40 border border-white/10 rounded-2xl p-8 relative shadow-2xl">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-mission to-transparent opacity-50"></div>
         <h2 className="hud-title-md text-4xl text-white mb-10 flex items-center gap-4">
@@ -292,7 +300,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                   <h3 className="hud-title-md text-2xl text-white uppercase tracking-tight">{key}</h3>
                 </div>
 
-                {/* ENGINE BEHAVIOR TOGGLE */}
+                {/* Behavioral switch to toggle between daily reset and cumulative logic */}
                 <div className="flex items-center gap-3 bg-black/40 p-2 rounded-xl border border-white/5">
                   <span className={`hud-label-tactical text-[9px] uppercase tracking-widest ${data.isResetDaily ? 'text-mission' : 'text-gray-500'}`}>Streak</span>
                   <button
@@ -306,15 +314,20 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* CURRENT PROGRESS */}
-                <div className="space-y-3">
-                  <label className="hud-label-tactical text-gray-500 text-[10px] uppercase tracking-widest">Progresso Atual</label>
-                  <div className="relative flex items-center">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+                {/* Manual entry for current holy power progress within the period */}
+                <div className="flex flex-col gap-3">
+                  <div className="h-5 flex items-center">
+                    <label className="hud-label-tactical text-gray-500 text-[10px] uppercase tracking-widest">
+                      Progresso Atual
+                    </label>
+                  </div>
+                  <div className="relative flex items-center h-16">
+                    {/* Dark color scheme for native browser input control visibility */}
                     <input 
                       type="number" value={data.current} 
                       onChange={(e) => handleHolyPowerChange(key, 'current', e.target.value)} 
-                      className={`w-full bg-black/40 border border-white/10 p-4 pr-16 text-white hud-value text-3xl rounded-xl outline-none shadow-inner transition-colors ${data.isResetDaily ? 'focus:border-mission' : 'focus:border-amber-500'}`} 
+                      className={`w-full bg-black/40 border border-white/10 p-4 pr-16 text-white hud-value text-3xl rounded-xl outline-none shadow-inner transition-colors [color-scheme:dark] ${data.isResetDaily ? 'focus:border-mission' : 'focus:border-amber-500'}`} 
                     />
                     <span className="absolute right-4 text-gray-600 hud-label-tactical text-[10px] font-bold uppercase pointer-events-none">
                       {data.unit}
@@ -322,20 +335,23 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                   </div>
                 </div>
 
-                {/* MAIN GOAL - DYNAMIC LABEL */}
-                <div className="space-y-3">
-                  <label className="hud-label-tactical text-[10px] uppercase tracking-widest flex items-center gap-2 text-gray-400">
-                    {data.isResetDaily ? (
-                      <><span className="text-mission">⚡</span> Objetivo Diário</>
-                    ) : (
-                      <><span className="text-amber-500">📜</span> Objetivo Total (Acumulativo)</>
-                    )}
-                  </label>
-                  <div className="relative flex items-center">
+                {/* Objective configuration for daily milestones or total completion */}
+                <div className="flex flex-col gap-3">
+                  <div className="h-5 flex items-center">
+                    <label className="hud-label-tactical text-[10px] uppercase tracking-widest flex items-center gap-2 text-gray-400">
+                      {data.isResetDaily ? (
+                        <><span className="text-mission">⚡</span> Objetivo Diário</>
+                      ) : (
+                        <><span className="text-amber-500">📜</span> Objetivo Total</>
+                      )}
+                    </label>
+                  </div>
+                  <div className="relative flex items-center h-16">
+                    {/* Dark color scheme for native browser input control visibility */}
                     <input 
                       type="number" value={data.goal} 
                       onChange={(e) => handleHolyPowerChange(key, 'goal', e.target.value)} 
-                      className={`w-full bg-black/40 border border-white/10 p-4 pr-16 text-gray-400 hud-value text-3xl rounded-xl outline-none transition-colors ${data.isResetDaily ? 'focus:border-mission' : 'focus:border-amber-500'}`} 
+                      className={`w-full bg-black/40 border border-white/10 p-4 pr-16 text-gray-400 hud-value text-3xl rounded-xl outline-none transition-colors [color-scheme:dark] ${data.isResetDaily ? 'focus:border-mission' : 'focus:border-amber-500'}`} 
                     />
                     <span className="absolute right-4 text-gray-600 hud-label-tactical text-[10px] font-bold uppercase pointer-events-none">
                       {data.unit}
@@ -343,14 +359,19 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                   </div>
                 </div>
 
-                {/* STREAK RECORD */}
-                <div className="space-y-3">
-                  <label className="hud-label-tactical text-xp text-[10px] flex items-center gap-2 uppercase tracking-widest">Sequência (Streak)</label>
-                  <div className="relative flex items-center">
+                {/* Record tracking for active consecutive holy power streaks */}
+                <div className="flex flex-col gap-3">
+                  <div className="h-5 flex items-center">
+                    <label className="hud-label-tactical text-xp text-[10px] flex items-center gap-2 uppercase tracking-widest">
+                      Sequência (Streak)
+                    </label>
+                  </div>
+                  <div className="relative flex items-center h-16">
+                    {/* Dark color scheme for native browser input control visibility */}
                     <input 
                       type="number" value={data.streak} 
                       onChange={(e) => handleHolyPowerChange(key, 'streak', e.target.value)} 
-                      className="w-full bg-black/40 border border-xp/20 p-4 pr-16 text-xp hud-value text-3xl rounded-xl focus:border-xp outline-none" 
+                      className="w-full bg-black/40 border border-xp/20 p-4 pr-16 text-xp hud-value text-3xl rounded-xl focus:border-xp outline-none [color-scheme:dark]" 
                     />
                     <span className="absolute right-4 text-xp/40 hud-label-tactical text-[10px] font-bold uppercase pointer-events-none">
                       Dias
@@ -359,7 +380,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
                 </div>
               </div>
 
-              {/* HELPER TEXT FOR ADMIN */}
+              {/* Informational description of selected behavioral logic */}
               <p className="mt-4 text-[9px] hud-label-tactical text-gray-600 italic uppercase">
                 {data.isResetDaily 
                   ? "⚡ MODO STREAK: O objetivo diário deve ser atingido para manter a sequência. Reseta à meia-noite." 
@@ -370,7 +391,7 @@ export default function ValenteForm({ initialData, mode }: ValenteFormProps) {
         </div>
       </section>
 
-      {/* 4. LOVE_LANGUAGES (#03) */}
+      {/* Love languages sliders section for attribute distribution */}
       <section className="bg-dark-bg/40 border border-white/10 rounded-2xl p-8 relative shadow-2xl">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
         <h2 className="hud-title-md text-4xl text-white mb-10 flex items-center gap-4">

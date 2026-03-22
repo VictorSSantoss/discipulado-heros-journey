@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 /* GLOBAL CONFIGURATION IMPORTS */
-import { ESTRUTURAS, LEVEL_SYSTEM, ICONS } from "@/constants/gameConfig";
+import { ESTRUTURAS, ICONS } from "@/constants/gameConfig";
 
 export default function ValentesClientView({ initialValentes }: { initialValentes: any[] }) {
   const router = useRouter();
@@ -41,7 +41,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
   return (
     <main className="min-h-screen px-4 py-6 max-w-7xl mx-auto flex flex-col text-white pb-20 font-barlow overflow-x-hidden relative">
       
-      {/* HEADER: Simplified to focus on title and recruitment */}
+      {/* HEADER */}
       <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-white/10 pb-8">
         <div>
           <h1 className="hud-title-lg text-6xl text-white m-0 flex items-center gap-5 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
@@ -62,7 +62,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
         </Link>
       </header>
 
-      {/* SEARCH: The Technical Readout Bar */}
+      {/* SEARCH */}
       <div className="relative mb-8 max-w-2xl">
         <div className="absolute left-6 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
           <img 
@@ -81,7 +81,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
         />
       </div>
 
-      {/* FILTERS: Structure-based navigation */}
+      {/* FILTERS */}
       <nav className="flex gap-2 overflow-x-auto pt-2 pb-6 mb-8 border-b border-white/5 custom-scrollbar px-2">
         {structureList.map((label) => (
           <button
@@ -98,7 +98,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
         ))}
       </nav>
 
-      {/* GRID: Filtered Valentes Display */}
+      {/* GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredValentes.length === 0 ? (
           <div className="col-span-full py-20 bg-dark-bg/20 border border-dashed border-white/10 rounded-2xl text-center">
@@ -106,11 +106,15 @@ export default function ValentesClientView({ initialValentes }: { initialValente
           </div>
         ) : (
           filteredValentes.map((valente) => {
-            const lvlInfo = [...LEVEL_SYSTEM].reverse().find(l => valente.totalXP >= l.minXP) || LEVEL_SYSTEM[0];
-            const nextLvl = LEVEL_SYSTEM[LEVEL_SYSTEM.indexOf(lvlInfo) + 1];
+            /* INTEGRATED DYNAMIC PROGRESSION LOGIC */
+            const currentPatente = valente.patente;
             const theme = getTheme(valente.structure);
-            const targetXP = nextLvl ? nextLvl.minXP : valente.totalXP;
-            const xpPercent = nextLvl ? Math.min((valente.totalXP / targetXP) * 100, 100) : 100;
+            
+            // Use the nextLevelXP injected by the server mapping
+            const xpTarget = valente.nextLevelXP; 
+            const xpPercent = xpTarget 
+              ? Math.min((valente.totalXP / xpTarget) * 100, 100) 
+              : 100;
 
             return (
               <Link 
@@ -126,7 +130,6 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                     className="w-full h-full transition-transform duration-700 group-hover:scale-110 object-cover object-top" 
                   />
                   
-                  {/* Status Overlay */}
                   <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
                     <div className="flex flex-col items-start gap-2">
                       <div 
@@ -154,17 +157,21 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      <div className="px-3 h-8 flex items-center justify-center gap-2 rounded-full backdrop-blur-md transition-all bg-black/40 border border-white/10">
-                        <img src={lvlInfo.icon} alt="" className="w-6 h-6 object-contain" />
+                      <div 
+                        className="px-3 h-8 flex items-center justify-center gap-2 rounded-full backdrop-blur-md transition-all bg-black/40 border border-white/10"
+                        style={{ borderColor: currentPatente?.tierColor ? `${currentPatente.tierColor}66` : 'rgba(255,255,255,0.1)' }}
+                      >
+                        {currentPatente?.iconUrl && (
+                          <img src={currentPatente.iconUrl} alt="" className="w-6 h-6 object-contain" />
+                        )}
                         <span className="hud-label-tactical text-white text-[15px] font-bold uppercase opacity-90">
-                          {lvlInfo.name.split(' ').pop()}
+                          {currentPatente?.title || "RECRUTA"}
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Info Section */}
                 <div className="p-5 flex flex-col flex-1 bg-gradient-to-b from-transparent to-black/40">
                   <div className="flex justify-between items-center mb-1 gap-2">
                     <h3 className="hud-title-md text-3xl text-white truncate group-hover:text-brand transition-colors duration-300 leading-tight uppercase max-w-[60%]">
@@ -177,11 +184,7 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                           {valente.managedBy.guildaName}
                         </span>
                         {valente.managedBy.guildaIcon && (
-                          <img 
-                            src={valente.managedBy.guildaIcon} 
-                            alt="" 
-                            className="w-6 h-6 object-contain brightness-110 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]" 
-                          />
+                          <img src={valente.managedBy.guildaIcon} alt="" className="w-6 h-6 object-contain brightness-110 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
                         )}
                       </div>
                     )}
@@ -190,7 +193,10 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                   <div className="flex justify-between items-end mt-4 mb-3">
                     <span className="hud-label-tactical text-[9px] text-gray-500 uppercase tracking-widest">Honra & XP</span>
                     <span className="hud-value text-2xl text-white leading-none">
-                      {valente.totalXP} <span className="text-[10px] text-gray-600 hud-label-tactical">/ {nextLvl ? nextLvl.minXP : 'MAX'}</span>
+                      {valente.totalXP} 
+                      <span className="text-[10px] text-gray-600 hud-label-tactical ml-1">
+                        / {xpTarget ? xpTarget.toLocaleString() : 'MAX'}
+                      </span>
                     </span>
                   </div>
 
@@ -199,13 +205,19 @@ export default function ValentesClientView({ initialValentes }: { initialValente
                       className="h-full rounded-full transition-all duration-1000"
                       style={{ 
                           width: `${xpPercent}%`, 
-                          backgroundColor: theme.color,
-                          boxShadow: `0 0 20px ${theme.color}CC, 0 0 5px ${theme.color}` 
+                          backgroundColor: currentPatente?.tierColor || theme.color,
+                          boxShadow: `0 0 20px ${currentPatente?.tierColor || theme.color}CC, 0 0 5px ${currentPatente?.tierColor || theme.color}` 
                       }}
                     />
                   </div>
 
-                  <div className="mt-8 pt-4 border-t border-white/5 flex justify-center">
+                  {/* Added Next Rank visual indicator at the bottom */}
+                  <div className="mt-4 flex justify-between items-center opacity-60">
+                    <span className="hud-label-tactical text-[8px] uppercase tracking-widest">Objetivo:</span>
+                    <span className="hud-label-tactical text-[9px] text-brand uppercase font-bold">{valente.nextLevelTitle}</span>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-white/5 flex justify-center">
                     <span className="hud-label-tactical text-brand opacity-80 group-hover:opacity-100 transition-opacity text-[10px] font-bold uppercase tracking-widest">
                       Abrir Ficha de Combate →
                     </span>

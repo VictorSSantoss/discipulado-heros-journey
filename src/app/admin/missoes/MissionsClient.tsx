@@ -22,7 +22,7 @@ export interface MissionPermissions {
 function MissionsWrapper(props: any) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-dark-bg" />}>
-      <MissoesContent {...props} />
+      <MissoesContent {...props} />0
     </Suspense>
   );
 }

@@ -2,146 +2,163 @@
 
 import { useState, useEffect } from "react";
 
-interface Level {
-  id: number;
-  name: string;
-  minXP: number;
-  icon: string;
+interface Patente {
+  id: string;
+  level: number;
+  title: string;
+  xpRequired: number;
+  tierColor: string;
+  iconUrl: string;
 }
 
 interface EditLevelModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedLevel: Level) => void;
-  level: Level | null;
+  onSave: (updated: Patente) => void;
+  patente: Patente | null;
 }
 
-/**
- * EditLevelModal Component
- * Facilitates the adjustment of existing rank parameters in the hierarchy.
- * Integrated with the centralized HUD Typography System for design consistency.
- */
-export default function EditLevelModal({ isOpen, onClose, onSave, level }: EditLevelModalProps) {
-  const [name, setName] = useState("");
-  const [minXP, setMinXP] = useState(0);
-  const [icon, setIcon] = useState("");
+export default function EditLevelModal({ isOpen, onClose, onSave, patente }: EditLevelModalProps) {
+  const [title, setTitle] = useState("");
+  const [xpRequired, setXpRequired] = useState(0);
+  const [tierColor, setTierColor] = useState("#94a3b8");
+  const [iconUrl, setIconUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * DATA SYNCHRONIZATION HOOK
-   * Populates input states with current level data whenever the modal is activated.
-   */
+  /* Updates the local state fields when the patente prop changes or the modal opens */
   useEffect(() => {
-    if (level) {
-      setName(level.name);
-      setMinXP(level.minXP);
-      setIcon(level.icon);
+    if (patente) {
+      setTitle(patente.title || "");
+      setXpRequired(patente.xpRequired || 0);
+      setTierColor(patente.tierColor || "#94a3b8");
+      setIconUrl(patente.iconUrl || "");
     }
-  }, [level, isOpen]);
+  }, [patente, isOpen]);
 
-  if (!isOpen || !level) return null;
+  if (!isOpen || !patente) return null;
 
-  /**
-   * SUBMISSION HANDLER
-   * Packages the updated state into the parent save logic.
-   */
-  const handleSubmit = (e: React.FormEvent) => {
+  /* Verifies the existence of the ID and performs the PUT request to update rank data */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...level, name, minXP, icon });
+    
+    if (!patente.id) {
+      console.error("Missing rank ID for update operation");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/patentes/${patente.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          title, 
+          xpRequired, 
+          tierColor, 
+          iconUrl 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error status: ${response.status}`);
+      }
+
+      const updated = await response.json();
+      onSave(updated);
+    } catch (error) {
+      console.error("The update request failed to process:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
-      {/* CONTAINER 1: MODAL_OVERLAY_WRAPPER */}
-
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 font-barlow">
       <div className="bg-dark-bg border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden relative">
-        {/* CONTAINER 2: MODAL_TERMINAL_CARD */}
         
-        {/* Visual highlight line for HUD depth */}
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-xp/40 to-transparent"></div>
+        {/* Generates a visual border using the current tier color state */}
+        <div 
+          className="absolute top-0 left-0 w-full h-1" 
+          style={{ backgroundColor: tierColor }}
+        ></div>
 
         <div className="p-6 border-b border-white/5 bg-dark-bg/80 flex justify-between items-center">
-          {/* CONTAINER 3: TACTICAL_HEADER_SECTION */}
           <div>
-            <h2 className="hud-title-md text-white m-0">EDITAR PATENTE</h2>
-            <p className="hud-label-tactical text-xp mt-2 italic-none">
-              Ajuste de Balanceamento
+            <h2 className="hud-title-md text-white m-0 uppercase tracking-wider">Reforjar Patente</h2>
+            <p className="hud-label-tactical mt-2" style={{ color: tierColor }}>
+              Nível de Hierarquia: {patente.level}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-xp transition-colors text-xl">
-            ✕
-          </button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          {/* CONTAINER 4: REFORGE_FORM_WRAPPER */}
-
           <div className="flex flex-col gap-2">
-            {/* CONTAINER 5: IDENTITY_INPUT_BLOCK */}
-            <label className="hud-label-tactical">
-              Nome da Patente
-            </label>
+            <label className="hud-label-tactical text-gray-400">Título da Patente</label>
             <input 
               type="text" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-dark-bg/60 border border-white/10 p-3.5 rounded-xl text-white hud-title-md outline-none focus:border-brand/50 transition-all shadow-inner"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-dark-bg/60 border border-white/10 p-3 rounded-xl text-white hud-title-md outline-none focus:border-white/20"
               required
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            {/* CONTAINER 6: PERFORMANCE_METRIC_BLOCK */}
-            <label className="hud-label-tactical">
-              Meta de XP (Requisito de Ascensão)
-            </label>
-            <div className="flex items-center gap-3 bg-dark-bg/60 p-1.5 rounded-xl border border-white/5 shadow-inner">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="hud-label-tactical text-gray-400">Cor do Tier (HEX)</label>
+              <div className="flex gap-2">
+                <input 
+                  type="color" 
+                  value={tierColor}
+                  onChange={(e) => setTierColor(e.target.value)}
+                  className="w-10 h-10 bg-transparent border-none cursor-pointer"
+                />
+                <input 
+                  type="text" 
+                  value={tierColor}
+                  onChange={(e) => setTierColor(e.target.value)}
+                  className="w-full bg-dark-bg/60 border border-white/10 p-2 rounded-xl text-white text-xs outline-none"
+                  placeholder="#000000"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="hud-label-tactical text-gray-400">Requisito XP</label>
               <input 
                 type="number" 
-                min="0"
-                value={minXP}
-                onChange={(e) => setMinXP(Number(e.target.value))}
-                className="w-full bg-transparent p-2 text-xp hud-value text-3xl outline-none focus:text-brand transition-colors"
+                value={xpRequired}
+                onChange={(e) => setXpRequired(Number(e.target.value))}
+                className="w-full bg-dark-bg/60 border border-white/10 p-2 rounded-xl text-xp hud-value text-xl outline-none"
                 required
               />
-              <span className="hud-title-md text-sm text-xp/50 pr-4 mt-1">XP</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            {/* CONTAINER 7: ASSET_DIRECTORY_BLOCK */}
-            <label className="hud-label-tactical">
-              Caminho do Ícone (SVG)
-            </label>
+            <label className="hud-label-tactical text-gray-400">URL do Ícone</label>
             <input 
               type="text" 
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              className="w-full bg-dark-bg/60 border border-white/10 p-3.5 rounded-xl text-gray-400 font-barlow text-[11px] font-bold outline-none focus:border-brand/50 transition-all shadow-inner"
-              placeholder="/images/level-1.svg"
+              value={iconUrl}
+              onChange={(e) => setIconUrl(e.target.value)}
+              className="w-full bg-dark-bg/60 border border-white/10 p-3 rounded-xl text-gray-500 text-[10px] outline-none"
               required
             />
-            <p className="text-[9px] text-gray-600 hud-label-tactical mt-1 pl-1 italic-none">
-              Diretório local: public/images/
-            </p>
           </div>
 
           <div className="pt-6 border-t border-white/5 flex justify-end gap-4">
-            {/* CONTAINER 8: ACTION_CONTROL_WRAPPER */}
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="text-gray-500 hover:text-white transition-colors hud-label-tactical px-4 italic-none"
-            >
-              Cancelar
-            </button>
+            <button type="button" onClick={onClose} className="hud-label-tactical text-gray-500 hover:text-white px-4">Voltar</button>
             <button 
               type="submit"
-              className="px-8 py-2.5 bg-xp hover:brightness-110 text-dark-bg hud-title-md rounded-xl transition-all shadow-[0_0_15px_rgba(234,88,12,0.3)]"
+              disabled={isSubmitting}
+              className="px-8 py-2.5 bg-white text-dark-bg hud-title-md rounded-xl hover:brightness-110 disabled:opacity-50 transition-all shadow-lg"
+              style={{ backgroundColor: tierColor }}
             >
-              Salvar Patente
+              {isSubmitting ? "Processando..." : "Confirmar Mudanças"}
             </button>
           </div>
-
         </form>
       </div>
     </div>

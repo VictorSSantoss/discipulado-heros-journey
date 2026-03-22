@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import { motion, AnimatePresence } from "framer-motion";
-import { ESTRUTURAS, LEVEL_SYSTEM, ICONS, ATTRIBUTE_MAP } from "@/constants/gameConfig";
+import { ESTRUTURAS, ICONS, ATTRIBUTE_MAP } from "@/constants/gameConfig";
 import { addCompanheiro } from "@/app/actions/companheiroActions";
 import { 
   completeMission, 
@@ -100,14 +100,14 @@ export default function ValenteProfileClient({
   const [loreText, setLoreText] = useState("");
   const [isSavingLore, setIsSavingLore] = useState(false);
 
-  const currentLevelInfo = valente 
-    ? [...LEVEL_SYSTEM].reverse().find(lvl => valente.totalXP >= lvl.minXP) || LEVEL_SYSTEM[0] 
-    : LEVEL_SYSTEM[0];
+  // --- DYNAMIC RANK LOGIC (REPLACING LEVEL_SYSTEM) ---
+  const currentLevelInfo = {
+    name: valente.patente?.title || "RECRUTA",
+    icon: valente.patente?.iconUrl || "/images/ranks/default-rank.svg",
+    color: valente.patente?.tierColor || "#ffffff"
+  };
 
   const [prevLevel, setPrevLevel] = useState(currentLevelInfo.name);
-  const currentLevelIndex = LEVEL_SYSTEM.findIndex(lvl => lvl.name === currentLevelInfo.name);
-  const nextLevelInfo = LEVEL_SYSTEM[currentLevelIndex + 1];
-
   const prevMedalsRef = useRef(normalizedInitialMedals);
 
   useEffect(() => { setMounted(true); }, []);
@@ -158,23 +158,26 @@ export default function ValenteProfileClient({
     setCompanheiros(initialCompanheiros);
   }, [initialValente, initialCompanheiros]);
 
+  // Dynamic XP Progress
   useEffect(() => {
     if (mounted && valente) {
-      const targetXP = nextLevelInfo ? nextLevelInfo.minXP : valente.totalXP;
-      const xpPercentage = nextLevelInfo ? Math.min((valente.totalXP / targetXP) * 100, 100) : 100;
+      const targetXP = valente.nextLevelXP || valente.totalXP;
+      const xpPercentage = targetXP > 0 ? Math.min((valente.totalXP / targetXP) * 100, 100) : 100;
       const timer = setTimeout(() => setXpWidth(xpPercentage), 100);
       return () => clearTimeout(timer);
     }
-  }, [mounted, valente, nextLevelInfo]);
+  }, [mounted, valente.totalXP, valente.nextLevelXP]);
 
   const refreshValenteData = (result: any) => {
     if (result.newTotalXp !== undefined || result.newTotalXP !== undefined) {
       const newXp = result.newTotalXp ?? result.newTotalXP;
-      const newLevel = [...LEVEL_SYSTEM].reverse().find(lvl => newXp >= lvl.minXP) || LEVEL_SYSTEM[0];
-      if (newLevel.name !== prevLevel) {
+      
+      // Dynamic level up detection using the new payload
+      if (result.newPatente && result.newPatente.title !== prevLevel) {
         setShowLevelUp(true);
-        setPrevLevel(newLevel.name);
+        setPrevLevel(result.newPatente.title);
       }
+
       const unlockedRelics = result.newRelics || [];
       if (unlockedRelics.length > 0) {
         setMedalQueue((prev: Medal[]) => {
@@ -186,6 +189,8 @@ export default function ValenteProfileClient({
       setValente((prev: any) => ({ 
         ...prev, 
         totalXP: newXp,
+        patente: result.newPatente || prev.patente,
+        nextLevelXP: result.nextLevelXP || prev.nextLevelXP,
         xpLogs: result.newLogs || prev.xpLogs,
         medals: unlockedRelics.length > 0
           ? [...prev.medals, ...unlockedRelics.map((r: any) => ({ medal: r, awardedAt: new Date() }))] 
@@ -208,10 +213,8 @@ export default function ValenteProfileClient({
     const result = await logHolyPower(valente.id, habitName, amount);
     if (result.success) {
       if (result.trifectaTriggered) {
-        console.log("Trifecta detected! Igniting embers..."); // Added to debug in console
         setShowTrifectaFx(true);
       }
-      // router.refresh() updates the server data but keeps our local state
       router.refresh(); 
     }
   };
@@ -290,7 +293,6 @@ export default function ValenteProfileClient({
     setIsSavingLore(false);
   };
 
-  // --- NEW MURAL ENGINE LOGIC ---
   const trackedMissions = availableMissions.filter(m => valente.trackedMissionIds?.includes(m.id));
   
   const epicMission = useMemo(() => {
@@ -467,10 +469,10 @@ export default function ValenteProfileClient({
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-start">
                   <img src={currentLevelInfo.icon} alt={currentLevelInfo.name} className="w-16 h-16 object-contain -mt-24 animate-bounce-slow" />
-                  <span className="hud-title-md text-white mt-1">{currentLevelInfo.name}</span>
+                  <span className="hud-title-md text-white mt-1 uppercase" style={{ color: currentLevelInfo.color }}>{currentLevelInfo.name}</span>
                   <div className="mt-4 flex flex-col items-center">
                     <span className="hud-value text-white">{valente.totalXP}</span>
-                    <span className="hud-label-tactical mt-1">META: {nextLevelInfo ? nextLevelInfo.minXP : 'MÁXIMO'} XP</span>
+                    <span className="hud-label-tactical mt-1 uppercase">META: {valente.nextLevelXP || 'MÁXIMO'} XP</span>
                   </div>
                 </div>
               </div>
@@ -492,6 +494,7 @@ export default function ValenteProfileClient({
 
             <div className="bg-dark-bg/40 backdrop-blur-xl p-8 border border-white/5 rounded-2xl relative overflow-hidden group">
               <div className="absolute -right-4 -bottom-4 text-white opacity-5 text-8xl hud-title-lg pointer-events-none italic">LORE</div>
+              
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-1 h-5 rounded-full" style={{ backgroundColor: theme.hex }}></div>
@@ -503,12 +506,12 @@ export default function ValenteProfileClient({
                     setLoreText(valente.description || "");
                     setIsEditingLore(true);
                   }}
-                  className="flex items-center gap-2 hud-label-tactical text-[10px] text-brand border border-brand/20 px-3 py-1.5 rounded-md hover:bg-brand/10 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 uppercase"
+                  className="flex items-center gap-2 hud-label-tactical text-[9px] text-gray-500  px-2 py-1 rounded transition-all hover:text-gray-300 uppercase"
                 >
-                  <img src={ICONS.edit || "/images/edit-icon.svg"} alt="" className="w-3 h-3 object-contain brightness-110" />
                   Editar
                 </button>
               </div>
+              
               <p className="font-barlow text-gray-300 text-sm leading-relaxed relative z-10 first-letter:text-3xl first-letter:mr-1">
                 <style dangerouslySetInnerHTML={{__html: `p::first-letter { color: ${theme.hex}; font-family: var(--family-bebas); }`}} />
                 {valente.description || "Este herói ainda não registrou seus feitos nas crônicas do Reino."}
@@ -571,7 +574,6 @@ export default function ValenteProfileClient({
           </div>
         </div>
 
-        {/* MURAL DE DECRETOS ENGINE */}
         <section className="mt-24 pt-20 border-t border-white/5 relative">
             <div className="absolute top-[-15px] left-1/2 transform -translate-x-1/2 bg-dark-bg px-8">
                 <span className="text-gray-700 text-2xl">⚔️</span>
@@ -595,13 +597,9 @@ export default function ValenteProfileClient({
                           overflow-hidden"
               >
                 <div className="absolute inset-0 bg-brand/5 animate-pulse transition-opacity" />
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand to-transparent -translate-x-full animate-glow-sweep group-hover:duration-700" />
                 <span className="hud-label-tactical text-[11px] text-brand tracking-[0.2em] relative z-10 font-black uppercase transition-transform group-hover:scale-105">
                   Ver Todas as Missões →
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand/10 to-transparent -translate-x-full group-hover:animate-shimmer transition-transform duration-1000" />
-                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand to-transparent -translate-x-full animate-glow-sweep group-hover:duration-700" />
-                <div className="absolute -inset-2 bg-brand/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </Link>
             </header>
 
@@ -634,43 +632,26 @@ export default function ValenteProfileClient({
                   </h3>
                   <div className="relative group">
                     <div className="bg-gradient-to-br from-amber-950/30 via-dark-bg/40 to-dark-bg/40 border border-amber-500/30 p-8 rounded-3xl flex flex-col lg:flex-row justify-between items-center gap-8 hover:border-amber-500/60 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-visible">
-                      <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
-                        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
-                        <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-colors"></div>
-                      </div>
-                      
                       <div className="flex-1 space-y-4 relative z-10">
                         <div className="flex items-center gap-3">
-                          <span className="bg-amber-500 text-black font-black hud-label-tactical px-3 py-1 rounded text-[10px] uppercase tracking-tighter">
-                            {epicMission.periodicity === "DAILY" ? "DECRETO DIÁRIO" : 
-                             epicMission.periodicity === "WEEKLY" ? "DECRETO SEMANAL" : 
-                             epicMission.periodicity === "MONTHLY" ? "DECRETO MENSAL" : "EVENTO ESPECIAL"}
+                          <span className="bg-amber-500 text-black font-black hud-label-tactical px-3 py-1 rounded text-[10px] uppercase">
+                            {epicMission.periodicity}
                           </span>
-                          <button onClick={() => handleTogglePin(epicMission.id)} className="text-white/40 hover:text-amber-400 text-[10px] uppercase tracking-widest font-black transition-colors drop-shadow-[0_0_5px_rgba(245,158,11,0.3)]">☆ FIXAR</button>
                         </div>
-                        <h4 className="hud-title-md text-4xl text-white m-0 uppercase leading-none tracking-tight">{epicMission.title}</h4>
-                        <p className="text-gray-400 font-barlow max-w-2xl text-base uppercase tracking-tighter leading-tight border-l-2 border-amber-500/20 pl-4">
-                          {epicMission.description}
-                        </p>
+                        <h4 className="hud-title-md text-4xl text-white m-0 uppercase leading-none">{epicMission.title}</h4>
+                        <p className="text-gray-400 font-barlow text-base border-l-2 border-amber-500/20 pl-4">{epicMission.description}</p>
                       </div>
 
                       <div className="flex flex-col items-center lg:items-end gap-4 shrink-0 relative z-10">
-                        <div className="flex flex-col items-center lg:items-end">
-                          <span className="hud-value text-amber-500 text-6xl drop-shadow-[0_0_20px_rgba(245,158,11,0.5)]">+{epicMission.xpReward} XP</span>
-                          {epicMission.rewardAttribute && (
-                            <span className="hud-label-tactical text-amber-400/80 text-[10px] uppercase tracking-widest font-black">+{epicMission.rewardAttrValue} {ATTRIBUTE_MAP[epicMission.rewardAttribute]}</span>
-                          )}
-                        </div>
+                        <span className="hud-value text-amber-500 text-6xl">+{epicMission.xpReward} XP</span>
                         {isAdmin && (
-                          <div className="p-2 -m-2"> 
-                            <button 
-                              onClick={() => handleCompleteMission(epicMission.id)} 
-                              disabled={isProcessing}
-                              className="bg-amber-500 hover:bg-amber-400 text-black px-12 py-4 rounded-xl font-black hud-title-md text-lg uppercase transition-all shadow-[0_0_25px_rgba(245,158,11,0.4)] hover:shadow-[0_0_40px_rgba(245,158,11,0.6)] hover:-translate-y-1 active:translate-y-0 disabled:opacity-50"
-                            >
-                              {isProcessing ? "PROCESSANDO..." : "CONCLUIR OPERAÇÃO"}
-                            </button>
-                          </div>
+                          <button 
+                            onClick={() => handleCompleteMission(epicMission.id)}
+                            disabled={isProcessing}
+                            className="bg-amber-500 hover:bg-amber-400 text-black px-12 py-4 rounded-xl font-black hud-title-md uppercase transition-all shadow-[0_10px_20px_rgba(245,158,11,0.2)] active:scale-95 disabled:opacity-50"
+                          >
+                            {isProcessing ? "PROCESSANDO..." : "CONCLUIR OPERAÇÃO"}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -700,66 +681,53 @@ export default function ValenteProfileClient({
         </section>
       </main>
 
-      {/* --- NOTIFICATIONS & MODALS --- */}
       <AnimatePresence>
         {pinLimitNotice && (
           <motion.div 
             initial={{ y: 100, opacity: 0, x: '-50%' }}
             animate={{ y: 0, opacity: 1, x: '-50%' }}
             exit={{ y: 50, opacity: 0, x: '-50%' }}
-            className="fixed bottom-10 left-1/2 z-[300] bg-dark-bg/95 border border-amber-500/50 px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.2)] flex items-center gap-4 backdrop-blur-xl"
+            className="fixed bottom-10 left-1/2 z-[300] bg-dark-bg/95 border border-amber-500/50 px-6 py-4 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 backdrop-blur-xl"
           >
-            <div className="flex flex-col">
-              <span className="hud-label-tactical text-[10px] text-amber-500 uppercase tracking-[0.2em] font-black">Aviso do Sistema</span>
-              <p className="text-white text-sm font-barlow m-0 uppercase tracking-tighter">
-                {pinLimitNotice}
-              </p>
-            </div>
-            <button 
-              onClick={() => setPinLimitNotice(null)} 
-              className="text-gray-500 hover:text-white transition-colors ml-4"
-            >
-              ✕
-            </button>
-            <div className="absolute -top-1 -left-1 w-2 h-2 bg-amber-500 rounded-full animate-ping"></div>
+            <span className="text-white text-sm font-bold uppercase tracking-widest">{pinLimitNotice}</span>
+            <button onClick={() => setPinLimitNotice(null)} className="text-gray-500 hover:text-white transition-colors">✕</button>
           </motion.div>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {isEditingLore && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
           >
-            <motion.div
+            <motion.div 
               initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="w-full max-w-lg bg-dark-bg border border-white/10 p-6 rounded-2xl shadow-2xl relative overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
               <h2 className="hud-title-md text-white mb-4 uppercase">Editar Crônicas</h2>
-              <textarea
+              <textarea 
                 value={loreText}
                 onChange={(e) => setLoreText(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-gray-300 outline-none focus:border-white/30 h-48 resize-none font-barlow text-sm mb-6"
-                placeholder="Escreva a história deste valente..."
+                className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-gray-300 outline-none h-48 resize-none font-barlow text-sm mb-6 focus:border-brand/40 transition-colors"
+                placeholder="Escreva os feitos gloriosos deste Valente..."
               />
               <div className="flex gap-4 justify-end">
-                <button
+                <button 
                   onClick={() => setIsEditingLore(false)}
                   disabled={isSavingLore}
-                  className="hud-label-tactical px-6 py-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 uppercase"
+                  className="hud-label-tactical px-6 py-2 text-gray-400 hover:text-white transition-colors uppercase"
                 >
                   Cancelar
                 </button>
-                <button
+                <button 
                   onClick={handleSaveLore}
                   disabled={isSavingLore}
-                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white hud-label-tactical px-6 py-2 rounded-xl transition-all disabled:opacity-50 uppercase"
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white hud-label-tactical px-6 py-2 rounded-xl uppercase transition-all"
                 >
                   {isSavingLore ? "Salvando..." : "Salvar"}
                 </button>
@@ -769,12 +737,11 @@ export default function ValenteProfileClient({
         )}
       </AnimatePresence>
 
-      {/* RESTORED: Modals */}
       {isRewardModalOpen && (
         <RewardModal 
-          valente={valente}
-          missions={availableMissions}
-          onClose={() => setIsRewardModalOpen(false)}
+          valente={valente} 
+          missions={availableMissions} 
+          onClose={() => setIsRewardModalOpen(false)} 
           onConfirm={handleCompleteMission}
           isProcessing={isProcessing}
         />
@@ -782,10 +749,10 @@ export default function ValenteProfileClient({
 
       {isGrantRelicModalOpen && (
         <GrantRelicModal 
-          valente={valente}
+          valente={valente} 
           catalog={medalCatalog}
           earnedMedals={valente.medals || []}
-          onClose={() => setIsGrantRelicModalOpen(false)}
+          onClose={() => setIsGrantRelicModalOpen(false)} 
           onConfirm={handleGrantRelic}
           isProcessing={isProcessing}
         />
@@ -798,9 +765,7 @@ export default function ValenteProfileClient({
         currentValenteId={valente.id}
       />
 
-      {/* --- OVERLAYS (Ordered Priority) --- */}
       <AnimatePresence mode="wait">
-        {/* Priority 1: Spiritual Trifecta (The Embers) */}
         {showTrifectaFx && (
           <HolyCelebration 
             key="trifecta-celebration" 
@@ -809,14 +774,11 @@ export default function ValenteProfileClient({
         )}
 
         {missionQueue.length > 0 ? (
-          <>
-            <HolyCelebration key="celebration-fx" onComplete={() => {}} />
-            <MissionCompletionOverlay 
-              key={`mission-${missionQueue[0].id}`}
-              mission={missionQueue[0]} 
-              onComplete={() => setMissionQueue(prev => prev.slice(1))} 
-            />
-          </>
+          <MissionCompletionOverlay 
+            key={`mission-${missionQueue[0].id}`}
+            mission={missionQueue[0]} 
+            onComplete={() => setMissionQueue(prev => prev.slice(1))} 
+          />
         ) : medalQueue.length > 0 ? (
           <RelicDiscoveryOverlay 
             key={`relic-${medalQueue[0].id}`}
@@ -828,8 +790,8 @@ export default function ValenteProfileClient({
             key="levelup-notification"
             levelName={currentLevelInfo.name} 
             levelIcon={currentLevelInfo.icon}
-            themeColor={theme.hex}
-            onComplete={() => setShowLevelUp(false)}
+            themeColor={currentLevelInfo.color}
+            onComplete={() => setShowLevelUp(false)} 
           />
         ) : null}
       </AnimatePresence>
