@@ -41,7 +41,7 @@ export async function getAllReliquias() {
 }
 
 /**
- * ⚔️ THE FORGE: CREATE
+ * THE FORGE: CREATE
  * Takes the form data and the dynamic alternatives array and packs them into the DB.
  */
 export async function createReliquia(data: {
@@ -52,21 +52,20 @@ export async function createReliquia(data: {
   alternatives: Array<{ id?: number, type: string, value: string }>;
 }) {
   try {
-    await prisma.reliquia.create({
+    const relic = await prisma.reliquia.create({
       data: {
         name: data.name,
         description: data.description,
         icon: data.icon,
         rarity: data.rarity,
-        // We tag this as a MULTI_ROUTE so the engine knows how to read the JSON
         triggerType: "MULTI_ROUTE", 
-        // The magic JSON box absorbs the entire array of conditions!
         ruleParams: data.alternatives, 
       }
     });
 
     revalidatePath("/admin/reliquias");
-    return { success: true };
+    // Return the relic object so we can access result.relic.id
+    return { success: true, relic }; 
   } catch (error) {
     console.error("Failed to forge Relíquia:", error);
     return { success: false, error: "Database transaction failed." };
@@ -151,3 +150,4 @@ export async function getReliquiaById(id: string) {
     return null;
   }
 }
+

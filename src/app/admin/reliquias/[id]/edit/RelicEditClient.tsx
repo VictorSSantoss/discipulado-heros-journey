@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { updateReliquia, deleteReliquia } from "@/app/actions/reliquiaActions";
+import { updateReliquia, deleteReliquia, createReliquia } from "@/app/actions/reliquiaActions";
 import { uploadRelicIcon } from "@/app/actions/uploadActions";
 import RelicForm from "@/components/RelicForm";
 
@@ -15,30 +15,37 @@ export default function RelicEditClient({ initialData, missions }: RelicEditClie
 
   const handleSave = async (data: any) => {
     try {
-      let finalIconUrl = data.icon;
-
-      if (data.selectedFile) {
-        const uploadData = new FormData();
-        uploadData.append("file", data.selectedFile);
-        const uploadResult = await uploadRelicIcon(uploadData);
-        if (uploadResult.success) finalIconUrl = uploadResult.url;
-      }
-
-      const result = await updateReliquia(initialData.id, {
+      // Create the record first to get the ID
+      const result = await createReliquia({
         name: data.name,
         description: data.description,
-        icon: finalIconUrl,
+        icon: data.icon || "", 
         rarity: data.rarity,
         alternatives: data.alternatives
       });
 
-      if (result.success) {
-        router.push("/admin/reliquias");
-        router.refresh();
+      if (!result.success || !result.relic) {
+        throw new Error("Erro ao criar a relíquia.");
       }
+
+      // Now perform the upload using the new ID
+      if (data.selectedFile) {
+        const uploadData = new FormData();
+        uploadData.append("file", data.selectedFile);
+        
+        // PASSING BOTH ARGUMENTS HERE
+        const uploadResult = await uploadRelicIcon(initialData.id, uploadData);
+        
+        if (!uploadResult.success) {
+          console.error("Upload failed, but relic was created.");
+        }
+      }
+
+      router.push("/admin/reliquias");
+      router.refresh();
     } catch (error) {
-      console.error("Update error:", error);
-      alert("Erro ao atualizar artefato.");
+      console.error("Forge error:", error);
+      alert("Erro ao salvar.");
     }
   };
 
@@ -55,11 +62,11 @@ export default function RelicEditClient({ initialData, missions }: RelicEditClie
 
   return (
     <RelicForm 
-      isEdit={true}               // ⚔️ THIS FIXES THE TITLE AND BUTTONS
+      isEdit={true}
       initialData={initialData} 
       missions={missions} 
       onSave={handleSave} 
-      onDelete={handleDelete}     // ⚔️ THIS FIXES THE DELETE BUTTON
+      onDelete={handleDelete}
     />
   );
 }
